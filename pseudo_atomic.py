@@ -3,14 +3,14 @@ import os
 import getopt
 from time import perf_counter
 import numpy as np
-from scipy.interpolate import UnivariateSpline
+from scipy.interpolate import UnivariateSpline, interp1d
 import matplotlib.pyplot as plt
 import json
 
 from utils import PrintTime, GetOrbitalLabel, PrintEigenvalues, PlotWavefunctions
 from adaptive_elements import OptimizeElements
-from femdvr import FEDVR_Basis
-from SchrodingerSolver import SolveNR, SolveZORA, SolveSR
+from SchrodingerSolver import SolveNR, SolvePseudo
+from upf_interface import upf_class
 #==================================================================
 def ReadInput(fname):
     """
@@ -19,6 +19,10 @@ def ReadInput(fname):
     with open(fname, 'r') as f:
         data = json.load(f)
 
+    pseudo_config = data.get('pseudo_config', {})
+    if not pseudo_config:
+        raise ValueError("No 'pseudo_config' found in the input file.")
+
     sysparams = data.get('sysparams', {})
     if not sysparams:
         raise ValueError("No 'sysparams' found in the input file.")
@@ -26,37 +30,53 @@ def ReadInput(fname):
     if not solver:
         raise ValueError("No 'solver' parameters found in the input file.")
 
-    return sysparams, solver
+    return pseudo_config, sysparams, solver
 #==================================================================
-def SolveAtomic(sysparams, solver):
+def SolveAtomic(pseudo_config, sysparams, solver):
     """
     Solve the atomic system based on the provided parameters.
     """
 
-    file_pot = sysparams.get('file_pot', '')
-    if not os.path.isfile(file_pot):
-        raise FileNotFoundError(f"Potential file '{file_pot}' does not exist.")
+    upflib_dir = pseudo_config.get('upflib_dir', '')
+    lib_ext = pseudo_config.get('lib_ext', 'so')
+    pseudo_dir = pseudo_config.get('pseudo_dir', '')
 
-    pot_columns = sysparams.get('pot_columns', [0, 4])
-    if len(pot_columns) != 2:
-        raise ValueError("Expected 'pot_columns' to have exactly two elements.")
+    file_upf = sysparams.get('file_upf', '')
+    file_upf = os.path.join(pseudo_dir, file_upf)
+    if not os.path.isfile(file_upf):
+        raise FileNotFoundError(f"UPF file '{file_upf}' does not exist.")
 
-    # Read potential from file
-    rs, Vpot = np.loadtxt(file_pot, usecols=pot_columns, unpack=True)
+    # Read UPF file
+    tic = perf_counter()
+    upf = upf_class(upflib_dir, lib_ext)
+    upf.Read_UPF(file_upf)
+    upf.Read_PP()
+    toc = perf_counter()
+    PrintTime(tic, toc, "Reading UPF file")
+    print("\n")
+
+    rs = upf.r
+    Vloc = np.ascontiguousarray(upf.vloc)
+    # convert to Hartree
+    Vloc *= 0.5  # Convert to Hartree (1 Hartree = 2 Rydberg)
     Rmax_ = rs[-1]
 
-    pot_energy_unit = sysparams.get('pot_energy_unit', 'Rydberg')
-    if pot_energy_unit.lower() == 'rydberg':
-        Vpot *= 0.5
-    elif pot_energy_unit.lower() == 'ev':
-        Vpot *= 1. / (2 * 13.605693009 )
-
-    spl = UnivariateSpline(rs, Vpot, s=0, k=3)
+    spl = UnivariateSpline(rs, Vloc, s=0, k=3)
     Vpot_fnc = lambda r: spl(r)
-    gradVpot_fnc = spl.derivative()
+
+    fig, ax = plt.subplots(figsize=(12, 8))
+    ax.plot(rs, Vloc, label='Local potential Vloc')
+    ax.set_xlabel('r (a.u.)')
+    ax.set_ylabel('Vloc (a.u.)')
+
+    plt.show()
+    exit()
 
     # Effective charge
-    Zc = - Vpot[0] * rs[0]  # Effective charge
+    Zc = - Vpot_fnc(1.0)  # Effective charge
+
+    print(f"Effective charge Zc = {Zc:.6f} a.u.\n")
+
 
     # Optimize radial elements
     h_min = solver.get('h_min', 0.01)
@@ -65,10 +85,6 @@ def SolveAtomic(sysparams, solver):
     tol = solver.get('tol', 1.0e-3)
     ng = solver.get('ng', 8)
 
-    method = solver.get('method', 'non-relativistic')
-    allowed_methods = ['non-relativistic', 'zora', 'scalar-relativistic']
-    if method.lower() not in allowed_methods:
-        raise ValueError(f"Method '{method}' is not supported. Choose from {allowed_methods}.")
 
     tic = perf_counter()
     r_elements = OptimizeElements(Zc, h_min, h_max, Rmax, tol)
@@ -89,16 +105,34 @@ def SolveAtomic(sysparams, solver):
 
     tic = perf_counter()
     print(f"Solving Schrödinger equation for lmax = {lmax}, nmax = {nmax}")
-    print(f"method = {method}")
     for l in range(lmax + 1):
-        if method.lower() == 'non-relativistic':
+
+        Ib, = np.where(upf.lll == l)
+
+        if len(Ib) == 0:
+            # No beta functions for this l, use local potential
             eps[l, :nmax], r_grid, psi[l, :nmax, :] = SolveNR(r_elements, Vpot_fnc, l, nmax, ng)
-        elif method.lower() == 'zora':
-            eps[l, :nmax], r_grid, psi[l, :nmax, :] = SolveZORA(r_elements, Vpot_fnc, gradVpot_fnc, l, nmax, ng)
-        elif method.lower() == 'scalar-relativistic':
-            eps_guess, r_grid, psi[l, :nmax, :] = SolveNR(r_elements, Vpot_fnc, l, nmax, ng)
-            eps[l, :nmax], r_grid, psi[l, :nmax, :] = SolveSR(r_elements, Vpot_fnc, gradVpot_fnc, l,
-                                                              eps_guess, ng)
+
+        else:
+            # prepare beta functions
+            nbeta = len(Ib)
+            irmax = upf.kbeta_max
+            beta_l = np.zeros([nbeta, irmax], dtype=np.float64)
+            for ibeta in range(nbeta):
+                beta_l[ibeta, :] = upf.beta[0:irmax, Ib[ibeta]]
+
+
+            beta_fnc = interp1d(rs[0:irmax], beta_l, axis=1, kind='cubic', 
+                                bounds_error=False, fill_value=0)
+
+            Dion_Hr = np.zeros([nbeta, nbeta], dtype=np.float64)
+            for i in range(nbeta):
+                for j in range(nbeta):
+                    Dion_Hr[i, j] = 0.5 * upf.dion[Ib[i], Ib[j]]
+
+            eps[l, :nmax], r_grid, psi[l, :nmax, :] = SolvePseudo(r_elements, Vpot_fnc, 
+                                                                  Dion_Hr, beta_fnc, l, nmax, ng)
+
     toc = perf_counter()
     PrintTime(tic, toc, "Schrödinger equation")
     print("\n")
@@ -113,13 +147,16 @@ def SolveAtomic(sysparams, solver):
     return eigenvalues, r_grid, psi
 
 #==================================================================
+
+
+#==================================================================
 def main(argv):
 
     short_options = "hpi:o:"
     long_options = ["help", "plot", "input=", "output="]
 
     print(60 * '*')
-    print("Atomic Schrödinger Equation Solver".center(60))
+    print("Pseudo-atomic Schrödinger Equation Solver".center(60))
     print(60 * '*')
     tic = perf_counter()
 
@@ -136,7 +173,7 @@ def main(argv):
 
     for opt, arg in opts:
         if opt in ("-h", "--help"):
-            print("Usage: python atomic.py -i <input_file> [-o <output_file>] [--plot]")
+            print("Usage: python pseudo_atomic.py -i <input_file> [-o <output_file>] [--plot]")
             sys.exit()
         elif opt in ("-i", "--input"):
             input_file = arg
@@ -154,9 +191,9 @@ def main(argv):
         sys.exit(2)
 
     # Read input parameters
-    sysparams, solver = ReadInput(input_file)
+    pseudo_config, sysparams, solver = ReadInput(input_file)
 
-    eigenvalues, r_grid, psi = SolveAtomic(sysparams, solver)
+    eigenvalues, r_grid, psi = SolveAtomic(pseudo_config, sysparams, solver)
 
     lmax = sysparams.get('lmax', 0)
     PrintEigenvalues(lmax, eigenvalues)

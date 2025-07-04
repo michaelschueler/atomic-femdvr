@@ -223,6 +223,68 @@ class FEDVR_Basis(object):
 
 		return Vvec
 	#------------------------------------------------------------
+	def Get_coeffs(self, f_fnc):
+		ne = self.ne
+		ng = self.ng
+		xp = self.xp
+		nb = ne*ng-1
+		w_i = self.leg.w_i
+		x_i = self.leg.x_i
+
+		f_vec = np.zeros(nb)
+		f4 = np.zeros([ne,ng])
+
+		for i1 in range(ne-1):
+			w1 = 0.5*(xp[i1+1]-xp[i1]) * w_i[ng]
+			w2 = 0.5*(xp[i1+2]-xp[i1+1]) * w_i[0]
+			xs1 = xp[i1] + 0.5 * (xp[i1+1] - xp[i1]) * (x_i[0:ng] + 1)
+			xs2 = xp[i1+1] + 0.5 * (xp[i1+2] - xp[i1+1]) * (x_i[0:ng] + 1)
+
+			f4[i1,0] = (f_fnc(xs1[-1])  + f_fnc(xs2[0]) ) / np.sqrt(w1 + w2)
+
+		for i1 in range(ne):
+			w = 0.5 * (xp[i1+1] - xp[i1]) * self.leg.w_i[:]
+			xs = xp[i1] + 0.5 * (xp[i1+1] - xp[i1]) * (x_i[0:ng] + 1)
+			f4[i1,1:] = f_fnc(xs[1:]) / np.sqrt(w[1:])
+
+		f2 = np.reshape(np.flip(f4, axis=1), [ne*ng])
+		f_vec = f2[0:nb]
+
+		return f_vec
+#------------------------------------------------------------
+	def Get_coeffs_batch(self, ndim, f_fnc):
+		ne = self.ne
+		ng = self.ng
+		xp = self.xp
+		nb = ne*ng-1
+		w_i = self.leg.w_i
+		x_i = self.leg.x_i
+
+		f4 = np.zeros([ndim, ne, ng])
+
+		for i1 in range(ne-1):
+			w1 = 0.5*(xp[i1+1]-xp[i1]) * w_i[ng]
+			w2 = 0.5*(xp[i1+2]-xp[i1+1]) * w_i[0]
+			xs1 = xp[i1] + 0.5 * (xp[i1+1] - xp[i1]) * (x_i[0:ng] + 1)
+
+			f4[:, i1, 0] = f_fnc(xs1[-1]) *  np.sqrt(w1 + w2)
+
+		for i1 in range(ne):
+			w = 0.5 * (xp[i1+1] - xp[i1]) * self.leg.w_i[:]
+			xs = xp[i1] + 0.5 * (xp[i1+1] - xp[i1]) * (x_i[0:ng] + 1)
+			for m in range(1, ng):
+				f4[:, i1, m] = f_fnc(xs[m]) * np.sqrt(w[m])
+
+		f_vec = np.zeros([ndim, nb])
+		for i in range(ndim):
+			f2 = np.reshape(np.flip(f4[i, :, :], axis=1), [ne*ng])
+			f_vec[i, :] = f2[0:nb]
+
+		# f2 = np.reshape(np.flip(f4, axis=-1), [ndim, ne*ng])
+		# f_vec = f2[0:ndim, 0:nb]
+
+		return f_vec
+	# --------------------------------
 	def KinEn_Matrix_zerobound(self):
 		ne = self.ne
 		ng = self.ng

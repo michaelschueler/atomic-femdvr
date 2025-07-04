@@ -1,0 +1,22 @@
+{
+    "pseudo_config": {
+        "upflib_dir": "/home/michael/gnu/lib",
+        "lib_ext": "so",
+        "pseudo_dir": "/home/michael/PP/nc-sr-04_pbe_standard_upf/"
+    },
+
+    "sysparams": {
+        "file_upf": "Mo.upf",
+        "lmax": 3,
+        "nmax": 10
+    },
+
+    "solver": {
+        "h_min": 0.1,
+        "h_max": 4.0,
+        "Rmax": 30.0,
+        "tol": 1.0e-2,
+        "ng": 8
+    }
+
+}

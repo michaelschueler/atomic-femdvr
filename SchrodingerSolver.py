@@ -151,3 +151,56 @@ def SolveSR(r_elements, Vpot_fnc, gradVpot_fnc, l, eps_guess, ng, maxiter=10, to
 
     return eps_SR, r_grid, psi.T
 #------------------------------------------------------------
+
+#------------------------------------------------------------
+def SolvePseudo(r_elements, Vpot_fnc, Dion, beta_fnc, l, nr, ng):
+    """
+    Solve the radial Schrödinger equation using finite element method
+    """
+
+    ne = len(r_elements) - 1  # Number of elements
+    nb = ne * ng - 1  # Total number of grid points
+    fe = FEDVR_Basis(ne, ng, r_elements)
+
+    r_grid = fe.GetGridpoints()
+
+    Vl_fnc = lambda r: Vpot_fnc(r) + l * (l + 1) / (2. * r**2)
+
+    Vvec = fe.PotEn_Matrix(Vl_fnc)
+
+    Tmat = fe.KinEn_Matrix_zerobound()
+    Hmat = Tmat + np.diag(Vvec)
+
+    # now add the non-local part
+    nbeta = Dion.shape[0]
+
+    beta_vecs = fe.Get_coeffs_batch(nbeta, beta_fnc)
+
+    print("beta_vecs.shape = ", beta_vecs.shape)
+    print("Dion = ", Dion)
+
+    Vnl_mat = np.zeros([nb, nb], dtype=np.float64)
+    for ibeta in range(nbeta):
+        for jbeta in range(nbeta):
+            ket_bra = beta_vecs[ibeta, :, None] * beta_vecs[jbeta, None, :]
+            Vnl_mat[:, :] += Dion[ibeta, jbeta] * ket_bra
+
+    print("max(Vnl_mat) = ", np.max(Vnl_mat))
+    print("Vnl_mat is symmetric: ", np.allclose(Vnl_mat, Vnl_mat.T))
+
+    # print(40* '-')
+    # print(Vnl_mat)
+    # print(40* '-')
+
+    Hmat += Vnl_mat
+
+    print("max(Hmat) = ", np.max(Hmat))
+
+    eps, vect = la.eigh(Hmat, subset_by_index=[0, nr - 1])
+    print("max(eps) = ", np.max(eps))
+
+    psi = fe.GetPsi_All(vect, cplx=False)
+    psi = SetPhase(psi)
+
+    return eps, r_grid, psi.T
+#------------------------------------------------------------
