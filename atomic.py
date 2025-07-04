@@ -7,21 +7,10 @@ from scipy.interpolate import UnivariateSpline
 import matplotlib.pyplot as plt
 import json
 
+from utils import PrintTime
 from adaptive_elements import OptimizeElements
 from femdvr import FEDVR_Basis
 from SchrodingerSolver import SolveNR, SolveZORA, SolveSR
-#==================================================================
-def PrintTime(tic, toc, msg):
-    """
-    Print the elapsed time for a given operation.
-    """
-    elapsed = toc - tic
-    if elapsed < 1:
-        print(f"Time[{msg}] : {elapsed * 1000:.2f} ms")
-    elif elapsed > 300:
-        print(f"Time[{msg}] : {elapsed / 60:.2f} m")
-    else:
-        print(f"Time[{msg}] : {elapsed:.2f} s")
 #==================================================================
 def ReadInput(fname):
     """
