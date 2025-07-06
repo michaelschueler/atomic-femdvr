@@ -1,0 +1,26 @@
+{
+    "pseudo_config": {
+        "upflib_dir": "/Users/michael/opt/lib",
+        "lib_ext": "dylib",
+        "pseudo_dir": "./data"
+    },
+
+    "sysparams": {
+        "file_upf": "Si.oncvpsp.upf",
+        "file_pot": "data/Si_Vpsloc.plot",
+        "file_vhx": "data/Si_Vhxc.plot",
+        "pot_columns": [0, 1],
+        "pot_energy_unit": "Hartree",
+        "lmax": 1,
+        "nmax": 3
+    },
+
+    "solver": {
+        "h_min": 0.5,
+        "h_max": 10.0,
+        "Rmax": 60.0,
+        "tol": 1.0e-2,
+        "ng": 16
+    }
+
+}

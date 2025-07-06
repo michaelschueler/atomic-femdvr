@@ -8,6 +8,7 @@ import matplotlib.pyplot as plt
 import json
 
 from utils import PrintTime, GetOrbitalLabel, PrintEigenvalues, PlotWavefunctions
+from iotools import ReadPotential
 from adaptive_elements import OptimizeElements
 from SchrodingerSolver import SolveNR, SolvePseudo
 from upf_interface import upf_class
@@ -41,10 +42,13 @@ def SolveAtomic(pseudo_config, sysparams, solver):
     lib_ext = pseudo_config.get('lib_ext', 'so')
     pseudo_dir = pseudo_config.get('pseudo_dir', '')
 
+    rs_pot, Vpot, output_type = ReadPotential(sysparams)
+
     file_upf = sysparams.get('file_upf', '')
     file_upf = os.path.join(pseudo_dir, file_upf)
     if not os.path.isfile(file_upf):
         raise FileNotFoundError(f"UPF file '{file_upf}' does not exist.")
+
 
     # Read UPF file
     tic = perf_counter()
@@ -55,25 +59,34 @@ def SolveAtomic(pseudo_config, sysparams, solver):
     PrintTime(tic, toc, "Reading UPF file")
     print("\n")
 
-    rs = upf.r
-    Vloc = np.ascontiguousarray(upf.vloc)
-    # convert to Hartree
-    Vloc *= 0.5  # Convert to Hartree (1 Hartree = 2 Rydberg)
-    Rmax_ = rs[-1]
+    if output_type == 'tot':
+        # If total potential is provided, use it directly
+        rs = rs_pot
+        Vtot = Vpot
+        spl = UnivariateSpline(rs, Vtot, s=0, k=3)
+        Vtot_fnc = lambda r: spl(r)
+    elif output_type == 'vhx':
+        # If only exchange-correlation potential is provided, use \
+        # the local potential from UPF and add it to the exchange-correlation potential
+        Vloc = np.ascontiguousarray(upf.vloc)
+        Vloc *= 0.5  # Convert to Hartree (1 Hartree = 2 Rydberg)
+        spl_loc = UnivariateSpline(upf.r, Vloc, s=0, k=3)
+        spl_vhx = UnivariateSpline(rs_pot, Vpot, s=0, k=3)
+        Vtot_fnc = lambda r: spl_loc(r) + spl_vhx(r)
 
-    spl = UnivariateSpline(rs, Vloc, s=0, k=3)
-    Vpot_fnc = lambda r: spl(r)
+    rgrid = upf.r
+    Rmax_ = rgrid[-1]
 
-    fig, ax = plt.subplots(figsize=(12, 8))
-    ax.plot(rs, Vloc, label='Local potential Vloc')
-    ax.set_xlabel('r (a.u.)')
-    ax.set_ylabel('Vloc (a.u.)')
+    # fig, ax = plt.subplots(figsize=(12, 8))
+    # ax.plot(rgrid, Vtot_fnc(rgrid), label='Local potential Vloc')
+    # ax.set_xlabel('r (a.u.)')
+    # ax.set_ylabel('Vloc (a.u.)')
 
-    plt.show()
-    exit()
+    # plt.show()
+    # exit()
 
     # Effective charge
-    Zc = - Vpot_fnc(1.0)  # Effective charge
+    Zc = - Vtot_fnc(1.0)  # Effective charge
 
     print(f"Effective charge Zc = {Zc:.6f} a.u.\n")
 
@@ -111,7 +124,7 @@ def SolveAtomic(pseudo_config, sysparams, solver):
 
         if len(Ib) == 0:
             # No beta functions for this l, use local potential
-            eps[l, :nmax], r_grid, psi[l, :nmax, :] = SolveNR(r_elements, Vpot_fnc, l, nmax, ng)
+            eps[l, :nmax], r_grid, psi[l, :nmax, :] = SolveNR(r_elements, Vtot_fnc, l, nmax, ng)
 
         else:
             # prepare beta functions
@@ -120,9 +133,7 @@ def SolveAtomic(pseudo_config, sysparams, solver):
             beta_l = np.zeros([nbeta, irmax], dtype=np.float64)
             for ibeta in range(nbeta):
                 beta_l[ibeta, :] = upf.beta[0:irmax, Ib[ibeta]]
-
-
-            beta_fnc = interp1d(rs[0:irmax], beta_l, axis=1, kind='cubic', 
+            beta_fnc = interp1d(rgrid[0:irmax], beta_l, axis=1, kind='cubic', 
                                 bounds_error=False, fill_value=0)
 
             Dion_Hr = np.zeros([nbeta, nbeta], dtype=np.float64)
@@ -130,7 +141,7 @@ def SolveAtomic(pseudo_config, sysparams, solver):
                 for j in range(nbeta):
                     Dion_Hr[i, j] = 0.5 * upf.dion[Ib[i], Ib[j]]
 
-            eps[l, :nmax], r_grid, psi[l, :nmax, :] = SolvePseudo(r_elements, Vpot_fnc, 
+            eps[l, :nmax], r_grid, psi[l, :nmax, :] = SolvePseudo(r_elements, Vtot_fnc, 
                                                                   Dion_Hr, beta_fnc, l, nmax, ng)
 
     toc = perf_counter()

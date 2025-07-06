@@ -68,7 +68,7 @@ def PlotWavefunctions(r_grid, psi, lmax, eigenvalues):
 
         for n in range(n_bound):
             orb = GetOrbitalLabel(n, l)
-            ax[l].plot(r_grid, psi[l, n, :], label=orb)
+            ax[l].plot(r_grid, psi[l, n, :], marker='o', label=orb)
 
         ax[l].legend()
         ax[l].set_xlim([0, r_grid[-1]])

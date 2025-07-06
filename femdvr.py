@@ -66,6 +66,31 @@ class FEDVR_Basis(object):
 
 		return psi
 	#------------------------------------------------------------
+	def GetCoeffs(self, psi, cplx=False):
+		ne = self.ne
+		ng = self.ng
+		nb = ne*ng - 1
+		xp = self.xp
+
+		if cplx:
+			cff4 = np.zeros([ne,ng], dtype=complex)
+		else:
+			cff4 = np.zeros([ne,ng])
+
+		for i in range(1,ne):
+			w1 = 0.5 * (xp[i] - xp[i-1]) * self.leg.w_i[ng]
+			w2 = 0.5 * (xp[i+1] - xp[i]) * self.leg.w_i[0]
+			cff4[i-1,0] = psi[i*ng] * np.sqrt(w1 + w2)
+
+		for i in range(ne):
+			for m in range(1,ng):
+				w = 0.5 * (xp[i+1] - xp[i]) * self.leg.w_i[m]
+				cff4[i,m] = psi[i*ng+m] * np.sqrt(w)
+
+		cff2 = np.reshape(np.flip(cff4, axis=1), [ne*ng])
+
+		return cff2[0:nb]
+	#------------------------------------------------------------
 	def GenCompressed_KinEn(self):
 		ne = self.ne
 		ng = self.ng

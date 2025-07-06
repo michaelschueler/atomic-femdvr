@@ -174,30 +174,21 @@ def SolvePseudo(r_elements, Vpot_fnc, Dion, beta_fnc, l, nr, ng):
     # now add the non-local part
     nbeta = Dion.shape[0]
 
-    beta_vecs = fe.Get_coeffs_batch(nbeta, beta_fnc)
-
-    print("beta_vecs.shape = ", beta_vecs.shape)
-    print("Dion = ", Dion)
+    # beta_vecs = fe.Get_coeffs_batch(nbeta, beta_fnc)
+    beta_grid = beta_fnc(r_grid)
+    beta_vecs = np.zeros([nbeta, nb], dtype=np.float64)
+    for ibeta in range(nbeta):
+        beta_vecs[ibeta, :] = fe.GetCoeffs(beta_grid[ibeta, :], cplx=False)
 
     Vnl_mat = np.zeros([nb, nb], dtype=np.float64)
     for ibeta in range(nbeta):
         for jbeta in range(nbeta):
-            ket_bra = beta_vecs[ibeta, :, None] * beta_vecs[jbeta, None, :]
+            ket_bra = np.outer(beta_vecs[ibeta], beta_vecs[jbeta])
             Vnl_mat[:, :] += Dion[ibeta, jbeta] * ket_bra
-
-    print("max(Vnl_mat) = ", np.max(Vnl_mat))
-    print("Vnl_mat is symmetric: ", np.allclose(Vnl_mat, Vnl_mat.T))
-
-    # print(40* '-')
-    # print(Vnl_mat)
-    # print(40* '-')
 
     Hmat += Vnl_mat
 
-    print("max(Hmat) = ", np.max(Hmat))
-
     eps, vect = la.eigh(Hmat, subset_by_index=[0, nr - 1])
-    print("max(eps) = ", np.max(eps))
 
     psi = fe.GetPsi_All(vect, cplx=False)
     psi = SetPhase(psi)
