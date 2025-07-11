@@ -660,9 +660,10 @@ class SolveSchrodingerAtomic(object):
         phase_smooth = np.copy(phase)
 
         for i in range(1, len(phase)):
-            if phase[i] - phase_smooth[i-1] > 1.5:
+            diff = phase[i] - phase_smooth[i-1]
+            if diff > 1.9:
                 phase_smooth[i] -= 2.0
-            elif phase[i] - phase_smooth[i-1] < -1.5:
+            elif diff < -1.9:
                 phase_smooth[i] += 2.0
         
         return phase_smooth
