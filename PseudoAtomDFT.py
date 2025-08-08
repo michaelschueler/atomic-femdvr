@@ -1,0 +1,294 @@
+import os
+import numpy as np
+from scipy.interpolate import interp1d
+import pickle
+
+from upf_interface import upf_class
+from femdvr import FEDVR_Basis
+from adaptive_elements import OptimizeElements
+from interp_tools import InterpolatePotential, InterpolateDensity
+from Confinement import SoftConfinement, ParabolicConfinement, SoftStep
+from Projectors import WriteProjectorFile
+
+import DensityPotential as denpot
+import KohnSham as ks
+#==========================================================================
+class PseudoAtomDFT:
+    #.......................................................
+    def __init__(self, pseudo_config:dict, sysparams:dict, solver:dict, dft:dict):
+        self.pseudo_config = pseudo_config
+        self.sysparams = sysparams
+        self.solver = solver
+        self.dft = dft
+
+        self.upf = None
+        self.rho_grid = None
+        self.Vloc_grid = None
+
+        self.Zval = 1.0  # Default value, can be set later
+
+        # optimize elements
+        Rmax = solver.get('Rmax', 30.0)
+        h_min = solver.get('h_min', 0.5)
+        h_max = solver.get('h_max', 4.0)
+        elem_tol = solver.get('elem_tol', 1.0e-2)
+        self.r_elements = OptimizeElements(self.Zval, h_min, h_max, Rmax, elem_tol)
+
+        # set up the basis
+        ne = len(self.r_elements) - 1
+        ng = solver.get('ng', 8)
+        self.basis = FEDVR_Basis(ne, ng, self.r_elements, build_integrals=True)
+
+        self.grid = self.basis.GetGridpoints()
+
+        self.num_grid = len(self.grid)
+    #.......................................................
+    def ReadUPF(self, read_density: bool = True, read_potential: bool = True):
+        upflib_dir = self.pseudo_config.get('upflib_dir', '')
+        lib_ext = self.pseudo_config.get('lib_ext', 'so')
+        file_upf = self.sysparams.get('file_upf', '')
+        file_upf = os.path.join(self.pseudo_config.get('pseudo_dir', ''), file_upf)
+
+        if not os.path.isfile(file_upf):
+            raise FileNotFoundError(f"UPF file '{file_upf}' does not exist.")
+
+        self.upf = upf_class(upflib_dir, lib_ext)
+        self.upf.Read_UPF(file_upf)
+        self.upf.ReadWavefunctions()
+        self.upf.Read_PP()
+
+        self.Zval = self.upf.zp
+
+        if read_density:
+            rho_upf = self.upf.GetChargeDensity()
+            self.rho_grid = InterpolateDensity(self.upf.r, rho_upf, self.grid)
+
+        if read_potential:
+            Vloc_upf = self.upf.vloc
+            self.Vloc_grid = InterpolatePotential(self.upf.r, Vloc_upf, self.grid)
+            self.Vloc_grid *= 0.5 # Convert to Hartree units
+
+        # interpolate beta projectors to new grid
+        self.nbeta = self.upf.nbeta
+        beta = np.ascontiguousarray(self.upf.beta.T)
+        kbeta_max = self.upf.kbeta_max
+        interp = interp1d(self.upf.r[0:kbeta_max], beta[:, 0:kbeta_max], axis=1, 
+                          kind='cubic', bounds_error=False, fill_value=0.0)
+        self.beta_grid = interp(self.grid)
+
+    #.......................................................
+    def EffectivePotential(self, rho_grid=None):
+        if rho_grid is None:
+            rho_grid = self.rho_grid
+
+        
+        V_Ha = denpot.HartreePotential(self.basis, rho_grid)
+
+        xc_driver = self.dft.get('driver', 'internal')
+        xc_functional = self.dft.get('xc_functional', 'PBE')
+
+        x_functional = self.dft.get('x_functional', 'gga_x_pbe')
+        c_functional = self.dft.get('c_functional', 'gga_c_pbe')
+        alpha_x = self.dft.get('alpha_x', 1.0)
+        V_xc = denpot.ExchangeCorrelationPotential(self.basis, rho_grid, 
+                                                   xc_functional=xc_functional,
+                                                   x_functional=x_functional, 
+                                                   c_functional=c_functional, 
+                                                   alpha_x=alpha_x, driver=xc_driver)
+
+        V_xc *= 0.5 # Convert to Hartree units
+
+        V_eff = self.Vloc_grid + V_Ha + V_xc
+        return V_eff
+    #.......................................................
+    def SolveSchrodinger(self, Veff, lmax, nmax, Vconf=None):
+
+        eps, psi = ks.SolveSchrodinger(self.basis, Veff, self.upf.lll, self.upf.dion, 
+                                       self.beta_grid, lmax, nmax, Vconf=Vconf)
+
+        return eps, psi
+    #.......................................................
+    def GetBoundStates(self):
+
+        lmax = np.amax(self.upf.lchi)
+        nmax = np.amax(self.upf.nnodes_chi)
+
+        V_eff = self.EffectivePotential()
+        eps, psi = self.SolveSchrodinger(V_eff, lmax, nmax)
+
+        eigenvalues = {}
+        for l in range(lmax + 1):
+            Ie, = np.where(eps[l, :nmax+1] < 0)
+            eps_bound = eps[l, Ie]
+            tag = f'{l}'
+            eigenvalues[tag] = eps_bound.tolist()
+
+        return eigenvalues, psi
+    #.......................................................
+    def GetAllStates(self, lmax:int, nmax:int, confinement:dict=None):
+        """
+        Returns all bound states including unbound states.
+        """
+        V_eff = self.EffectivePotential()
+
+        if confinement is not None:
+            rc = confinement.get('rc', 20.0)
+            ri_factor = confinement.get('ri_factor', 0.9)
+            ri = ri_factor * rc
+            # Vconf = SoftConfinement(self.grid, ri, rc)
+
+            confinement_type = confinement.get('type', 'SoftStep')
+            if confinement_type.lower() == 'softstep':
+                Vbarrier = confinement.get('Vbarrier', 1.0)
+                Vconf = SoftStep(self.grid, ri, rc, Vbarrier=Vbarrier)
+            elif confinement_type.lower() == 'parabolic':
+                Vconf = ParabolicConfinement(self.grid, ri, rc)
+
+        eps, psi = self.SolveSchrodinger(V_eff, lmax, nmax, Vconf=Vconf)
+
+        eigenvalues = {}
+        for l in range(lmax + 1):
+            tag = f'{l}'
+            eigenvalues[tag] = eps[l, :].tolist()
+
+        return eigenvalues, psi
+    #.......................................................
+    def GetStatesEnergyShift(self, lmax:int, nmax:int, confinement:dict):
+        eigenvalues_bounds, psi_bound = self.GetBoundStates()
+        eigenvalues_all, psi_all = self.GetAllStates(lmax, nmax, confinement=confinement)
+
+        lmax_bound = np.amax(self.upf.lchi)
+        energy_shifts = np.zeros(lmax_bound + 1, dtype=np.float64)
+
+        for l in range(lmax_bound + 1):
+            tag = f'{l}'
+            epsl_bound = np.array(eigenvalues_bounds[tag])
+            epsl_all = np.array(eigenvalues_all[tag])
+            n = np.argmax(epsl_bound)
+            energy_shifts[l] = epsl_all[n] - epsl_bound[n]
+
+        return energy_shifts, eigenvalues_all, psi_all
+    #.......................................................
+    def ExportProjector(self, lmax:int, nmax:int, psi:np.ndarray, 
+                        out_dir:str, nr:int=1001, rmin=1.0e-8):
+        Rmax = self.r_elements[-1]
+        rs = np.logspace(np.log10(rmin), np.log10(Rmax), nr)
+
+        larr = []
+        psi_interp = np.zeros([lmax + 1, nmax + 1, nr])
+        for l in range(lmax + 1):
+            for n in range(nmax + 1):
+                psi_interp[l, n, :] = self.basis.Interpolate(psi[l, n, :], rs)
+                larr.append(l)
+
+        nproj = len(larr)
+
+        # write to file
+        if not os.path.exists(out_dir):
+            os.makedirs(out_dir)
+
+        elem = self.sysparams.get('element', 'Mo')
+
+        prefs = ['S', 'D', 'T', 'Q', 'H']
+        zeta_tag = f"{prefs[nmax]}Z" if nmax < len(prefs) else f"{nmax}Z"
+
+        lmax_upf = np.amax(self.upf.lchi)
+        extra_l = lmax - lmax_upf
+        if extra_l > 0:
+            p_tag = 'P' * extra_l
+        else:
+            p_tag = ''
+
+        tag = zeta_tag + p_tag
+
+        psi_interp = np.reshape(psi_interp, [nproj, nr])
+        WriteProjectorFile(out_dir, elem, tag, larr, psi_interp, rs)
+    #.......................................................
+    def KS_SelfConsistency(self, max_iter=100, tol=1.0e-6, alpha=0.6):
+        """
+        Performs Kohn-Sham self-consistency to find the ground state density.
+        """
+        V_eff = self.EffectivePotential()
+        lmax = np.amax(self.upf.lchi)
+        nmax = np.amax(self.upf.nnodes_chi)
+
+        # Initial guess for the wavefunctions
+        eps, psi = self.SolveSchrodinger(V_eff, lmax, nmax)
+        
+        rho_old = self.rho_grid.copy()
+
+        err = 1.0e8
+        iter_count = 0
+        while err > tol and iter_count < max_iter:
+            iter_count += 1
+
+            # Compute charge density
+            rho_new = denpot.ChargeDensity(self.basis, self.upf.nnodes_chi, self.upf.lchi, 
+                                       self.upf.oc, psi)
+            
+            # linear mixing of the density
+            rho_new = alpha * rho_new + (1 - alpha) * rho_old
+            
+            # Update effective potential
+            V_eff = self.EffectivePotential(rho_grid=rho_new)
+
+            # Compute error
+            err = np.linalg.norm(rho_new - rho_old)
+
+            # Solve Schrödinger equation with new potential
+            eps, psi = self.SolveSchrodinger(V_eff, lmax, nmax)
+
+            rho_old = rho_new.copy()
+
+
+        self.rho_grid = rho_new.copy()
+
+        return iter_count, err
+
+    #.......................................................
+    def SaveDensityPotential(self):
+        """
+        Saves the charge density and potential to a file.
+        """
+
+        V_eff = self.EffectivePotential()
+
+        data = {
+            'grid': self.grid,
+            'rho': self.rho_grid,
+            'Veff': V_eff
+        }
+
+        storage_dir = self.pseudo_config.get('storage_dir', './')
+        if not os.path.exists(storage_dir):
+            os.makedirs(storage_dir)
+
+        filename = 'density_potential.pkl'
+        with open(os.path.join(storage_dir, filename), 'wb') as f:
+            pickle.dump(data, f)
+    #.......................................................
+    def ReadDensityPotential(self):
+        """
+        Reads the charge density and potential from a file.
+        """
+        storage_dir = self.pseudo_config.get('storage_dir', './')
+        filename = 'density_potential.pkl'
+        filepath = os.path.join(storage_dir, filename)
+
+        if not os.path.isfile(filepath):
+            return False
+        
+        with open(filepath, 'rb') as f:
+            data = pickle.load(f)
+
+        grid = data['grid']
+        rho_grid = data['rho']
+        Veff_grid = data['Veff'] 
+
+        # check if grid matches
+        if not np.allclose(grid, self.grid):
+            raise ValueError("Grid points in the file do not match the current grid.")
+        
+        self.rho_grid = rho_grid.copy()
+
+        return True
