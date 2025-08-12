@@ -1,4 +1,4 @@
 {
-    "upflib_dir": "/home/michael/gnu/lib",
-    "lib_ext": "so"
+    "upflib_dir": "/Users/michael/opt/lib",
+    "lib_ext": "dylib"
 }

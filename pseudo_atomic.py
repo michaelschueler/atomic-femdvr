@@ -3,15 +3,12 @@ import os
 import getopt
 from time import perf_counter
 import numpy as np
-from scipy.interpolate import UnivariateSpline, interp1d
 import matplotlib.pyplot as plt
 import json
 
 from utils import PrintTime, GetOrbitalLabel, PrintEigenvalues, PlotWavefunctions
-from iotools import ReadPotential
-from adaptive_elements import OptimizeElements
-from SchrodingerSolver import SolveNR, SolvePseudo
-from upf_interface import upf_class
+
+from PseudoAtomDFT import PseudoAtomDFT
 #==================================================================
 def ReadInput(fname):
     """
@@ -31,140 +28,19 @@ def ReadInput(fname):
     if not solver:
         raise ValueError("No 'solver' parameters found in the input file.")
 
-    return pseudo_config, sysparams, solver
-#==================================================================
-def SolveAtomic(pseudo_config, sysparams, solver):
-    """
-    Solve the atomic system based on the provided parameters.
-    """
+    dft = data.get('dft', {})
+    confinement = data.get('confinement', {})
+    proj = data.get('projector', {})
 
-    upflib_dir = pseudo_config.get('upflib_dir', '')
-    lib_ext = pseudo_config.get('lib_ext', 'so')
-    pseudo_dir = pseudo_config.get('pseudo_dir', '')
-
-    rs_pot, Vpot, output_type = ReadPotential(sysparams)
-
-    file_upf = sysparams.get('file_upf', '')
-    file_upf = os.path.join(pseudo_dir, file_upf)
-    if not os.path.isfile(file_upf):
-        raise FileNotFoundError(f"UPF file '{file_upf}' does not exist.")
-
-
-    # Read UPF file
-    tic = perf_counter()
-    upf = upf_class(upflib_dir, lib_ext)
-    upf.Read_UPF(file_upf)
-    upf.Read_PP()
-    toc = perf_counter()
-    PrintTime(tic, toc, "Reading UPF file")
-    print("\n")
-
-    if output_type == 'tot':
-        # If total potential is provided, use it directly
-        rs = rs_pot
-        Vtot = Vpot
-        spl = UnivariateSpline(rs, Vtot, s=0, k=3)
-        Vtot_fnc = lambda r: spl(r)
-    elif output_type == 'vhx':
-        # If only exchange-correlation potential is provided, use \
-        # the local potential from UPF and add it to the exchange-correlation potential
-        Vloc = np.ascontiguousarray(upf.vloc)
-        Vloc *= 0.5  # Convert to Hartree (1 Hartree = 2 Rydberg)
-        spl_loc = UnivariateSpline(upf.r, Vloc, s=0, k=3)
-        spl_vhx = UnivariateSpline(rs_pot, Vpot, s=0, k=3)
-        Vtot_fnc = lambda r: spl_loc(r) + spl_vhx(r)
-
-    rgrid = upf.r
-    Rmax_ = rgrid[-1]
-
-    # fig, ax = plt.subplots(figsize=(12, 8))
-    # ax.plot(rgrid, Vtot_fnc(rgrid), label='Local potential Vloc')
-    # ax.set_xlabel('r (a.u.)')
-    # ax.set_ylabel('Vloc (a.u.)')
-
-    # plt.show()
-    # exit()
-
-    # Effective charge
-    Zc = - Vtot_fnc(1.0)  # Effective charge
-
-    print(f"Effective charge Zc = {Zc:.6f} a.u.\n")
-
-
-    # Optimize radial elements
-    h_min = solver.get('h_min', 0.01)
-    h_max = solver.get('h_max', 4.0)
-    Rmax = solver.get('Rmax', Rmax_)
-    tol = solver.get('tol', 1.0e-3)
-    ng = solver.get('ng', 8)
-
-
-    tic = perf_counter()
-    r_elements = OptimizeElements(Zc, h_min, h_max, Rmax, tol)
-    toc = perf_counter()
-    PrintTime(tic, toc, "Optimize radial elements")
-    print("\n")
-
-    ne = len(r_elements) - 1  # Number of elements
-    nb = ne * ng + 1  # Total number of grid points
-    print(f"Number of optimized radial elements: {ne}")
-    print("Total number of grid points:", nb, "\n")
-
-    lmax = sysparams.get('lmax', 0)
-    nmax = sysparams.get('nmax', 4)
-
-    psi = np.zeros([lmax + 1, nmax, nb], dtype=np.float64)
-    eps = np.zeros([lmax + 1, nmax], dtype=np.float64)
-
-    tic = perf_counter()
-    print(f"Solving Schrödinger equation for lmax = {lmax}, nmax = {nmax}")
-    for l in range(lmax + 1):
-
-        Ib, = np.where(upf.lll == l)
-
-        if len(Ib) == 0:
-            # No beta functions for this l, use local potential
-            eps[l, :nmax], r_grid, psi[l, :nmax, :] = SolveNR(r_elements, Vtot_fnc, l, nmax, ng)
-
-        else:
-            # prepare beta functions
-            nbeta = len(Ib)
-            irmax = upf.kbeta_max
-            beta_l = np.zeros([nbeta, irmax], dtype=np.float64)
-            for ibeta in range(nbeta):
-                beta_l[ibeta, :] = upf.beta[0:irmax, Ib[ibeta]]
-            beta_fnc = interp1d(rgrid[0:irmax], beta_l, axis=1, kind='cubic', 
-                                bounds_error=False, fill_value=0)
-
-            Dion_Hr = np.zeros([nbeta, nbeta], dtype=np.float64)
-            for i in range(nbeta):
-                for j in range(nbeta):
-                    Dion_Hr[i, j] = 0.5 * upf.dion[Ib[i], Ib[j]]
-
-            eps[l, :nmax], r_grid, psi[l, :nmax, :] = SolvePseudo(r_elements, Vtot_fnc, 
-                                                                  Dion_Hr, beta_fnc, l, nmax, ng)
-
-    toc = perf_counter()
-    PrintTime(tic, toc, "Schrödinger equation")
-    print("\n")
-
-    eigenvalues = {}
-    for l in range(lmax + 1):
-        Ie, = np.where(eps[l, :nmax] < 0)
-        eps_bound = eps[l, Ie]
-        tag = f'{l}'
-        eigenvalues[tag] = eps_bound.tolist()
-
-    return eigenvalues, r_grid, psi
-
+    return pseudo_config, sysparams, solver, dft, confinement, proj
 #==================================================================
 
 
 #==================================================================
 def main(argv):
 
-    short_options = "hpi:o:"
-    long_options = ["help", "plot", "input=", "output="]
+    short_options = "hpi:t:e:"
+    long_options = ["help", "plot", "input=", "task=", "export="]
 
     print(60 * '*')
     print("Pseudo-atomic Schrödinger Equation Solver".center(60))
@@ -179,19 +55,27 @@ def main(argv):
 
     # get input and output file names
     input_file = ''
-    output_file = ''
+    task_list = []
     plot_results = False    
+    export_dir = None
 
     for opt, arg in opts:
         if opt in ("-h", "--help"):
-            print("Usage: python pseudo_atomic.py -i <input_file> [-o <output_file>] [--plot]")
+            print("Usage: python pseudo_atomic.py -i <input_file> -t <task> [--plot]")
             sys.exit()
         elif opt in ("-i", "--input"):
             input_file = arg
-        elif opt in ("-o", "--output"):
-            output_file = arg
+        elif opt in ("-t", "--task"):
+            task = arg
+            # split task into components if needed
+            if task:
+                task_list = task.split(',')
+                # convert to lowercase for consistency
+                task_list = [t.strip().lower() for t in task_list]
         elif opt == "--plot":
             plot_results = True
+        elif opt == "--export":
+            export_dir = arg
 
     if not input_file:
         print("Error: Input file is required. Use -i <input_file> to specify it.")
@@ -201,16 +85,103 @@ def main(argv):
         print(f"Error: Input file '{input_file}' does not exist.")
         sys.exit(2)
 
+    if len(task_list) == 0:
+        print("No tasks specified. Use -t <task> to specify tasks.")
+        sys.exit(2)
+
+
     # Read input parameters
-    pseudo_config, sysparams, solver = ReadInput(input_file)
+    pseudo_config, sysparams, solver, dft, confinement, proj = ReadInput(input_file)
+        
+    # Initialize the PseudoAtomDFT class
+    tic = perf_counter()
+    pseudo_atom = PseudoAtomDFT(pseudo_config, sysparams, solver, dft)
+    toc = perf_counter()
+    PrintTime(tic, toc, "Initializing PseudoAtomDFT")
+    print("")
 
-    eigenvalues, r_grid, psi = SolveAtomic(pseudo_config, sysparams, solver)
+    print(f"number of elements: {len(pseudo_atom.r_elements) - 1}")
+    print(f"number of grid points: {pseudo_atom.num_grid}\n")
 
-    lmax = sysparams.get('lmax', 0)
-    PrintEigenvalues(lmax, eigenvalues)
+    # Read UPF file
+    tic = perf_counter()
+    pseudo_atom.ReadUPF(read_density=True, read_potential=True)
+    toc = perf_counter()
+    PrintTime(tic, toc, "Reading UPF file")
+    print("")
 
-    if plot_results:
-        PlotWavefunctions(r_grid, psi, lmax, eigenvalues)
+    restart_success = pseudo_atom.ReadDensityPotential()
+    if restart_success:
+        print("Restarting from saved density and potential.\n")
+    else:
+        print("No saved density and potential found. Starting from scratch.\n")
+
+
+    scf_done = False
+    nscf_done = False
+
+    if 'scf' in task_list:
+
+        tic = perf_counter()
+        conv_tol = dft.get('conv_tol', 1.0e-6)
+        max_iter = dft.get('max_iter', 100)
+        alpha = dft.get('alpha', 0.6)
+
+        if max_iter > 0:
+            num_iter, err = pseudo_atom.KS_SelfConsistency(max_iter=max_iter, tol=conv_tol, alpha=alpha)
+
+            if err < conv_tol:
+                print(f"Self-consistency converged in {num_iter} iterations with error: {err:.2e}")
+            else:
+                print(f"Self-consistency did not converge within {max_iter} iterations. Final error: {err:.2e}")
+        else:
+            print("Skipping self-consistency loop as max_iter is set to 0.")
+
+        toc = perf_counter()
+        PrintTime(tic, toc, "SCF")
+
+        eigenvalues, psi = pseudo_atom.GetBoundStates()
+
+        PrintEigenvalues(pseudo_atom.upf.lmax, eigenvalues)
+
+        pseudo_atom.SaveDensityPotential()
+
+        if plot_results:
+            PlotWavefunctions(pseudo_atom.grid, psi, pseudo_atom.upf.lmax, eigenvalues)
+
+        scf_done = True
+
+    if 'nscf' in task_list:
+        if not scf_done and not restart_success:
+            print("Error: Non-SCF task requires SCF to be completed first or a valid restart file.")
+            sys.exit(2)
+
+        tic = perf_counter()
+        lmax = sysparams.get('lmax', 2)
+        nmax = sysparams.get('nmax', 2)
+        energy_shifts, eigenvalues, psi = pseudo_atom.GetStatesEnergyShift(lmax, nmax, confinement=confinement)
+        toc = perf_counter()
+        PrintTime(tic, toc, "Non-SCF Calculation")
+        print("")
+
+        PrintEigenvalues(lmax, eigenvalues, energy_shifts=energy_shifts)
+
+        if plot_results:
+            PlotWavefunctions(pseudo_atom.grid, psi, lmax, eigenvalues)
+
+        nscf_done = True
+
+    if export_dir is not None:
+        if not nscf_done:
+            print("Error: Exporting projectors requires non-SCF task to be completed first.")
+            sys.exit(2)
+
+        tic = perf_counter()
+        nr = proj.get('nr', 1001)
+        rmin = proj.get('rmin', 1.0e-8)
+        pseudo_atom.ExportProjector(lmax, nmax, psi, export_dir, nr=nr, rmin=rmin)
+        toc = perf_counter()
+        PrintTime(tic, toc, "Exporting Projectors")
 
     toc = perf_counter()
     PrintTime(tic, toc, "Total")

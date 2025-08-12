@@ -1,6 +1,8 @@
 import numpy as np
 import scipy.linalg as la
+
 from femdvr import FEDVR_Basis
+
 #------------------------------------------------------------
 def SetPhase(psi):
     """

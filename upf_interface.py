@@ -159,6 +159,17 @@ class upf_class:
         self.lib.Get_UPF_PseudoWfs(mesh_ctype, nwfc_ctype, 
                                    self.nchi, self.lchi, self.oc, self.rcut_chi, self.chi)
 
+        self.nnodes_chi = np.zeros(self.nwfc, dtype=int)
+
+        lmax = np.amax(self.lchi)
+
+        l_list = []
+        for iwf in range(self.nwfc):
+            l = self.lchi[iwf]
+            if l in l_list:
+                self.nnodes_chi[iwf] += 1
+            l_list.append(l)
+        
     #-------------------------------------------------------------------
     def Read_PP(self):
 
@@ -181,3 +192,15 @@ class upf_class:
         self.lib.Get_UPF_PP(mesh_ctype, nbeta_ctype, self.vloc, self.kbeta, self.beta)
 
         self.kbeta_max = np.max(self.kbeta)
+    #-------------------------------------------------------------------
+    def GetChargeDensity(self):
+        """
+        Compute the charge density from the wavefunctions.
+        """
+        rho = np.zeros(self.mesh, dtype=np.float64)
+        for iwf in range(self.nwfc):
+            rho[1:] += self.oc[iwf] * np.abs(self.chi[1:, iwf])**2 / self.r[1:]**2
+        rho[0] = rho[1]
+
+        return rho
+    #-------------------------------------------------------------------

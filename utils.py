@@ -27,7 +27,7 @@ def GetOrbitalLabel(n, l):
     else:
         return f"{nq}l{l}"  # Fallback for higher angular momentum states
 #==================================================================
-def PrintEigenvalues(lmax, eigenvalues):
+def PrintEigenvalues(lmax, eigenvalues, energy_shifts=None):
     """
     Print the eigenvalues for each angular momentum quantum number.
     """
@@ -48,6 +48,10 @@ def PrintEigenvalues(lmax, eigenvalues):
             for n in range(n_bound):
                 orb = GetOrbitalLabel(n, l)
                 print(f"  E({orb}) = {Hr_to_eV * eps_bound[n]:.6f} eV")
+
+        if energy_shifts is not None:
+            if l < len(energy_shifts):
+                print(f"  Energy shift = {Hr_to_eV * energy_shifts[l]:.6f} eV")
     print(40 * '-')
 #==================================================================
 def PlotWavefunctions(r_grid, psi, lmax, eigenvalues):
@@ -68,7 +72,7 @@ def PlotWavefunctions(r_grid, psi, lmax, eigenvalues):
 
         for n in range(n_bound):
             orb = GetOrbitalLabel(n, l)
-            ax[l].plot(r_grid, psi[l, n, :], marker='o', label=orb)
+            ax[l].plot(r_grid, psi[l, n, :], label=orb)
 
         ax[l].legend()
         ax[l].set_xlim([0, r_grid[-1]])

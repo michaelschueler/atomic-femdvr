@@ -1,9 +1,10 @@
 import numpy as np
 from legendre import Legendre
+from legendre_integrals import GetLegendreIntegrals
 #=================================================================
 class FEDVR_Basis(object):
 	"""docstring for FEDVR_Basis"""
-	def __init__(self, ne, ng, xp):
+	def __init__(self, ne, ng, xp, build_integrals=False):
 		self.ne = ne
 		self.ng = ng
 		self.xp = np.array(xp)
@@ -14,6 +15,10 @@ class FEDVR_Basis(object):
 		for i1 in range(self.ne):
 			self.tts[:,:,i1] = ttilde(self.leg,self.xp[i1+1]-self.xp[i1])
 			self.dts[:,:,i1] = dtilde(self.leg,self.xp[i1+1]-self.xp[i1])
+
+		self.have_integrals = build_integrals
+		if self.have_integrals:
+			self.leg_integ = GetLegendreIntegrals(self.leg, self.xp)
 	#------------------------------------------------------------
 	def GetGridpoints(self):
 		ne = self.ne
@@ -59,6 +64,11 @@ class FEDVR_Basis(object):
 			w2 = 0.5 * (xp[i+1] - xp[i]) * self.leg.w_i[0]
 			psi[i*ng] = v[i-1,0] / np.sqrt(w1 + w2)
 
+		# for i in range(ne-1):
+		# 	w1 = 0.5 * (xp[i+1] - xp[i]) * self.leg.w_i[ng]
+		# 	w2 = 0.5 * (xp[i+2] - xp[i+1]) * self.leg.w_i[0]
+		# 	psi[i*ng] = v[i + 1,0] / np.sqrt(w1 + w2)
+
 		for i in range(ne):
 			for m in range(1,ng):
 				w = 0.5 * (xp[i+1] - xp[i]) * self.leg.w_i[m]
@@ -90,6 +100,52 @@ class FEDVR_Basis(object):
 		cff2 = np.reshape(np.flip(cff4, axis=1), [ne*ng])
 
 		return cff2[0:nb]
+	#------------------------------------------------------------
+	def ToLinearGrid(self, psi, nx):
+
+		ne = self.ne
+		ng = self.ng
+
+		grid = []
+		psi_grid = []
+		for i in range(ne):
+			psi_elem = psi[i*ng : i*ng + ng + 1]
+			c_elem = self.leg.to_spectral(psi_elem)
+
+			xs = np.linspace(self.xp[i], self.xp[i+1], nx)
+			xred = np.linspace(-1.0, 1.0, nx)
+			psi_elem_lin = np.polynomial.legendre.legval(xred[0:nx-1], c_elem)
+			psi_grid.append(psi_elem_lin)
+			grid.append(xs[0:nx-1])
+
+		psi_grid = np.concatenate(psi_grid)
+		psi_grid = np.concatenate((psi_grid, [0.0]))  # Append zero for the last point
+		grid = np.concatenate(grid)
+		grid = np.concatenate((grid, [self.xp[-1]]))
+
+		return grid, psi_grid
+	#------------------------------------------------------------
+	def Interpolate(self, psi, x):
+		ne = self.ne
+		ng = self.ng
+
+		# Interpolate to the new grid points
+		psi_interp = np.zeros_like(x, dtype=psi.dtype)
+		for i in range(ne):
+			Ix, = np.where((x >= self.xp[i]) & (x < self.xp[i+1]))
+			if len(Ix) == 0:
+				continue
+
+			psi_elem = psi[i*ng : i*ng + ng + 1]
+			c_elem = self.leg.to_spectral(psi_elem)
+
+			# Normalize the x values to the range [-1, 1]
+			t = -1.0 + 2.0 * (x[Ix] - self.xp[i]) / (self.xp[i+1] - self.xp[i])
+
+			# Evaluate the polynomial at the normalized x values
+			psi_interp[Ix] = np.polynomial.legendre.legval(t, c_elem)
+
+		return psi_interp
 	#------------------------------------------------------------
 	def GenCompressed_KinEn(self):
 		ne = self.ne
@@ -242,6 +298,32 @@ class FEDVR_Basis(object):
 		for i1 in range(ne):
 			xs = xp[i1] + 0.5 * (xp[i1+1] - xp[i1]) * (x_i[0:ng] + 1)
 			V4[i1,1:] = Vfunc(xs[1:])
+
+		V2 = np.reshape(np.flip(V4, axis=1), [ne*ng])
+		Vvec = V2[0:nb]
+
+		return Vvec
+	#------------------------------------------------------------
+	def PotEn_Matrix_grid(self, V_grid):
+		ne = self.ne
+		ng = self.ng
+		xp = self.xp
+		nb = ne*ng-1
+		w_i = self.leg.w_i
+		x_i = self.leg.x_i
+
+		Vvec = np.zeros(nb)
+		V4 = np.zeros([ne, ng])
+
+		for i1 in range(1,ne):
+			V4[i1-1,0] = V_grid[i1*ng]
+
+		for i in range(ne):
+			for m in range(1,ng):
+				V4[i,m] = V_grid[i*ng+m]
+
+		# for i1 in range(ne):
+		# 	V4[i1, :] = V_grid[i1 * ng: (i1+1) * ng]
 
 		V2 = np.reshape(np.flip(V4, axis=1), [ne*ng])
 		Vvec = V2[0:nb]

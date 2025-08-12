@@ -1,5 +1,6 @@
 import sys
 import numpy as np
+from scipy.integrate import simpson
 import json
 from time import perf_counter
 import matplotlib.pyplot as plt
@@ -10,11 +11,11 @@ from upf_interface import upf_class
 def main(argv):
 
     # read json input file
-    if len(argv) < 3:
+    if len(argv) < 2:
         print("Usage: python test_upf.py <input_file> <upf file>")
         return
     
-    input_file = argv[1]
+    input_file = argv[0]
     try:
         with open(input_file, 'r') as f:
             params = json.load(f)
@@ -22,7 +23,7 @@ def main(argv):
         print(f"Error reading input file: {e}")
         return
     
-    upf_file = argv[2]
+    upf_file = argv[1]
 
     
 
@@ -50,6 +51,11 @@ def main(argv):
     toc = perf_counter()
     PrintTime(tic, toc, "Reading UPF pseudo")
 
+
+    # print occupations
+    for iwfc in range(upf.nwfc):
+        print(f"Wavefunction {iwfc+1}: n={upf.nchi[iwfc]}, l={upf.lchi[iwfc]}, occupation={upf.oc[iwfc]}")
+
     fig, ax = plt.subplots(figsize=(12, 8))
 
     for iwfc in range(upf.nwfc):
@@ -63,6 +69,23 @@ def main(argv):
     ax.set_title('Pseudo Wavefunctions')
     ax.legend()
     plt.tight_layout()
+    plt.show()
+
+    rho = np.zeros(upf.mesh, dtype=np.float64)
+    for iwfc in range(upf.nwfc):
+        rho[1:] += upf.oc[iwfc] * np.abs(upf.chi[1:, iwfc])**2 / upf.r[1:]**2
+    rho[0] = rho[1]  # Set the first element to zero to avoid division by zero
+
+    # Integrate to get total charge
+    total_charge = simpson(rho * upf.r**2, x=upf.r)
+    print(f"Total charge from wavefunctions: {total_charge:.6f}")
+
+    fig, ax = plt.subplots(figsize=(12, 8))
+    ax.plot(upf.r, rho, label='Charge Density')
+    ax.set_xlabel('r (a.u.)')
+    ax.set_ylabel('Charge Density')
+    ax.set_title('Charge Density from Wavefunctions')
+    ax.legend()
     plt.show()
 
 
@@ -82,4 +105,4 @@ def main(argv):
 
 #==================================================================
 if __name__ == "__main__":
-    main(sys.argv)
+    main(sys.argv[1:])
