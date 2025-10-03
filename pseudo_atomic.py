@@ -151,6 +151,19 @@ def main(argv):
 
         scf_done = True
 
+    if 'optimize' in task_list:
+        if not scf_done and not restart_success:
+            print("Error: Non-SCF task requires SCF to be completed first or a valid restart file.")
+            sys.exit(2)
+
+        tic = perf_counter()
+        Q_opt = pseudo_atom.OptimizeSoftCoul(confinement)
+        toc = perf_counter()
+        PrintTime(tic, toc, "Optimizing Soft Coulomb Confinement")
+        print("")
+        print(f"Optimized soft Coulomb confinement parameter Q: {Q_opt:.4f}\n")
+        confinement['softcoul_charge'] = Q_opt
+
     if 'nscf' in task_list:
         if not scf_done and not restart_success:
             print("Error: Non-SCF task requires SCF to be completed first or a valid restart file.")
@@ -179,7 +192,7 @@ def main(argv):
         tic = perf_counter()
         nr = proj.get('nr', 1001)
         rmin = proj.get('rmin', 1.0e-8)
-        pseudo_atom.ExportProjector(lmax, nmax, psi, export_dir, nr=nr, rmin=rmin)
+        pseudo_atom.ExportProjector(lmax, nmax, psi, confinement, export_dir, nr=nr, rmin=rmin)
         toc = perf_counter()
         PrintTime(tic, toc, "Exporting Projectors")
 

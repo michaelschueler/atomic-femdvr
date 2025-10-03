@@ -76,6 +76,15 @@ class FEDVR_Basis(object):
 
 		return psi
 	#------------------------------------------------------------
+	def GetOverlap(self, psi, phi):
+
+		cff_psi = self.GetCoeffs(psi, cplx=False)
+		cff_phi = self.GetCoeffs(phi, cplx=False)
+
+		overlap = np.dot(cff_psi, cff_phi)
+
+		return overlap
+	#------------------------------------------------------------
 	def GetCoeffs(self, psi, cplx=False):
 		ne = self.ne
 		ng = self.ng

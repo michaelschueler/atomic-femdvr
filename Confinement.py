@@ -59,3 +59,6 @@ def SoftStep(r, ri, rc, Vbarrier=1.0e1):
         Vc[Ir] = Vbarrier * np.sin(0.5*np.pi * (r[Ir] - ri) / (rc - ri))**2
 
     return Vc
+#===================================================================
+def SoftCoulombPotential(r, Q, delta, lam=0.0):
+    return -Q / np.sqrt(r**2 + delta**2) * np.exp(-lam * r)

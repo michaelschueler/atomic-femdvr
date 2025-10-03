@@ -14,7 +14,7 @@ def SetPhase(psi):
     return psi
 #===================================================================
 def SolveSchrodinger(basis:FEDVR_Basis, Veff_grid:np.ndarray, lll:np.ndarray, Dion:np.ndarray,
-                     beta_grid:np.ndarray, lmax:int, nmax:int, Vconf:np.ndarray=None):
+                     beta_grid:np.ndarray, lmax:int, nmax:int, Vconf:np.ndarray=None, lmin=0):
     """
     Solve the radial Schrödinger equation using finite element method
     """
@@ -24,8 +24,11 @@ def SolveSchrodinger(basis:FEDVR_Basis, Veff_grid:np.ndarray, lll:np.ndarray, Di
     nb = ne * ng - 1  # Total number of grid points
     r_grid = basis.GetGridpoints()
 
-    psi = np.zeros([lmax + 1, nmax+1, len(r_grid)], dtype=np.float64)
-    eps = np.zeros([lmax + 1, nmax+1], dtype=np.float64)
+    lchannels = np.arange(lmin, lmax + 1, step=1, dtype=int)
+    num_channels = len(lchannels)
+
+    psi = np.zeros([num_channels, nmax+1, len(r_grid)], dtype=np.float64)
+    eps = np.zeros([num_channels, nmax+1], dtype=np.float64)
 
     Tmat = basis.KinEn_Matrix_zerobound()
     Veff_mat = np.diag(basis.PotEn_Matrix_grid(Veff_grid))
@@ -34,7 +37,7 @@ def SolveSchrodinger(basis:FEDVR_Basis, Veff_grid:np.ndarray, lll:np.ndarray, Di
         Vconf_mat = np.diag(basis.PotEn_Matrix_grid(Vconf))
         Veff_mat += Vconf_mat
 
-    for l in range(lmax + 1):
+    for il, l in enumerate(lchannels):
         Vl_grid = np.zeros_like(r_grid)
         if l > 0:
             Vl_grid[1:] = l * (l + 1) / (2. * r_grid[1:]**2)
@@ -64,7 +67,7 @@ def SolveSchrodinger(basis:FEDVR_Basis, Veff_grid:np.ndarray, lll:np.ndarray, Di
         psi_l = basis.GetPsi_All(vect, cplx=False)
         psi_l = SetPhase(psi_l)
 
-        psi[l, :nmax+1, :] = psi_l.T
-        eps[l, :nmax+1] = eps_l[:nmax+1]
+        psi[il, :nmax+1, :] = psi_l.T
+        eps[il, :nmax+1] = eps_l[:nmax+1]
 
     return eps, psi

@@ -1,13 +1,15 @@
 import os
 import numpy as np
 from scipy.interpolate import interp1d
+from scipy.optimize import minimize_scalar
 import pickle
 
 from upf_interface import upf_class
 from femdvr import FEDVR_Basis
 from adaptive_elements import OptimizeElements
 from interp_tools import InterpolatePotential, InterpolateDensity
-from Confinement import SoftConfinement, ParabolicConfinement, SoftStep
+from Confinement import SoftConfinement, ParabolicConfinement, SoftStep, \
+    SoftCoulombPotential
 from Projectors import WriteProjectorFile
 
 import DensityPotential as denpot
@@ -58,6 +60,8 @@ class PseudoAtomDFT:
         self.upf.Read_PP()
 
         self.Zval = self.upf.zp
+        self.lmax_pseudo = np.amax(self.upf.lchi)
+        self.nmax_pseudo = np.amax(self.upf.nnodes_chi)
 
         if read_density:
             rho_upf = self.upf.GetChargeDensity()
@@ -101,29 +105,43 @@ class PseudoAtomDFT:
         V_eff = self.Vloc_grid + V_Ha + V_xc
         return V_eff
     #.......................................................
-    def SolveSchrodinger(self, Veff, lmax, nmax, Vconf=None):
+    def SolveSchrodinger(self, Veff, lmax, nmax, Vconf=None, lmin=0):
 
         eps, psi = ks.SolveSchrodinger(self.basis, Veff, self.upf.lll, self.upf.dion, 
-                                       self.beta_grid, lmax, nmax, Vconf=Vconf)
+                                       self.beta_grid, lmax, nmax, Vconf=Vconf, lmin=lmin)
 
         return eps, psi
     #.......................................................
     def GetBoundStates(self):
 
-        lmax = np.amax(self.upf.lchi)
-        nmax = np.amax(self.upf.nnodes_chi)
-
         V_eff = self.EffectivePotential()
-        eps, psi = self.SolveSchrodinger(V_eff, lmax, nmax)
+        eps, psi = self.SolveSchrodinger(V_eff, self.lmax_pseudo, self.nmax_pseudo)
 
         eigenvalues = {}
-        for l in range(lmax + 1):
-            Ie, = np.where(eps[l, :nmax+1] < 0)
+        for l in range(self.lmax_pseudo + 1):
+            Ie, = np.where(eps[l, :self.nmax_pseudo+1] < 0)
             eps_bound = eps[l, Ie]
             tag = f'{l}'
             eigenvalues[tag] = eps_bound.tolist()
 
         return eigenvalues, psi
+    #.......................................................
+    def GetConfinement(self, confinement:dict):
+        """
+        Returns the confinement potential based on the specified type.
+        """
+        rc = confinement.get('rc', 20.0)
+        ri_factor = confinement.get('ri_factor', 0.9)
+        ri = ri_factor * rc
+
+        confinement_type = confinement.get('type', 'SoftStep')
+        if confinement_type.lower() == 'softstep':
+            Vbarrier = confinement.get('Vbarrier', 1.0)
+            return SoftStep(self.grid, ri, rc, Vbarrier=Vbarrier)
+        elif confinement_type.lower() == 'parabolic':
+            return ParabolicConfinement(self.grid, ri, rc)
+        else:
+            raise ValueError(f"Unknown confinement type: {confinement_type}")
     #.......................................................
     def GetAllStates(self, lmax:int, nmax:int, confinement:dict=None):
         """
@@ -137,14 +155,40 @@ class PseudoAtomDFT:
             ri = ri_factor * rc
             # Vconf = SoftConfinement(self.grid, ri, rc)
 
-            confinement_type = confinement.get('type', 'SoftStep')
-            if confinement_type.lower() == 'softstep':
-                Vbarrier = confinement.get('Vbarrier', 1.0)
-                Vconf = SoftStep(self.grid, ri, rc, Vbarrier=Vbarrier)
-            elif confinement_type.lower() == 'parabolic':
-                Vconf = ParabolicConfinement(self.grid, ri, rc)
+            Vconf = self.GetConfinement(confinement)
 
-        eps, psi = self.SolveSchrodinger(V_eff, lmax, nmax, Vconf=Vconf)
+            polarization_mode = confinement.get('polarization_mode', 'none')
+
+            if polarization_mode.lower() == 'none':
+                eps, psi = self.SolveSchrodinger(V_eff, lmax, nmax, Vconf=Vconf)
+            elif polarization_mode.lower() == 'softcoul':
+
+                # solve first for the bound states
+                eps_bound, psi_bound = self.SolveSchrodinger(V_eff, self.lmax_pseudo, nmax, 
+                                                             Vconf=Vconf)
+
+                # now solve remaining l-channels with soft Coulomb potential
+                softcoul_delta = confinement.get('softcoul_delta', 0.1)
+                softcoul_charge = confinement.get('softcoul_charge', 1.0)
+
+                Vsoftcoul = SoftCoulombPotential(self.grid, softcoul_charge, 
+                                                   softcoul_delta)
+
+                eps_unbound, psi_unbound = self.SolveSchrodinger(Vsoftcoul, lmax, nmax, 
+                                                                 Vconf=Vconf, lmin=self.lmax_pseudo + 1)
+
+                # combine bound and unbound states
+                eps = np.zeros([lmax + 1, nmax + 1], dtype=np.float64)
+                psi = np.zeros([lmax + 1, nmax + 1, self.num_grid], dtype=np.float64)
+                eps[:self.lmax_pseudo+1, :] = eps_bound
+                psi[:self.lmax_pseudo+1, :, :] = psi_bound
+                eps[self.lmax_pseudo+1:lmax+1, :] = eps_unbound
+                psi[self.lmax_pseudo+1:lmax+1, :, :] = psi_unbound
+            else:
+                raise ValueError(f"Unknown polarization mode: {polarization_mode}")
+
+        else:
+            eps, psi = self.SolveSchrodinger(V_eff, lmax, nmax)
 
         eigenvalues = {}
         for l in range(lmax + 1):
@@ -153,14 +197,54 @@ class PseudoAtomDFT:
 
         return eigenvalues, psi
     #.......................................................
+    def OptimizeSoftCoul(self, confinement:dict):
+        """
+        Optimize the soft Coulomb potential parameters for a given lmax and nmax.
+        """
+
+        polarization_mode = confinement.get('polarization_mode', 'none')
+        if polarization_mode.lower() != 'softcoul':
+            raise ValueError("Polarization mode must be 'softcoul' for this method.")
+
+        eigenvalues_bound, psi_bound = self.GetBoundStates()
+        psi_ref = psi_bound[-1, 0, :]  # Use the state with highest l as reference
+
+        softcoul_delta = confinement.get('softcoul_delta', 0.1)
+
+        Vconf = self.GetConfinement(confinement)
+
+        # wrapper for the optimization function
+        def objective_func(Q):
+
+            # Set up the soft Coulomb potential
+            Vsoftcoul = SoftCoulombPotential(self.grid, Q, softcoul_delta)
+
+            eps, psi = self.SolveSchrodinger(Vsoftcoul, self.lmax_pseudo, 1, 
+                                             Vconf=Vconf, lmin=self.lmax_pseudo)
+            
+            ovlp = np.abs(self.basis.GetOverlap(psi_ref, psi[0, 0, :]))**2
+
+            # print(f"Q: {Q:.4f}, Overlap: {ovlp:.4f}")
+
+            return 1.0 - ovlp  # We want to maximize the overlap
+
+        # Optimize the charge Q
+        Qmin = 0.2 * self.Zval
+        Qmax = 10.0 * self.Zval
+        result = minimize_scalar(objective_func, bounds=(Qmin, Qmax), method='bounded')
+        if not result.success:
+            raise RuntimeError("Optimization failed: " + result.message)
+        Q_opt = result.x
+
+        return Q_opt
+    #.......................................................
     def GetStatesEnergyShift(self, lmax:int, nmax:int, confinement:dict):
         eigenvalues_bounds, psi_bound = self.GetBoundStates()
         eigenvalues_all, psi_all = self.GetAllStates(lmax, nmax, confinement=confinement)
 
-        lmax_bound = np.amax(self.upf.lchi)
-        energy_shifts = np.zeros(lmax_bound + 1, dtype=np.float64)
+        energy_shifts = np.zeros(self.lmax_pseudo + 1, dtype=np.float64)
 
-        for l in range(lmax_bound + 1):
+        for l in range(self.lmax_pseudo + 1):
             tag = f'{l}'
             epsl_bound = np.array(eigenvalues_bounds[tag])
             epsl_all = np.array(eigenvalues_all[tag])
@@ -169,7 +253,7 @@ class PseudoAtomDFT:
 
         return energy_shifts, eigenvalues_all, psi_all
     #.......................................................
-    def ExportProjector(self, lmax:int, nmax:int, psi:np.ndarray, 
+    def ExportProjector(self, lmax:int, nmax:int, psi:np.ndarray, confinement:dict,
                         out_dir:str, nr:int=1001, rmin=1.0e-8):
         Rmax = self.r_elements[-1]
         rs = np.logspace(np.log10(rmin), np.log10(Rmax), nr)
@@ -199,7 +283,11 @@ class PseudoAtomDFT:
         else:
             p_tag = ''
 
-        tag = zeta_tag + p_tag
+        tag = zeta_tag + p_tag 
+
+        rc = confinement.get('rc', 'none')
+        if rc != 'none':
+            tag += f'_rc{rc}'
 
         psi_interp = np.reshape(psi_interp, [nproj, nr])
         WriteProjectorFile(out_dir, elem, tag, larr, psi_interp, rs)
@@ -286,9 +374,12 @@ class PseudoAtomDFT:
         Veff_grid = data['Veff'] 
 
         # check if grid matches
-        if not np.allclose(grid, self.grid):
-            raise ValueError("Grid points in the file do not match the current grid.")
-        
-        self.rho_grid = rho_grid.copy()
+        if len(grid) != self.num_grid:
+            restart_success = False
+        else:
+            restart_success = np.allclose(grid, self.grid)
 
-        return True
+        if restart_success:
+            self.rho_grid = rho_grid.copy()
+
+        return restart_success

@@ -1,16 +1,16 @@
 {
     "pseudo_config": {
-        "upflib_dir": "/Users/michael/opt/lib",
-        "lib_ext": "dylib",
-        "pseudo_dir": "/Users/michael/PP/nc-sr-04_pbe_standard_upf/",
+        "upflib_dir": "/home/michael/gnu/lib",
+        "lib_ext": "so",
+        "pseudo_dir": "/home/michael/PP/nc-sr-04_pbe_standard_upf/",
         "storage_dir": "./Mo_Pseudo"
     },
 
     "sysparams": {
         "element": "Mo",
         "file_upf": "Mo.upf",
-        "lmax": 4,
-        "nmax": 4
+        "lmax": 3,
+        "nmax": 2
     },
 
     "solver": {
@@ -22,8 +22,8 @@
     },
 
     "dft": {
-        "driver": "pylibxc",
-        "xc_functional": "",
+        "driver": "internal",
+        "xc_functional": "PBE",
         "x_functional": "GGA_X_PBE",
         "c_functional": "GGA_C_PBE",
         "alpha_x": 1.0,
@@ -33,9 +33,11 @@
 
     "confinement": {
         "type": "SoftStep",
-        "rc": 20.0,
+        "rc": 10.0,
         "ri_factor": 0.5,
-        "Vbarrier": 1.0
+        "Vbarrier": 1.0,
+        "polarization_mode": "SoftCoul",
+        "softcoul_delta": 0.1
     },
 
     "projector": {
