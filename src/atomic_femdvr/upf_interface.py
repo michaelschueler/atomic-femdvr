@@ -1,12 +1,16 @@
-import os
-import numpy as np
 import ctypes
+import os
+
+import numpy as np
 from numpy.ctypeslib import ndpointer
+
+
 #==================================================================
 class upf_class:
     """
     Class to interface with the UPF library for atomic calculations.
     """
+
     #-------------------------------------------------------------------
     def __init__(self, lib_path: str, extension: str = "so"):
         lib_so = os.path.join(lib_path, 'libupflib' + '.' + extension)
@@ -96,12 +100,11 @@ class upf_class:
         """
         Read UPF file.
         """
-
         iflag = self.lib.Read_UPF(filename.encode('utf-8'))
 
         if iflag != -2:
             raise RuntimeError(f"Error reading UPF file '{filename}'. Error code: {iflag}")
-        
+
         # Initialize UPF basic parameters
         self.zp = ctypes.c_double()
         self.etotps = ctypes.c_double()
@@ -112,11 +115,11 @@ class upf_class:
         self.nbeta = ctypes.c_int()
 
 
-        self.lib.Get_UPF_Basic(ctypes.byref(self.zp), ctypes.byref(self.etotps), 
-                                ctypes.byref(self.ecutwfc), ctypes.byref(self.ecutrho), 
-                                ctypes.byref(self.lmax), ctypes.byref(self.nwfc), 
+        self.lib.Get_UPF_Basic(ctypes.byref(self.zp), ctypes.byref(self.etotps),
+                                ctypes.byref(self.ecutwfc), ctypes.byref(self.ecutrho),
+                                ctypes.byref(self.lmax), ctypes.byref(self.nwfc),
                                 ctypes.byref(self.nbeta))
-    
+
         self.zp = self.zp.value
         self.etotps = self.etotps.value
         self.ecutwfc = self.ecutwfc.value
@@ -130,7 +133,7 @@ class upf_class:
         self.xmin = ctypes.c_double()
         self.rmax = ctypes.c_double()
         self.dx = ctypes.c_double()
-        self.lib.Get_UPF_GridInfo(ctypes.byref(self.mesh), ctypes.byref(self.xmin), 
+        self.lib.Get_UPF_GridInfo(ctypes.byref(self.mesh), ctypes.byref(self.xmin),
                                   ctypes.byref(self.rmax), ctypes.byref(self.dx))
         self.mesh = self.mesh.value
         self.xmin = self.xmin.value
@@ -153,10 +156,10 @@ class upf_class:
         self.oc = np.zeros(self.nwfc, dtype=np.float64, order='F')
         self.rcut_chi = np.zeros(self.nwfc, dtype=np.float64, order='F')
         self.chi = np.zeros([self.mesh, self.nwfc], dtype=np.float64, order='F')
-        
+
         mesh_ctype = ctypes.c_int(self.mesh)
         nwfc_ctype = ctypes.c_int(self.nwfc)
-        self.lib.Get_UPF_PseudoWfs(mesh_ctype, nwfc_ctype, 
+        self.lib.Get_UPF_PseudoWfs(mesh_ctype, nwfc_ctype,
                                    self.nchi, self.lchi, self.oc, self.rcut_chi, self.chi)
 
         self.nnodes_chi = np.zeros(self.nwfc, dtype=int)
@@ -169,7 +172,7 @@ class upf_class:
             if l in l_list:
                 self.nnodes_chi[iwf] += 1
             l_list.append(l)
-        
+
     #-------------------------------------------------------------------
     def Read_PP(self):
 
@@ -177,7 +180,7 @@ class upf_class:
         self.lloc = ctypes.c_int()
         self.lll = np.zeros(self.nbeta, dtype=np.int32, order='F')
         self.dion = np.zeros([self.nbeta, self.nbeta], dtype=np.float64, order='F')
-        
+
         self.lib.Get_UPF_PPInfo(self.nbeta, ctypes.byref(self.lloc), self.lll, self.dion)
 
         self.lloc = self.lloc.value

@@ -1,12 +1,14 @@
+import json
 import sys
+from time import perf_counter
+
+import matplotlib.pyplot as plt
 import numpy as np
 from scipy.integrate import simpson
-import json
-from time import perf_counter
-import matplotlib.pyplot as plt
-
-from utils import PrintTime
 from upf_interface import upf_class
+from utils import PrintTime
+
+
 #==================================================================
 def main(argv):
 
@@ -14,18 +16,18 @@ def main(argv):
     if len(argv) < 2:
         print("Usage: python test_upf.py <input_file> <upf file>")
         return
-    
+
     input_file = argv[0]
     try:
-        with open(input_file, 'r') as f:
+        with open(input_file) as f:
             params = json.load(f)
     except Exception as e:
         print(f"Error reading input file: {e}")
         return
-    
+
     upf_file = argv[1]
 
-    
+
 
     upflib_dir = params.get('upflib_dir', '')
     lib_ext = params.get('lib_ext', 'so')
@@ -60,7 +62,7 @@ def main(argv):
 
     for iwfc in range(upf.nwfc):
         r = upf.r
-        
+
         psi = np.copy(upf.chi[:, iwfc])
         ax.plot(r, psi, label=f'wfc {iwfc+1} (l={upf.lchi[iwfc]}, n={upf.nchi[iwfc]})')
 
@@ -93,7 +95,7 @@ def main(argv):
 
     for ibeta in range(upf.nbeta):
         r = upf.r[0:upf.kbeta_max]
-        
+
         beta = np.copy(upf.beta[0:upf.kbeta_max, ibeta])
         ax.plot(r, beta, label=f'ibeta {ibeta+1} (l={upf.lll[ibeta]})')
 

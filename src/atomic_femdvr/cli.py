@@ -13,10 +13,12 @@ later, but that will cause problems--the code will get executed twice:
 .. seealso:: https://click.palletsprojects.com/en/8.1.x/setuptools/#setuptools-integration
 """
 
-import click
 from time import perf_counter
+
+import click
+
 from atomic_femdvr.atomic import ReadInput, SolveAtomic
-from atomic_femdvr.utils import PrintTime, PrintEigenvalues, PlotWavefunctions
+from atomic_femdvr.utils import PlotWavefunctions, PrintEigenvalues, PrintTime
 
 __all__ = [
     "main",
@@ -29,10 +31,10 @@ __all__ = [
 @click.argument("input_file", type=click.Path(exists=True))
 @click.argument("output_file", type=click.Path(), required=False)
 def main(input_file: str, output_file: str | None, plot: bool) -> None:
-    
+
 
     tic = perf_counter()
-    
+
     # Read input parameters
     sysparams, solver = ReadInput(input_file)
 
@@ -46,7 +48,7 @@ def main(input_file: str, output_file: str | None, plot: bool) -> None:
 
     toc = perf_counter()
     PrintTime(tic, toc, "Total")
-    
+
 
 if __name__ == "__main__":
     main()

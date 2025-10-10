@@ -1,19 +1,19 @@
-import sys
-import os
-import numpy as np
-from scipy.interpolate import interp1d, UnivariateSpline
-from scipy.integrate import simpson
 import json
+import os
+import sys
 from time import perf_counter
-import matplotlib.pyplot as plt
-
-from utils import PrintTime
-from upf_interface import upf_class
-from femdvr import FEDVR_Basis
-from adaptive_elements import OptimizeElements
 
 import DensityPotential as denpot
 import KohnSham as ks
+import matplotlib.pyplot as plt
+import numpy as np
+from adaptive_elements import OptimizeElements
+from femdvr import FEDVR_Basis
+from scipy.interpolate import interp1d
+from upf_interface import upf_class
+from utils import PrintTime
+
+
 #==================================================================
 def main(argv):
 
@@ -21,15 +21,15 @@ def main(argv):
     if len(argv) < 1:
         print("Usage: python test_Vxc.py <input_file>")
         return
-    
+
     input_file = argv[0]
     try:
-        with open(input_file, 'r') as f:
+        with open(input_file) as f:
             params = json.load(f)
     except Exception as e:
         print(f"Error reading input file: {e}")
         return
-    
+
     pseudo_config = params.get('pseudo_config', {})
     sysparams = params.get('sysparams', {})
     solver = params.get('solver', {})
@@ -196,17 +196,17 @@ def main(argv):
         print(f"iter = {it}, error = {err:.2e}")
 
     fig, ax = plt.subplots(lmax + 1, 1, figsize=(8, 6), sharex=True)
-    
+
     for iwf in range(upf.nwfc):
         l = upf.lchi[iwf]
         ax[l].plot(upf.r, upf.chi[:,iwf], ls='--', label=f"UPF Wavefunction {iwf+1} (l={l})")
-    
+
 
     for l in range(lmax + 1):
         for n in range(nmax + 1):
             ax[l].plot(grid, psi[l, n, :], label=f"l={l}, n={n}, E={eps[l, n]:.4f} Ha")
-        ax[l].set_ylabel(f"$\psi_l(r)$")
-        ax[l].legend() 
+        ax[l].set_ylabel(r"$\psi_l(r)$")
+        ax[l].legend()
     ax[-1].set_xlabel('r (a.u.)')
     plt.tight_layout()
     plt.show()

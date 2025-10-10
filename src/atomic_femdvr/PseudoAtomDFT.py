@@ -1,19 +1,19 @@
 import os
-import numpy as np
-from scipy.interpolate import interp1d
-from scipy.optimize import minimize_scalar
 import pickle
-
-from upf_interface import upf_class
-from femdvr import FEDVR_Basis
-from adaptive_elements import OptimizeElements
-from interp_tools import InterpolatePotential, InterpolateDensity
-from Confinement import SoftConfinement, ParabolicConfinement, SoftStep, \
-    SoftCoulombPotential
-from Projectors import WriteProjectorFile
 
 import DensityPotential as denpot
 import KohnSham as ks
+import numpy as np
+from adaptive_elements import OptimizeElements
+from Confinement import ParabolicConfinement, SoftCoulombPotential, SoftStep
+from femdvr import FEDVR_Basis
+from interp_tools import InterpolateDensity, InterpolatePotential
+from Projectors import WriteProjectorFile
+from scipy.interpolate import interp1d
+from scipy.optimize import minimize_scalar
+from upf_interface import upf_class
+
+
 #==========================================================================
 class PseudoAtomDFT:
     #.......................................................
@@ -76,7 +76,7 @@ class PseudoAtomDFT:
         self.nbeta = self.upf.nbeta
         beta = np.ascontiguousarray(self.upf.beta.T)
         kbeta_max = self.upf.kbeta_max
-        interp = interp1d(self.upf.r[0:kbeta_max], beta[:, 0:kbeta_max], axis=1, 
+        interp = interp1d(self.upf.r[0:kbeta_max], beta[:, 0:kbeta_max], axis=1,
                           kind='cubic', bounds_error=False, fill_value=0.0)
         self.beta_grid = interp(self.grid)
 
@@ -85,7 +85,7 @@ class PseudoAtomDFT:
         if rho_grid is None:
             rho_grid = self.rho_grid
 
-        
+
         V_Ha = denpot.HartreePotential(self.basis, rho_grid)
 
         xc_driver = self.dft.get('driver', 'internal')
@@ -94,10 +94,10 @@ class PseudoAtomDFT:
         x_functional = self.dft.get('x_functional', 'gga_x_pbe')
         c_functional = self.dft.get('c_functional', 'gga_c_pbe')
         alpha_x = self.dft.get('alpha_x', 1.0)
-        V_xc = denpot.ExchangeCorrelationPotential(self.basis, rho_grid, 
+        V_xc = denpot.ExchangeCorrelationPotential(self.basis, rho_grid,
                                                    xc_functional=xc_functional,
-                                                   x_functional=x_functional, 
-                                                   c_functional=c_functional, 
+                                                   x_functional=x_functional,
+                                                   c_functional=c_functional,
                                                    alpha_x=alpha_x, driver=xc_driver)
 
         V_xc *= 0.5 # Convert to Hartree units
@@ -107,7 +107,7 @@ class PseudoAtomDFT:
     #.......................................................
     def SolveSchrodinger(self, Veff, lmax, nmax, Vconf=None, lmin=0):
 
-        eps, psi = ks.SolveSchrodinger(self.basis, Veff, self.upf.lll, self.upf.dion, 
+        eps, psi = ks.SolveSchrodinger(self.basis, Veff, self.upf.lll, self.upf.dion,
                                        self.beta_grid, lmax, nmax, Vconf=Vconf, lmin=lmin)
 
         return eps, psi
@@ -164,17 +164,17 @@ class PseudoAtomDFT:
             elif polarization_mode.lower() == 'softcoul':
 
                 # solve first for the bound states
-                eps_bound, psi_bound = self.SolveSchrodinger(V_eff, self.lmax_pseudo, nmax, 
+                eps_bound, psi_bound = self.SolveSchrodinger(V_eff, self.lmax_pseudo, nmax,
                                                              Vconf=Vconf)
 
                 # now solve remaining l-channels with soft Coulomb potential
                 softcoul_delta = confinement.get('softcoul_delta', 0.1)
                 softcoul_charge = confinement.get('softcoul_charge', 1.0)
 
-                Vsoftcoul = SoftCoulombPotential(self.grid, softcoul_charge, 
+                Vsoftcoul = SoftCoulombPotential(self.grid, softcoul_charge,
                                                    softcoul_delta)
 
-                eps_unbound, psi_unbound = self.SolveSchrodinger(Vsoftcoul, lmax, nmax, 
+                eps_unbound, psi_unbound = self.SolveSchrodinger(Vsoftcoul, lmax, nmax,
                                                                  Vconf=Vconf, lmin=self.lmax_pseudo + 1)
 
                 # combine bound and unbound states
@@ -201,7 +201,6 @@ class PseudoAtomDFT:
         """
         Optimize the soft Coulomb potential parameters for a given lmax and nmax.
         """
-
         polarization_mode = confinement.get('polarization_mode', 'none')
         if polarization_mode.lower() != 'softcoul':
             raise ValueError("Polarization mode must be 'softcoul' for this method.")
@@ -219,9 +218,9 @@ class PseudoAtomDFT:
             # Set up the soft Coulomb potential
             Vsoftcoul = SoftCoulombPotential(self.grid, Q, softcoul_delta)
 
-            eps, psi = self.SolveSchrodinger(Vsoftcoul, self.lmax_pseudo, 1, 
+            eps, psi = self.SolveSchrodinger(Vsoftcoul, self.lmax_pseudo, 1,
                                              Vconf=Vconf, lmin=self.lmax_pseudo)
-            
+
             ovlp = np.abs(self.basis.GetOverlap(psi_ref, psi[0, 0, :]))**2
 
             # print(f"Q: {Q:.4f}, Overlap: {ovlp:.4f}")
@@ -283,7 +282,7 @@ class PseudoAtomDFT:
         else:
             p_tag = ''
 
-        tag = zeta_tag + p_tag 
+        tag = zeta_tag + p_tag
 
         rc = confinement.get('rc', 'none')
         if rc != 'none':
@@ -302,7 +301,7 @@ class PseudoAtomDFT:
 
         # Initial guess for the wavefunctions
         eps, psi = self.SolveSchrodinger(V_eff, lmax, nmax)
-        
+
         rho_old = self.rho_grid.copy()
 
         err = 1.0e8
@@ -311,12 +310,12 @@ class PseudoAtomDFT:
             iter_count += 1
 
             # Compute charge density
-            rho_new = denpot.ChargeDensity(self.basis, self.upf.nnodes_chi, self.upf.lchi, 
+            rho_new = denpot.ChargeDensity(self.basis, self.upf.nnodes_chi, self.upf.lchi,
                                        self.upf.oc, psi)
-            
+
             # linear mixing of the density
             rho_new = alpha * rho_new + (1 - alpha) * rho_old
-            
+
             # Update effective potential
             V_eff = self.EffectivePotential(rho_grid=rho_new)
 
@@ -338,7 +337,6 @@ class PseudoAtomDFT:
         """
         Saves the charge density and potential to a file.
         """
-
         V_eff = self.EffectivePotential()
 
         data = {
@@ -365,13 +363,13 @@ class PseudoAtomDFT:
 
         if not os.path.isfile(filepath):
             return False
-        
+
         with open(filepath, 'rb') as f:
             data = pickle.load(f)
 
         grid = data['grid']
         rho_grid = data['rho']
-        Veff_grid = data['Veff'] 
+        Veff_grid = data['Veff']
 
         # check if grid matches
         if len(grid) != self.num_grid:

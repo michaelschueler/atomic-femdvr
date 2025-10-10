@@ -1,10 +1,11 @@
 import numpy as np
+
+
 #===================================================================
 def SoftConfinement(r, ri, rc, bignumber=1.0e10):
     """
     Soft confinement potential for a given radius r, inner radius ri, and outer radius rc.
     """
-
     Vc = np.zeros_like(r)
 
     Ir, = np.where(r < ri)
@@ -24,7 +25,6 @@ def ParabolicConfinement(r, ri, rc, bignumber=1.0e3):
     """
     Parabolic confinement potential for a given radius r, inner radius ri, and outer radius rc.
     """
-
     Vc = np.zeros_like(r)
 
     Ir, = np.where(r < ri)
@@ -44,7 +44,6 @@ def SoftStep(r, ri, rc, Vbarrier=1.0e1):
     """
     Soft step potential for a given radius r, inner radius ri, and outer radius rc.
     """
-
     Vc = np.zeros_like(r)
 
     Ir, = np.where(r < ri)

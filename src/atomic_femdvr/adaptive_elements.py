@@ -1,4 +1,6 @@
 import numpy as np
+
+
 #=================================================================
 def AdapativeRungaKutta23(f, y0, t0, t1, h_min, h_max, tol, arg=None):
     # Adaptive Runge-Kutta 2-3 method for solving ODEs
@@ -12,10 +14,10 @@ def AdapativeRungaKutta23(f, y0, t0, t1, h_min, h_max, tol, arg=None):
         k1 = fn(t, y)
         k2 = fn(t + h / 2, y + h / 2 * k1)
         k3 = fn(t + h, y + h * k2)
-        
+
         y2 = y + h * (k1 + 4 * k2 + k3) / 6
         y3 = y + h * (k1 + 3 * k2) / 4
-        
+
         return y2, y3
     t = t0
     y = y0
@@ -25,11 +27,11 @@ def AdapativeRungaKutta23(f, y0, t0, t1, h_min, h_max, tol, arg=None):
     while t < t1:
         if t + h > t1:
             h = t1 - t
-        
+
         y2, y3 = rk23_step(f, y, t, h, arg=arg)
-        
+
         error = np.linalg.norm(y3 - y2)
-        
+
         if error < tol:
             t += h
             y = y2
@@ -57,7 +59,7 @@ def OptimizeElements(Zc, h_min, h_max, Rmax, tol=1.0e-2, Za=1.0):
     wght_fnc = lambda r: np.exp(-Zc *r) + np.exp(-Za * r)
     wght_fnc_r = lambda r, y, L: wght_fnc(Rmax - r)
 
-    xk, wk = AdapativeRungaKutta23(wght_fnc_r, 0.0, 0.0, Rmax, 
+    xk, wk = AdapativeRungaKutta23(wght_fnc_r, 0.0, 0.0, Rmax,
                                    h_min, h_max, tol, arg=Rmax)
     grid = np.flip(Rmax - xk)
 

@@ -1,9 +1,13 @@
 import numpy as np
+
 from atomic_femdvr.legendre import Legendre
 from atomic_femdvr.legendre_integrals import GetLegendreIntegrals
+
+
 #=================================================================
-class FEDVR_Basis(object):
+class FEDVR_Basis:
 	"""docstring for FEDVR_Basis"""
+
 	def __init__(self, ne, ng, xp, build_integrals=False):
 		self.ne = ne
 		self.ng = ng
@@ -26,7 +30,7 @@ class FEDVR_Basis(object):
 		xp = self.xp
 		xg = np.zeros(ne*ng+1)
 		for i in range(ne):
-			xg[i*ng:i*ng+ng] = xp[i] + 0.5 * (xp[i+1] - xp[i]) * (self.leg.x_i[0:ng] + 1)	
+			xg[i*ng:i*ng+ng] = xp[i] + 0.5 * (xp[i+1] - xp[i]) * (self.leg.x_i[0:ng] + 1)
 		xg[-1] = xp[-1]
 
 		return xg
@@ -37,7 +41,7 @@ class FEDVR_Basis(object):
 		nvec = cff.shape[1]
 
 		if cplx:
-			psi = np.zeros([ne*ng+1, nvec], dtype=np.complex_)
+			psi = np.zeros([ne*ng+1, nvec], dtype=np.complex128)
 		else:
 			psi = np.zeros([ne*ng+1, nvec])
 
@@ -55,7 +59,7 @@ class FEDVR_Basis(object):
 		v = np.flip(v,axis=1)
 
 		if cplx:
-			psi = np.zeros(ne*ng+1, dtype=np.complex_)
+			psi = np.zeros(ne*ng+1, dtype=np.complex128)
 		else:
 			psi = np.zeros(ne*ng+1)
 
@@ -180,7 +184,7 @@ class FEDVR_Basis(object):
 			self.K_el_off[1,i1,1:ng] = 0.5*self.tts[0,1:ng,i1+1]/np.sqrt(w1*w2[1:ng])
 
 			# T4[i1,1:ng,i1,0] = T4[i1,0,i1,1:ng]
-			# T4[i1+1,1:ng,i1,0] = T4[i1,0,i1+1,1:ng]		
+			# T4[i1+1,1:ng,i1,0] = T4[i1,0,i1+1,1:ng]
 
 		self.K_el_corner = np.zeros([3,ne])
 
@@ -203,7 +207,7 @@ class FEDVR_Basis(object):
 			if i2 >= 0:
 				w1 = 0.5*(xp[i1+1]-xp[i1]) * w_i[ng] + 0.5*(xp[i1+2]-xp[i1+1]) * w_i[0]
 				w2 = 0.5*(xp[i2+1]-xp[i2]) * w_i[ng] + 0.5*(xp[i2+2]-xp[i2+1]) * w_i[0]
-				self.K_el_corner[2,i1] = 0.5*self.tts[ng,0,i1] / 	np.sqrt(w1*w2)	
+				self.K_el_corner[2,i1] = 0.5*self.tts[ng,0,i1] / 	np.sqrt(w1*w2)
 
 	#------------------------------------------------------------
 	def Deriv_Matrix_full(self, n=2, cplx=False):
@@ -214,7 +218,7 @@ class FEDVR_Basis(object):
 		w_i = self.leg.w_i
 
 		if cplx:
-			T4 = np.zeros([ne,ng,ne,ng],dtype=np.complex_)
+			T4 = np.zeros([ne,ng,ne,ng],dtype=np.complex128)
 		else:
 			T4 = np.zeros([ne,ng,ne,ng])
 
@@ -249,7 +253,7 @@ class FEDVR_Basis(object):
 			if i1 <= ne-1:
 				w1 = 0.5*(xp[i1+1]-xp[i1]) * w_i
 				T4[i1, 1:ng, i2, 0] = de[1:ng, 0, i1] / np.sqrt(w1[1:ng] * w2)
-			
+
 			# i2 = i1
 			# if i1 < ne-1:
 			# 	w2 = 0.5*(xp[i2+1]-xp[i2]) * w_i[-1] + 0.5*(xp[i2+2]-xp[i2+1]) * w_i[0]
@@ -281,7 +285,7 @@ class FEDVR_Basis(object):
 			if i2 >= 0:
 				w1 = 0.5*(xp[i1+1]-xp[i1]) * w_i[ng] + 0.5*(xp[i1+2]-xp[i1+1]) * w_i[0]
 				w2 = 0.5*(xp[i2+1]-xp[i2]) * w_i[ng] + 0.5*(xp[i2+2]-xp[i2+1]) * w_i[0]
-				T4[i1,0,i2,0] = de[ng,0,i1] / 	np.sqrt(w1*w2)		
+				T4[i1,0,i2,0] = de[ng,0,i1] / 	np.sqrt(w1*w2)
 
 		return T4
 	#------------------------------------------------------------
@@ -422,7 +426,7 @@ class FEDVR_Basis(object):
 		# T2 = np.reshape(T4, [ne*ng,ne*ng])
 		Dmat = T2[0:nb,0:nb]
 
-		return Dmat		
+		return Dmat
 	#------------------------------------------------------------
 	def KinEn_Matrix_asybound(self,alpha,beta):
 		ne = self.ne
@@ -441,7 +445,7 @@ class FEDVR_Basis(object):
 
 		tt = ttilde(self.leg,xp[ne]-xp[ne-1])
 
-	
+
 		w1 = 0.5*Le * self.leg.w_i
 		w2 = 0.5*Le * self.leg.w_i[ng]
 		Tne = 0.5 * tt[:,-1] / np.sqrt(w1[:] * w2)
@@ -456,7 +460,7 @@ class FEDVR_Basis(object):
 		T2 = np.reshape(np.flip(T4, axis=(1,3)), [ne*ng,ne*ng])
 		Tmat = T2[0:nb,0:nb]
 
-		R2 = np.zeros([ne,ng],dtype=np.complex_)
+		R2 = np.zeros([ne,ng],dtype=np.complex128)
 		R2[-1,:] = - btg * Tne[0:ng]
 		R2[-2,0] = - btg * Tne_mod
 		Rvec = np.reshape(np.flip( R2, axis=(1) ), [ne*ng] )[0:nb]

@@ -1,21 +1,19 @@
 import numpy as np
-from scipy.interpolate import interp1d
-
 from femdvr import FEDVR_Basis
-
 from XCFunctionals import gga_functional
-#===================================================================
-def ChargeDensity(basis:FEDVR_Basis, nnodes_chi:np.ndarray, lchi:np.ndarray, 
-                  occ:np.ndarray, psi:np.ndarray):
-    ''' computes the charge density from given wave-functions '''
 
+
+#===================================================================
+def ChargeDensity(basis:FEDVR_Basis, nnodes_chi:np.ndarray, lchi:np.ndarray,
+                  occ:np.ndarray, psi:np.ndarray):
+    """Computes the charge density from given wave-functions"""
     lmax = np.amax(lchi)
     nmax = np.amax(nnodes_chi)
     nwf = len(occ)
 
     grid = basis.GetGridpoints()
     rho = np.zeros_like(grid)
-    
+
     # get derivative at r=0
     h = 0.5 * (basis.xp[1] - basis.xp[0])
     psi_elem = psi[:, :, :basis.ng + 1]
@@ -63,12 +61,11 @@ def HartreePotential(basis:FEDVR_Basis, rho:np.ndarray):
 
     return V_Ha
 #===================================================================
-def ExchangeCorrelationPotential(basis:FEDVR_Basis, rho:np.ndarray, 
+def ExchangeCorrelationPotential(basis:FEDVR_Basis, rho:np.ndarray,
                                  xc_functional:str='',
-                                 x_functional:str='gga_x_pbe', c_functional:str='gga_c_pbe', 
+                                 x_functional:str='gga_x_pbe', c_functional:str='gga_c_pbe',
                                  alpha_x:float=1.0, driver='internal'):
-    ''' computes the exchange-correlation potential using libxc '''
-
+    """Computes the exchange-correlation potential using libxc"""
     grid = basis.GetGridpoints()
     ne = basis.ne
     ng = basis.ng
@@ -122,8 +119,7 @@ def ExchangeCorrelationPotential(basis:FEDVR_Basis, rho:np.ndarray,
     return V_xc_grid
 #===================================================================
 def GetFullPotential_GGA(basis:FEDVR_Basis, rho:np.ndarray, v_rho:np.ndarray, v_sigma:np.ndarray):
-    ''' computes the full potential from the density and exchange-correlation potentials '''
-
+    """Computes the full potential from the density and exchange-correlation potentials"""
     grid = basis.GetGridpoints()
     ne = basis.ne
     ng = basis.ng

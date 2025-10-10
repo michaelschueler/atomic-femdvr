@@ -1,5 +1,7 @@
 import numpy as np
-from scipy.interpolate import interp1d, UnivariateSpline
+from scipy.interpolate import UnivariateSpline, interp1d
+
+
 #===================================================================
 def fit_inverse_power_potential(r_vals, V_vals, N):
     """
@@ -14,14 +16,13 @@ def fit_inverse_power_potential(r_vals, V_vals, N):
     # Solve least-squares fit
     coeffs, *_ = np.linalg.lstsq(X, V_vals, rcond=None)
 
-    return coeffs 
+    return coeffs
 #===================================================================
 def InterpolatePotential(rs, Vs, r_new):
     """
     Interpolates the potential V(r) at a new radius r_new
     using the provided radial points rs and potential values Vs.
     """
-    
     interp = interp1d(rs, Vs, kind='cubic', bounds_error=False, fill_value=0.0)
 
     V_new = np.zeros_like(r_new)
@@ -46,11 +47,10 @@ def InterpolateDensity(rs, rho, r_new):
     Interpolates the charge density rho at new radial points r_new
     using the provided radial points rs and density values rho.
     """
-    
     interp = UnivariateSpline(rs, rho, k=3, s=0)
 
     rho_new = np.zeros_like(r_new)
-    
+
     Ir, = np.where(r_new < rs[-1])
     rho_new[Ir] = interp(r_new[Ir])
 

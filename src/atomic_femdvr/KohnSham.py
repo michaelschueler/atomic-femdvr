@@ -1,7 +1,8 @@
 import numpy as np
 import scipy.linalg as la
-
 from femdvr import FEDVR_Basis
+
+
 #===================================================================
 def SetPhase(psi):
     """
@@ -18,7 +19,6 @@ def SolveSchrodinger(basis:FEDVR_Basis, Veff_grid:np.ndarray, lll:np.ndarray, Di
     """
     Solve the radial Schrödinger equation using finite element method
     """
-
     ne = basis.ne  # Number of elements
     ng = basis.ng  # Number of grid points per element
     nb = ne * ng - 1  # Total number of grid points

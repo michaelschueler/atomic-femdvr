@@ -1,16 +1,18 @@
-import sys
-import numpy as np
-from scipy.interpolate import UnivariateSpline
-from scipy.integrate import simpson
 import json
+import sys
 from time import perf_counter
-import matplotlib.pyplot as plt
 
-from utils import PrintTime
-from upf_interface import upf_class
+import matplotlib.pyplot as plt
+import numpy as np
+from adaptive_elements import OptimizeElements
 from femdvr import FEDVR_Basis
 from legendre_integrals import GetLegendreIntegrals
-from adaptive_elements import OptimizeElements
+from scipy.integrate import simpson
+from scipy.interpolate import UnivariateSpline
+from upf_interface import upf_class
+from utils import PrintTime
+
+
 #==================================================================
 def HartreePotential_Spline(rs, rho):
 
@@ -62,7 +64,7 @@ def HartreePotential_FEMDVR(rs, rho, Zc, h_min, h_max, elem_tol, ng):
     for i in range(ne):
         rho_elem_curr[:] = rho_grid[i*ng : i*ng + ng + 1]
         r_curr = grid[i*ng : i*ng + ng + 1]
-        
+
         A_integrand = rho_elem_curr * r_curr
         B_integrand = rho_elem_curr * r_curr**2
         A_elem_integ = np.dot(leg_integ[i, :, :], A_integrand)
@@ -80,7 +82,7 @@ def HartreePotential_FEMDVR(rs, rho, Zc, h_min, h_max, elem_tol, ng):
     V_Ha[0] = A_integ[-1] - A_integ[0]
 
     return r_elements, grid, V_Ha
-    
+
 #==================================================================
 def main(argv):
 
@@ -88,15 +90,15 @@ def main(argv):
     if len(argv) < 2:
         print("Usage: python test_upf.py <input_file> <upf file>")
         return
-    
+
     input_file = argv[0]
     try:
-        with open(input_file, 'r') as f:
+        with open(input_file) as f:
             params = json.load(f)
     except Exception as e:
         print(f"Error reading input file: {e}")
         return
-    
+
     upf_file = argv[1]
 
 

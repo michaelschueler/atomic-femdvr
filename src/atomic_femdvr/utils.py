@@ -1,5 +1,6 @@
-import numpy as np
 import matplotlib.pyplot as plt
+
+
 #==================================================================
 def PrintTime(tic, toc, msg):
     """
@@ -31,7 +32,6 @@ def PrintEigenvalues(lmax, eigenvalues, energy_shifts=None):
     """
     Print the eigenvalues for each angular momentum quantum number.
     """
-
     Hr_to_eV = 2. * 13.605693009  # Hartree to eV conversion factor
 
 
@@ -55,11 +55,9 @@ def PrintEigenvalues(lmax, eigenvalues, energy_shifts=None):
     print(40 * '-')
 #==================================================================
 def PlotWavefunctions(r_grid, psi, lmax, eigenvalues):
-
     """
     Plot the wavefunctions for each angular momentum quantum number.
     """
-
     fig, ax = plt.subplots(1, lmax + 1, figsize=(4*(lmax + 1), 6))
 
     for l in range(lmax + 1):

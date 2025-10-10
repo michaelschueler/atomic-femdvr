@@ -1,5 +1,5 @@
 
-""" Author: H. U.R. Strand, 2020 """
+"""Author: H. U.R. Strand, 2020"""
 
 
 import numpy as np
@@ -10,7 +10,7 @@ def legendre_spectral_derivative_matrix(N):
 
     D_nn = np.zeros((N, N))
     k = np.arange(N)
-    
+
     for n in range(N):
         s = 1 - n % 2
         D_nn[s:n:2, n] = (2*k[s:n:2] + 1)
@@ -18,7 +18,7 @@ def legendre_spectral_derivative_matrix(N):
     return D_nn
 
 
-class Legendre(object):
+class Legendre:
 
     def __init__(self, N):
         self.N = N
@@ -36,11 +36,11 @@ class Legendre(object):
         self.D_ii = self.__derivative_matrix()
         self.D_nn = legendre_spectral_derivative_matrix(N)
 
-        
+
     def to_collocation(self, f_nX):
         return np.tensordot(self.L_in, f_nX, axes=(1, 0))
 
-    
+
     def to_spectral(self, f_iX):
         return np.tensordot(self.S_ni, f_iX, axes=(1, 0))
 
@@ -68,7 +68,7 @@ class Legendre(object):
         D_ii += np.diag(diag) - np.diag(np.diag(D_ii))
 
         return D_ii
-    
+
 
     def __leggausslobatto_quadrature_weights(self, x_i):
 
@@ -79,7 +79,7 @@ class Legendre(object):
 
         w_i = 2./(N*(N+1.)) / leg.legval(x_i, c_n)**2
         return w_i
-        
+
 
     def __leggausslobatto_quadrature(self):
 
@@ -89,13 +89,13 @@ class Legendre(object):
 
         if N % 2: x_i = x_i[:N//2]
         else: x_i = x_i[:N//2 - 1]
-        
+
         x_i, rerr = self.__newton_iter(x_i)
 
         x_i_out = np.zeros(N+1)
         x_i_out[0] = -1.
         x_i_out[-1] = 1.
-        
+
         if N % 2:
             x_i_out[1:N//2+1] = -x_i
             x_i_out[N//2+1:-1] = x_i[::-1]
@@ -109,7 +109,7 @@ class Legendre(object):
     def __x_i_guess(self):
 
         N = self.N - 1
-        
+
         k = np.arange(1, N + 1)
         theta_k = (4.*k - 1.) / (4.*N + 2.) * np.pi
         sigma_k = np.cos(theta_k) * (
@@ -124,7 +124,7 @@ class Legendre(object):
     def __newton_iter(self, x_i_guess, niter_max=1000, tol=1e-16):
 
         N = self.N - 1
-        
+
         c_n = np.zeros(N + 1)
         c_n[-1] = 1.
 
@@ -132,7 +132,7 @@ class Legendre(object):
 
         rerr = np.zeros_like(x_i_guess)
         x_i = np.zeros_like(x_i_guess)
-        
+
         for i, x in enumerate(x_i_guess):
 
             converged = False
@@ -146,14 +146,14 @@ class Legendre(object):
                 if np.abs(ratio) < tol:
                     converged = True
                     break
-            
+
             if not converged:
                 print('WARNING: Legendre-Gauss-Lobatto Newton iteration not converged')
                 print('WARNING: Relative error is:', np.abs(ratio))
-                
+
             rerr[i] = np.abs(ratio)
             x_i[i] = x
 
         return x_i, rerr
-    
-        
+
+

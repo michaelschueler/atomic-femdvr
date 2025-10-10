@@ -1,23 +1,24 @@
-import sys
-import os
 import getopt
-from time import perf_counter
-import numpy as np
-from scipy.interpolate import UnivariateSpline, interp1d
-import matplotlib.pyplot as plt
 import json
+import os
+import sys
+from time import perf_counter
 
-from utils import PrintTime, GetOrbitalLabel, PrintEigenvalues, PlotWavefunctions
-from iotools import ReadPotential
+import numpy as np
 from adaptive_elements import OptimizeElements
+from iotools import ReadPotential
 from SchrodingerSolver import SolveNR, SolvePseudo
+from scipy.interpolate import UnivariateSpline, interp1d
 from upf_interface import upf_class
+from utils import PlotWavefunctions, PrintEigenvalues, PrintTime
+
+
 #==================================================================
 def ReadInput(fname):
     """
     Read input parameters from a JSON file.
     """
-    with open(fname, 'r') as f:
+    with open(fname) as f:
         data = json.load(f)
 
     pseudo_config = data.get('pseudo_config', {})
@@ -37,7 +38,6 @@ def SolveAtomic(pseudo_config, sysparams, solver):
     """
     Solve the atomic system based on the provided parameters.
     """
-
     upflib_dir = pseudo_config.get('upflib_dir', '')
     lib_ext = pseudo_config.get('lib_ext', 'so')
     pseudo_dir = pseudo_config.get('pseudo_dir', '')
@@ -133,7 +133,7 @@ def SolveAtomic(pseudo_config, sysparams, solver):
             beta_l = np.zeros([nbeta, irmax], dtype=np.float64)
             for ibeta in range(nbeta):
                 beta_l[ibeta, :] = upf.beta[0:irmax, Ib[ibeta]]
-            beta_fnc = interp1d(rgrid[0:irmax], beta_l, axis=1, kind='cubic', 
+            beta_fnc = interp1d(rgrid[0:irmax], beta_l, axis=1, kind='cubic',
                                 bounds_error=False, fill_value=0)
 
             Dion_Hr = np.zeros([nbeta, nbeta], dtype=np.float64)
@@ -141,7 +141,7 @@ def SolveAtomic(pseudo_config, sysparams, solver):
                 for j in range(nbeta):
                     Dion_Hr[i, j] = 0.5 * upf.dion[Ib[i], Ib[j]]
 
-            eps[l, :nmax], r_grid, psi[l, :nmax, :] = SolvePseudo(r_elements, Vtot_fnc, 
+            eps[l, :nmax], r_grid, psi[l, :nmax, :] = SolvePseudo(r_elements, Vtot_fnc,
                                                                   Dion_Hr, beta_fnc, l, nmax, ng)
 
     toc = perf_counter()
@@ -175,12 +175,12 @@ def main(argv):
         opts, args = getopt.getopt(argv, short_options, long_options)
     except getopt.GetoptError as err:
         print(err)
-        sys.exit(2) 
+        sys.exit(2)
 
     # get input and output file names
     input_file = ''
     output_file = ''
-    plot_results = False    
+    plot_results = False
 
     for opt, arg in opts:
         if opt in ("-h", "--help"):
@@ -217,5 +217,5 @@ def main(argv):
     print(60 * '*')
 
 #==================================================================
-if __name__ == "__main__":  
+if __name__ == "__main__":
     main(sys.argv[1:])

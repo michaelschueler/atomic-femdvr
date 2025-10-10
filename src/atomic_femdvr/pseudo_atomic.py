@@ -1,20 +1,19 @@
-import sys
-import os
 import getopt
-from time import perf_counter
-import numpy as np
-import matplotlib.pyplot as plt
 import json
-
-from utils import PrintTime, GetOrbitalLabel, PrintEigenvalues, PlotWavefunctions
+import os
+import sys
+from time import perf_counter
 
 from PseudoAtomDFT import PseudoAtomDFT
+from utils import PlotWavefunctions, PrintEigenvalues, PrintTime
+
+
 #==================================================================
 def ReadInput(fname):
     """
     Read input parameters from a JSON file.
     """
-    with open(fname, 'r') as f:
+    with open(fname) as f:
         data = json.load(f)
 
     pseudo_config = data.get('pseudo_config', {})
@@ -51,12 +50,12 @@ def main(argv):
         opts, args = getopt.getopt(argv, short_options, long_options)
     except getopt.GetoptError as err:
         print(err)
-        sys.exit(2) 
+        sys.exit(2)
 
     # get input and output file names
     input_file = ''
     task_list = []
-    plot_results = False    
+    plot_results = False
     export_dir = None
 
     for opt, arg in opts:
@@ -92,7 +91,7 @@ def main(argv):
 
     # Read input parameters
     pseudo_config, sysparams, solver, dft, confinement, proj = ReadInput(input_file)
-        
+
     # Initialize the PseudoAtomDFT class
     tic = perf_counter()
     pseudo_atom = PseudoAtomDFT(pseudo_config, sysparams, solver, dft)
@@ -201,5 +200,5 @@ def main(argv):
     print(60 * '*')
 
 #==================================================================
-if __name__ == "__main__":  
+if __name__ == "__main__":
     main(sys.argv[1:])

@@ -3,6 +3,7 @@ import scipy.linalg as la
 
 from atomic_femdvr.femdvr import FEDVR_Basis
 
+
 #------------------------------------------------------------
 def SetPhase(psi):
     """
@@ -18,7 +19,6 @@ def SolveNR(r_elements, Vpot_fnc, l, nr, ng):
     """
     Solve the radial Schrödinger equation using finite element method
     """
-
     ne = len(r_elements) - 1  # Number of elements
     fe = FEDVR_Basis(ne, ng, r_elements)
 
@@ -42,7 +42,6 @@ def SolveZORA(r_elements, Vpot_fnc, gradVpot_fnc, l, nr, ng):
     """
     Solve the radial Schrödinger equation using ZORA (Zeroth Order Regular Approximation)
     """
-
     c = 137.035999074  # Fine structure constant
 
     ne = len(r_elements) - 1  # Number of elements
@@ -70,10 +69,10 @@ def SolveZORA(r_elements, Vpot_fnc, gradVpot_fnc, l, nr, ng):
     r_mat = np.diag(r_vec)
 
     # non-relativistic kinetic energy matrix
-    Kmat = fe.KinEn_Matrix_zerobound() 
+    Kmat = fe.KinEn_Matrix_zerobound()
 
     # first derivative matrix
-    Dmat = fe.GetDeriv_Matrix_zerobound() 
+    Dmat = fe.GetDeriv_Matrix_zerobound()
     # Kmat = -0.5 * Dmat @ Dmat
 
     # relativistic kinetic energy matrix
@@ -93,7 +92,7 @@ def SolveZORA(r_elements, Vpot_fnc, gradVpot_fnc, l, nr, ng):
 #------------------------------------------------------------
 def SolveSR(r_elements, Vpot_fnc, gradVpot_fnc, l, eps_guess, ng, maxiter=10, tol=1.0e-6):
 
-    # We solve the radial Schrödinger equation in Rydberg atomic units. 
+    # We solve the radial Schrödinger equation in Rydberg atomic units.
     # The potential is assumed to be in Hartree energy units.
 
     c = 137.035999074  # Fine structure constant
@@ -108,7 +107,7 @@ def SolveSR(r_elements, Vpot_fnc, gradVpot_fnc, l, eps_guess, ng, maxiter=10, to
 
     nb = ne*ng+1
     psi = np.zeros((nb, nr), dtype=np.float64)
-    
+
     M_inv_fnc = lambda r, E: 1./(1. - 0.5 * alpha**2 * (Vpot_fnc(r) - E))
     Bterm_fnc = lambda r, E: 0.5 * alpha**2 * M_inv_fnc(r, E)**2 * gradVpot_fnc(r)
     lM_fnc = lambda r, E: l * (l + 1) / (2. * r**2) * M_inv_fnc(r, E)
@@ -136,7 +135,7 @@ def SolveSR(r_elements, Vpot_fnc, gradVpot_fnc, l, eps_guess, ng, maxiter=10, to
             B_mat = np.diag(B_vec)
 
             H_mat = M_inv_mat @ Kmat + V_mat - 0.5 * B_mat @ (Dmat + kappa * np.diag(r_vec))
-            
+
             evals, vect = la.eigh(H_mat, subset_by_index=[0, istate])
             eps = evals[istate]
 
@@ -159,7 +158,6 @@ def SolvePseudo(r_elements, Vpot_fnc, Dion, beta_fnc, l, nr, ng):
     """
     Solve the radial Schrödinger equation using finite element method
     """
-
     ne = len(r_elements) - 1  # Number of elements
     nb = ne * ng - 1  # Total number of grid points
     fe = FEDVR_Basis(ne, ng, r_elements)

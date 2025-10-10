@@ -1,11 +1,12 @@
 import os
-import numpy as np
-import scipy.linalg as la
-import matplotlib.pyplot as plt
 
-from femdvr import FEDVR_Basis
+import matplotlib.pyplot as plt
+import numpy as np
 from adaptive_elements import OptimizeElements
+from femdvr import FEDVR_Basis
 from SchrodingerSolver import SolveNR
+
+
 #------------------------------------------------------------
 def Solve_FEMDVR(Rmax, h_min, h_max, elem_tol, ng, a0=0.1, nevals=3, lmax=2):
     Zval = 1.0
@@ -48,7 +49,7 @@ def main():
         file_ref = f'data/wavefunctions_N1000_neval3_l{l}.dat'
         if not os.path.isfile(file_ref):
             raise FileNotFoundError(f"Reference file '{file_ref}' does not exist.")
-        
+
         data = np.loadtxt(file_ref, unpack=True)
         rs = data[0, :]
         psi_ref_l = data[1:, :]
