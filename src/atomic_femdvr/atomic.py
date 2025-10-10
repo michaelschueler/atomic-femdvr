@@ -7,10 +7,10 @@ from scipy.interpolate import UnivariateSpline
 import matplotlib.pyplot as plt
 import json
 
-from utils import PrintTime, GetOrbitalLabel, PrintEigenvalues, PlotWavefunctions
-from adaptive_elements import OptimizeElements
-from femdvr import FEDVR_Basis
-from SchrodingerSolver import SolveNR, SolveZORA, SolveSR
+from atomic_femdvr.utils import PrintTime, GetOrbitalLabel, PrintEigenvalues, PlotWavefunctions
+from atomic_femdvr.adaptive_elements import OptimizeElements
+from atomic_femdvr.femdvr import FEDVR_Basis
+from atomic_femdvr.SchrodingerSolver import SolveNR, SolveZORA, SolveSR
 #==================================================================
 def ReadInput(fname):
     """

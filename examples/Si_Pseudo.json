@@ -1,6 +1,6 @@
 {
     "pseudo_config": {
-        "upflib_dir": "/Users/michael/opt/lib",
+        "upflib_dir": "/home/linsco_e/code/schueler/qe_upflib",
         "lib_ext": "dylib",
         "pseudo_dir": "./data",
         "storage_dir": "./Si_Pseudo"

@@ -1,6 +1,6 @@
 import numpy as np
-from legendre import Legendre
-from legendre_integrals import GetLegendreIntegrals
+from atomic_femdvr.legendre import Legendre
+from atomic_femdvr.legendre_integrals import GetLegendreIntegrals
 #=================================================================
 class FEDVR_Basis(object):
 	"""docstring for FEDVR_Basis"""
