@@ -1,22 +1,21 @@
-import sys
+import json
 import os
-import getopt
 from time import perf_counter
+
 import numpy as np
 from scipy.interpolate import UnivariateSpline
-import matplotlib.pyplot as plt
-import json
 
-from atomic_femdvr.utils import PrintTime, GetOrbitalLabel, PrintEigenvalues, PlotWavefunctions
 from atomic_femdvr.adaptive_elements import OptimizeElements
-from atomic_femdvr.femdvr import FEDVR_Basis
-from atomic_femdvr.SchrodingerSolver import SolveNR, SolveZORA, SolveSR
+from atomic_femdvr.SchrodingerSolver import SolveNR, SolveSR, SolveZORA
+from atomic_femdvr.utils import PrintTime
+
+
 #==================================================================
 def ReadInput(fname):
     """
     Read input parameters from a JSON file.
     """
-    with open(fname, 'r') as f:
+    with open(fname) as f:
         data = json.load(f)
 
     sysparams = data.get('sysparams', {})
@@ -32,7 +31,6 @@ def SolveAtomic(sysparams, solver):
     """
     Solve the atomic system based on the provided parameters.
     """
-
     file_pot = sysparams.get('file_pot', '')
     if not os.path.isfile(file_pot):
         raise FileNotFoundError(f"Potential file '{file_pot}' does not exist.")
