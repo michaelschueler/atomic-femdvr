@@ -5,10 +5,11 @@ import sys
 from time import perf_counter
 
 import numpy as np
+from scipy.interpolate import UnivariateSpline, interp1d
+
 from atomic_femdvr.adaptive_elements import OptimizeElements
 from atomic_femdvr.iotools import ReadPotential
 from atomic_femdvr.SchrodingerSolver import SolveNR, SolvePseudo
-from scipy.interpolate import UnivariateSpline, interp1d
 from atomic_femdvr.upf_interface import UPFInterface
 from atomic_femdvr.utils import PlotWavefunctions, PrintEigenvalues, PrintTime
 

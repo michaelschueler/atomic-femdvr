@@ -142,7 +142,7 @@ class UPFInterface:
     @property
     def etotps(self) -> float:
         return self._etotps.value
-    
+
     @property
     def ecutwfc(self) -> float:
         return self._ecutwfc.value
@@ -162,15 +162,15 @@ class UPFInterface:
     @property
     def nbeta(self) -> int:
         return self._nbeta.value
-    
+
     @property
     def mesh(self) -> int:
         return self._mesh.value
-    
+
     @property
     def xmin(self) -> float:
         return self._xmin.value
-    
+
     @property
     def rmax(self) -> float:
         return self._rmax.value
@@ -181,7 +181,7 @@ class UPFInterface:
 
     @property
     def lloc(self) -> int:
-        return self._lloc.value 
+        return self._lloc.value
 
     #-------------------------------------------------------------------
     def ReadWavefunctions(self) -> None:

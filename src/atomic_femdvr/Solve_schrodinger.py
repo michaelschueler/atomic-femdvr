@@ -1,11 +1,12 @@
 import numpy as np
 import scipy.linalg as la
-from atomic_femdvr.CoulombWF import coul90
-from atomic_femdvr.ReadPseudoXml import parse
 from scipy.interpolate import make_interp_spline
 from scipy.special import eval_legendre as legval
 from scipy.special import gamma
 from scipy.special import legendre as leg
+
+from atomic_femdvr.CoulombWF import coul90
+from atomic_femdvr.ReadPseudoXml import parse
 
 
 #==============================================================================

@@ -3,7 +3,7 @@ import pickle
 
 import numpy as np
 from scipy.interpolate import interp1d
-from scipy.optimize import minimize_scalar, OptimizeResult
+from scipy.optimize import OptimizeResult, minimize_scalar
 
 import atomic_femdvr.DensityPotential as denpot
 import atomic_femdvr.KohnSham as ks
@@ -56,7 +56,7 @@ class PseudoAtomDFT:
         if self._upf is None:
             raise ValueError("UPF file has not been read yet. Call ReadUPF() first.")
         return self._upf
-    
+
     @upf.setter
     def upf(self, value: UPFInterface) -> None:
         self._upf = value
@@ -66,7 +66,7 @@ class PseudoAtomDFT:
         if self._Vloc_grid is None:
             raise ValueError("Local potential has not been read yet. Call ReadUPF(read_potential=True) first.")
         return self._Vloc_grid
-    
+
     @Vloc_grid.setter
     def Vloc_grid(self, value: np.ndarray) -> None:
         self._Vloc_grid = value

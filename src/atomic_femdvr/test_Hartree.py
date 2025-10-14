@@ -4,11 +4,12 @@ from time import perf_counter
 
 import matplotlib.pyplot as plt
 import numpy as np
+from scipy.integrate import simpson
+from scipy.interpolate import UnivariateSpline
+
 from atomic_femdvr.adaptive_elements import OptimizeElements
 from atomic_femdvr.femdvr import FEDVR_Basis
 from atomic_femdvr.legendre_integrals import GetLegendreIntegrals
-from scipy.integrate import simpson
-from scipy.interpolate import UnivariateSpline
 from atomic_femdvr.upf_interface import UPFInterface
 from atomic_femdvr.utils import PrintTime
 

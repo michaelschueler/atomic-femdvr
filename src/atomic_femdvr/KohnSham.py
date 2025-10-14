@@ -1,6 +1,6 @@
+
 import numpy as np
 import scipy.linalg as la
-from typing import Optional
 
 from atomic_femdvr.femdvr import FEDVR_Basis
 
@@ -17,7 +17,7 @@ def SetPhase(psi):
     return psi
 #===================================================================
 def SolveSchrodinger(basis:FEDVR_Basis, Veff_grid:np.ndarray, lll:np.ndarray, Dion:np.ndarray,
-                     beta_grid:np.ndarray, lmax:int, nmax:int, Vconf: Optional[np.ndarray] = None, lmin=0):
+                     beta_grid:np.ndarray, lmax:int, nmax:int, Vconf: np.ndarray | None = None, lmin=0):
     """
     Solve the radial Schrödinger equation using finite element method
     """

@@ -3,7 +3,7 @@
 
 from enum import Enum
 from pathlib import Path
-from typing import Literal, TypeVar
+from typing import Literal
 
 from pydantic import BaseModel as PydanticBaseModel
 from pydantic import ConfigDict, DirectoryPath, Field, FilePath, create_model, field_validator
