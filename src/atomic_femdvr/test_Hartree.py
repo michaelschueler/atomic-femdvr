@@ -4,13 +4,13 @@ from time import perf_counter
 
 import matplotlib.pyplot as plt
 import numpy as np
-from adaptive_elements import OptimizeElements
-from femdvr import FEDVR_Basis
-from legendre_integrals import GetLegendreIntegrals
+from atomic_femdvr.adaptive_elements import OptimizeElements
+from atomic_femdvr.femdvr import FEDVR_Basis
+from atomic_femdvr.legendre_integrals import GetLegendreIntegrals
 from scipy.integrate import simpson
 from scipy.interpolate import UnivariateSpline
-from upf_interface import upf_class
-from utils import PrintTime
+from atomic_femdvr.upf_interface import UPFInterface
+from atomic_femdvr.utils import PrintTime
 
 
 #==================================================================
@@ -106,7 +106,7 @@ def main(argv):
     lib_ext = params.get('lib_ext', 'so')
 
     tic = perf_counter()
-    upf = upf_class(upflib_dir, lib_ext)
+    upf = UPFInterface(upflib_dir, lib_ext)
     toc = perf_counter()
     PrintTime(tic, toc, "Loading UPF library")
 

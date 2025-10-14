@@ -2,11 +2,12 @@ import ctypes
 from pathlib import Path
 
 import numpy as np
+import numpy.typing as npt
 from numpy.ctypeslib import ndpointer
 
 
 #==================================================================
-class upf_class:
+class UPFInterface:
     """
     Class to interface with the UPF library for atomic calculations.
     """
@@ -96,7 +97,7 @@ class upf_class:
             ctypes.c_char_p  # filename
         ]
     #-------------------------------------------------------------------
-    def Read_UPF(self, filename: Path) -> int:
+    def Read_UPF(self, filename: Path) -> None:
         """
         Read UPF file.
         """
@@ -106,39 +107,27 @@ class upf_class:
             raise RuntimeError(f"Error reading UPF file '{filename}'. Error code: {iflag}")
 
         # Initialize UPF basic parameters
-        self.zp = ctypes.c_double()
-        self.etotps = ctypes.c_double()
-        self.ecutwfc = ctypes.c_double()
-        self.ecutrho = ctypes.c_double()
-        self.lmax = ctypes.c_int()
-        self.nwfc = ctypes.c_int()
-        self.nbeta = ctypes.c_int()
+        self._zp = ctypes.c_double()
+        self._etotps = ctypes.c_double()
+        self._ecutwfc = ctypes.c_double()
+        self._ecutrho = ctypes.c_double()
+        self._lmax = ctypes.c_int()
+        self._nwfc = ctypes.c_int()
+        self._nbeta = ctypes.c_int()
 
 
-        self.lib.Get_UPF_Basic(ctypes.byref(self.zp), ctypes.byref(self.etotps),
-                                ctypes.byref(self.ecutwfc), ctypes.byref(self.ecutrho),
-                                ctypes.byref(self.lmax), ctypes.byref(self.nwfc),
-                                ctypes.byref(self.nbeta))
-
-        self.zp = self.zp.value
-        self.etotps = self.etotps.value
-        self.ecutwfc = self.ecutwfc.value
-        self.ecutrho = self.ecutrho.value
-        self.lmax = self.lmax.value
-        self.nwfc = self.nwfc.value
-        self.nbeta = self.nbeta.value
+        self.lib.Get_UPF_Basic(ctypes.byref(self._zp), ctypes.byref(self._etotps),
+                               ctypes.byref(self._ecutwfc), ctypes.byref(self._ecutrho),
+                               ctypes.byref(self._lmax), ctypes.byref(self._nwfc),
+                               ctypes.byref(self._nbeta))
 
         # Initialize UPF grid information
-        self.mesh = ctypes.c_int()
-        self.xmin = ctypes.c_double()
-        self.rmax = ctypes.c_double()
-        self.dx = ctypes.c_double()
-        self.lib.Get_UPF_GridInfo(ctypes.byref(self.mesh), ctypes.byref(self.xmin),
-                                  ctypes.byref(self.rmax), ctypes.byref(self.dx))
-        self.mesh = self.mesh.value
-        self.xmin = self.xmin.value
-        self.rmax = self.rmax.value
-        self.dx = self.dx.value
+        self._mesh = ctypes.c_int()
+        self._xmin = ctypes.c_double()
+        self._rmax = ctypes.c_double()
+        self._dx = ctypes.c_double()
+        self.lib.Get_UPF_GridInfo(ctypes.byref(self._mesh), ctypes.byref(self._xmin),
+                                  ctypes.byref(self._rmax), ctypes.byref(self._dx))
 
 
         # Initialize UPF grid
@@ -146,9 +135,56 @@ class upf_class:
         mesh_ctype = ctypes.c_int(self.mesh)
         self.lib.Get_UPF_Grid(mesh_ctype, self.r)
 
+    @property
+    def zp(self) -> float:
+        return self._zp.value
+
+    @property
+    def etotps(self) -> float:
+        return self._etotps.value
+    
+    @property
+    def ecutwfc(self) -> float:
+        return self._ecutwfc.value
+
+    @property
+    def ecutrho(self) -> float:
+        return self._ecutrho.value
+
+    @property
+    def lmax(self) -> int:
+        return self._lmax.value
+
+    @property
+    def nwfc(self) -> int:
+        return self._nwfc.value
+
+    @property
+    def nbeta(self) -> int:
+        return self._nbeta.value
+    
+    @property
+    def mesh(self) -> int:
+        return self._mesh.value
+    
+    @property
+    def xmin(self) -> float:
+        return self._xmin.value
+    
+    @property
+    def rmax(self) -> float:
+        return self._rmax.value
+
+    @property
+    def dx(self) -> float:
+        return self._dx.value
+
+    @property
+    def lloc(self) -> int:
+        return self._lloc.value 
 
     #-------------------------------------------------------------------
-    def ReadWavefunctions(self):
+    def ReadWavefunctions(self) -> None:
 
         # Initialize UPF pseudo wavefunctions
         self.nchi = np.zeros(self.nwfc, dtype=np.int32, order='F')
@@ -174,16 +210,14 @@ class upf_class:
             l_list.append(l)
 
     #-------------------------------------------------------------------
-    def Read_PP(self):
+    def Read_PP(self) -> None:
 
         # Initialize UPF pseudopotential information
-        self.lloc = ctypes.c_int()
+        self._lloc = ctypes.c_int()
         self.lll = np.zeros(self.nbeta, dtype=np.int32, order='F')
         self.dion = np.zeros([self.nbeta, self.nbeta], dtype=np.float64, order='F')
 
-        self.lib.Get_UPF_PPInfo(self.nbeta, ctypes.byref(self.lloc), self.lll, self.dion)
-
-        self.lloc = self.lloc.value
+        self.lib.Get_UPF_PPInfo(self.nbeta, ctypes.byref(self._lloc), self.lll, self.dion)
 
         # Initialize UPF pseudopotential
         self.vloc = np.zeros(self.mesh, dtype=np.float64, order='F')
@@ -196,7 +230,7 @@ class upf_class:
 
         self.kbeta_max = np.max(self.kbeta)
     #-------------------------------------------------------------------
-    def GetChargeDensity(self):
+    def GetChargeDensity(self) -> npt.NDArray[np.float64]:
         """
         Compute the charge density from the wavefunctions.
         """

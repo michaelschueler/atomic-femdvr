@@ -5,12 +5,12 @@ import sys
 from time import perf_counter
 
 import numpy as np
-from adaptive_elements import OptimizeElements
-from iotools import ReadPotential
-from SchrodingerSolver import SolveNR, SolvePseudo
+from atomic_femdvr.adaptive_elements import OptimizeElements
+from atomic_femdvr.iotools import ReadPotential
+from atomic_femdvr.SchrodingerSolver import SolveNR, SolvePseudo
 from scipy.interpolate import UnivariateSpline, interp1d
-from upf_interface import upf_class
-from utils import PlotWavefunctions, PrintEigenvalues, PrintTime
+from atomic_femdvr.upf_interface import UPFInterface
+from atomic_femdvr.utils import PlotWavefunctions, PrintEigenvalues, PrintTime
 
 
 #==================================================================
@@ -52,7 +52,7 @@ def SolveAtomic(pseudo_config, sysparams, solver):
 
     # Read UPF file
     tic = perf_counter()
-    upf = upf_class(upflib_dir, lib_ext)
+    upf = UPFInterface(upflib_dir, lib_ext)
     upf.Read_UPF(file_upf)
     upf.Read_PP()
     toc = perf_counter()

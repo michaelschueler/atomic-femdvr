@@ -3,7 +3,7 @@ import pickle
 
 import numpy as np
 from scipy.interpolate import interp1d
-from scipy.optimize import minimize_scalar
+from scipy.optimize import minimize_scalar, OptimizeResult
 
 import atomic_femdvr.DensityPotential as denpot
 import atomic_femdvr.KohnSham as ks
@@ -13,27 +13,28 @@ from atomic_femdvr.femdvr import FEDVR_Basis
 from atomic_femdvr.input import (
     ConfinementInput,
     ConfinementType,
+    DFTInput,
     PseudoConfigInput,
     SolverInput,
     SysParamsInput,
 )
 from atomic_femdvr.interp_tools import InterpolateDensity, InterpolatePotential
 from atomic_femdvr.Projectors import WriteProjectorFile
-from atomic_femdvr.upf_interface import upf_class
+from atomic_femdvr.upf_interface import UPFInterface
 
 
 #==========================================================================
 class PseudoAtomDFT:
     #.......................................................
-    def __init__(self, pseudo_config: PseudoConfigInput, sysparams: SysParamsInput, solver: SolverInput, dft: dict):
+    def __init__(self, pseudo_config: PseudoConfigInput, sysparams: SysParamsInput, solver: SolverInput, dft: DFTInput):
         self.pseudo_config = pseudo_config
         self.sysparams = sysparams
         self.solver = solver
         self.dft = dft
 
-        self.upf = None
+        self._upf: UPFInterface | None = None
         self.rho_grid = None
-        self.Vloc_grid = None
+        self._Vloc_grid: np.ndarray | None = None
 
         self.Zval = 1.0  # Default value, can be set later
 
@@ -49,8 +50,30 @@ class PseudoAtomDFT:
 
         self.num_grid = len(self.grid)
     #.......................................................
+
+    @property
+    def upf(self) -> UPFInterface:
+        if self._upf is None:
+            raise ValueError("UPF file has not been read yet. Call ReadUPF() first.")
+        return self._upf
+    
+    @upf.setter
+    def upf(self, value: UPFInterface) -> None:
+        self._upf = value
+
+    @property
+    def Vloc_grid(self) -> np.ndarray:
+        if self._Vloc_grid is None:
+            raise ValueError("Local potential has not been read yet. Call ReadUPF(read_potential=True) first.")
+        return self._Vloc_grid
+    
+    @Vloc_grid.setter
+    def Vloc_grid(self, value: np.ndarray) -> None:
+        self._Vloc_grid = value
+
     def ReadUPF(self, read_density: bool = True, read_potential: bool = True):
-        self.upf = upf_class(self.pseudo_config.upflib_dir, self.pseudo_config.lib_ext)
+        self.upf = UPFInterface(self.pseudo_config.upflib_dir, self.pseudo_config.lib_ext)
+        assert self.sysparams.file_upf is not None
         self.upf.Read_UPF(self.sysparams.file_upf)
         self.upf.ReadWavefunctions()
         self.upf.Read_PP()
@@ -184,18 +207,18 @@ class PseudoAtomDFT:
         if confinement.polarization_mode != 'softcoul':
             raise ValueError("Polarization mode must be 'softcoul' for this method.")
 
-        eigenvalues_bound, psi_bound = self.GetBoundStates()
+        _, psi_bound = self.GetBoundStates()
         psi_ref = psi_bound[-1, 0, :]  # Use the state with highest l as reference
 
         Vconf = self.GetConfinement(confinement)
 
         # wrapper for the optimization function
-        def objective_func(Q):
+        def objective_func(Q: float) -> float:
 
             # Set up the soft Coulomb potential
             Vsoftcoul = SoftCoulombPotential(self.grid, Q, confinement.softcoul_delta)
 
-            eps, psi = self.SolveSchrodinger(Vsoftcoul, self.lmax_pseudo, 1,
+            _, psi = self.SolveSchrodinger(Vsoftcoul, self.lmax_pseudo, 1,
                                              Vconf=Vconf, lmin=self.lmax_pseudo)
 
             ovlp = np.abs(self.basis.GetOverlap(psi_ref, psi[0, 0, :]))**2
@@ -207,7 +230,8 @@ class PseudoAtomDFT:
         # Optimize the charge Q
         Qmin = 0.2 * self.Zval
         Qmax = 10.0 * self.Zval
-        result = minimize_scalar(objective_func, bounds=(Qmin, Qmax), method='bounded')
+        result = minimize_scalar(objective_func, bounds=(Qmin, Qmax), method='bounded')  # type: ignore
+        assert isinstance(result, OptimizeResult)
         if not result.success:
             raise RuntimeError("Optimization failed: " + result.message)
         Q_opt = result.x
@@ -247,11 +271,12 @@ class PseudoAtomDFT:
         if not os.path.exists(out_dir):
             os.makedirs(out_dir)
 
-        elem = self.sysparams.get('element', 'Mo')
+        elem = self.sysparams.element
 
         prefs = ['S', 'D', 'T', 'Q', 'H']
         zeta_tag = f"{prefs[nmax]}Z" if nmax < len(prefs) else f"{nmax}Z"
 
+        assert self.upf is not None
         lmax_upf = np.amax(self.upf.lchi)
         extra_l = lmax - lmax_upf
         if extra_l > 0:

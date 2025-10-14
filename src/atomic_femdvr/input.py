@@ -20,6 +20,7 @@ class BaseModel(PydanticBaseModel):
     model_config = ConfigDict(extra="forbid")
 
 class SysParamsInput(BaseModel):
+    element: str
     file_pot: FilePath
     file_upf: FilePath | None = None
     file_vhx: FilePath | None = None
@@ -50,8 +51,7 @@ class SolverInput(BaseModel):
     ng: int = Field(default=8, ge=1)
     elem_tol: float = Field(default=1.0e-2, gt=0)
 
-SolverInputType = TypeVar("SolverInputType", bound=SolverInput)
-def solver_input_factory(default_hmin: float, default_hmax: float) -> type[SolverInputType]:
+def solver_input_factory(default_hmin: float, default_hmax: float) -> type[SolverInput]:
     model = create_model(
         "SolverInput",
         __base__ = SolverInput,
@@ -74,7 +74,7 @@ class DFTInput(BaseModel):
 class PseudoConfigInput(BaseModel):
     upflib_dir: DirectoryPath = Field(default=Path())
     lib_ext: str = "so"
-    storage_dir: Path
+    storage_dir: Path = Field(default=Path())
 
 
 class ConfinementType(str, Enum):

@@ -1,7 +1,7 @@
 import numpy as np
 import scipy.linalg as la
-from CoulombWF import coul90
-from ReadPseudoXml import parse
+from atomic_femdvr.CoulombWF import coul90
+from atomic_femdvr.ReadPseudoXml import parse
 from scipy.interpolate import make_interp_spline
 from scipy.special import eval_legendre as legval
 from scipy.special import gamma

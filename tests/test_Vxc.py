@@ -3,15 +3,15 @@ import os
 import sys
 from time import perf_counter
 
-import DensityPotential as denpot
-import KohnSham as ks
+import atomic_femdvr.DensityPotential as denpot
+import atomic_femdvr.KohnSham as ks
 import matplotlib.pyplot as plt
 import numpy as np
-from adaptive_elements import OptimizeElements
-from femdvr import FEDVR_Basis
+from atomic_femdvr.adaptive_elements import OptimizeElements
+from atomic_femdvr.femdvr import FEDVR_Basis
 from scipy.interpolate import interp1d
-from upf_interface import upf_class
-from utils import PrintTime
+from atomic_femdvr.upf_interface import UPFInterface
+from atomic_femdvr.utils import PrintTime
 
 
 #==================================================================
@@ -39,7 +39,7 @@ def main(argv):
     lib_ext = pseudo_config.get('lib_ext', 'so')
 
     tic = perf_counter()
-    upf = upf_class(upflib_dir, lib_ext)
+    upf = UPFInterface(upflib_dir, lib_ext)
     toc = perf_counter()
     PrintTime(tic, toc, "Loading UPF library")
 

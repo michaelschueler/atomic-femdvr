@@ -9,6 +9,7 @@ from atomic_femdvr.input import (
     BaseModel,
     ConfinementInput,
     DFTInput,
+    ProjectorInput,
     PseudoConfigInput,
     SolverInput,
     SysParamsInput,
@@ -27,12 +28,13 @@ else:
 class PseudoAtomicInput(BaseModel):
     sysparams: SysParamsInput
     solver: PseudoAtomicSolverInput
-    pseudo_config: PseudoConfigInput = Field(default_factory=PseudoConfigInput)
-    dft: DFTInput = Field(default_factory=DFTInput)
-    confinement: ConfinementInput = Field(default_factory=ConfinementInput)
+    pseudo_config: PseudoConfigInput = Field(default_factory=lambda: PseudoConfigInput())
+    dft: DFTInput = Field(default_factory=lambda: DFTInput())
+    confinement: ConfinementInput = Field(default_factory=lambda: ConfinementInput())
+    projector: ProjectorInput = Field(default_factory=lambda: ProjectorInput())
 
 #==================================================================
-def ReadInput(fname):
+def ReadInput(fname: str):
     """
     Read input parameters from a JSON file.
     """

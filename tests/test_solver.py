@@ -2,9 +2,10 @@ import os
 
 import matplotlib.pyplot as plt
 import numpy as np
-from adaptive_elements import OptimizeElements
-from femdvr import FEDVR_Basis
-from SchrodingerSolver import SolveNR
+
+from atomic_femdvr.adaptive_elements import OptimizeElements
+from atomic_femdvr.femdvr import FEDVR_Basis
+from atomic_femdvr.SchrodingerSolver import SolveNR
 
 
 #------------------------------------------------------------
@@ -32,7 +33,8 @@ def Solve_FEMDVR(Rmax, h_min, h_max, elem_tol, ng, a0=0.1, nevals=3, lmax=2):
 
     return r_grid, eps_vals, psi
 #------------------------------------------------------------
-def main():
+
+def test_solver():
 
     Rmax = 80.0
     h_min = 0.5
@@ -69,6 +71,4 @@ def main():
 
     ax[-1].set_xlabel('r')
     plt.show()
-#------------------------------------------------------------
-if __name__ == "__main__":
-    main()
+    raise ValueError('Need to add checks of test output')
