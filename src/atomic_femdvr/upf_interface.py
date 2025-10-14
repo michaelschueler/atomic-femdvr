@@ -3,6 +3,7 @@ import os
 
 import numpy as np
 from numpy.ctypeslib import ndpointer
+from pathlib import Path
 
 
 #==================================================================
@@ -12,8 +13,8 @@ class upf_class:
     """
 
     #-------------------------------------------------------------------
-    def __init__(self, lib_path: str, extension: str = "so"):
-        lib_so = os.path.join(lib_path, 'libupflib' + '.' + extension)
+    def __init__(self, lib_path: Path, extension: str = "so"):
+        lib_so = lib_path / ('libupflib' + '.' + extension)
         self.lib = ctypes.CDLL(lib_so)
 
         self.lib.Read_UPF.restype = ctypes.c_int
@@ -96,11 +97,11 @@ class upf_class:
             ctypes.c_char_p  # filename
         ]
     #-------------------------------------------------------------------
-    def Read_UPF(self, filename: str) -> int:
+    def Read_UPF(self, filename: Path) -> int:
         """
         Read UPF file.
         """
-        iflag = self.lib.Read_UPF(filename.encode('utf-8'))
+        iflag = self.lib.Read_UPF(str(filename).encode('utf-8'))
 
         if iflag != -2:
             raise RuntimeError(f"Error reading UPF file '{filename}'. Error code: {iflag}")

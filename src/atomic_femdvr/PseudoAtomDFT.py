@@ -1,23 +1,25 @@
 import os
 import pickle
 
-import DensityPotential as denpot
-import KohnSham as ks
+import atomic_femdvr.DensityPotential as denpot
+import atomic_femdvr.KohnSham as ks
 import numpy as np
-from adaptive_elements import OptimizeElements
-from Confinement import ParabolicConfinement, SoftCoulombPotential, SoftStep
-from femdvr import FEDVR_Basis
-from interp_tools import InterpolateDensity, InterpolatePotential
-from Projectors import WriteProjectorFile
+from atomic_femdvr.adaptive_elements import OptimizeElements
+from atomic_femdvr.Confinement import ParabolicConfinement, SoftCoulombPotential, SoftStep
+from atomic_femdvr.femdvr import FEDVR_Basis
+from atomic_femdvr.interp_tools import InterpolateDensity, InterpolatePotential
+from atomic_femdvr.Projectors import WriteProjectorFile
 from scipy.interpolate import interp1d
 from scipy.optimize import minimize_scalar
-from upf_interface import upf_class
+from atomic_femdvr.upf_interface import upf_class
+
+from atomic_femdvr.input import PseudoConfigInput, SysParamsInput, SolverInput, ConfinementInput
 
 
 #==========================================================================
 class PseudoAtomDFT:
     #.......................................................
-    def __init__(self, pseudo_config:dict, sysparams:dict, solver:dict, dft:dict):
+    def __init__(self, pseudo_config: PseudoConfigInput, sysparams: SysParamsInput, solver: SolverInput, dft: dict):
         self.pseudo_config = pseudo_config
         self.sysparams = sysparams
         self.solver = solver
@@ -30,32 +32,20 @@ class PseudoAtomDFT:
         self.Zval = 1.0  # Default value, can be set later
 
         # optimize elements
-        Rmax = solver.get('Rmax', 30.0)
-        h_min = solver.get('h_min', 0.5)
-        h_max = solver.get('h_max', 4.0)
-        elem_tol = solver.get('elem_tol', 1.0e-2)
-        self.r_elements = OptimizeElements(self.Zval, h_min, h_max, Rmax, elem_tol)
+        solver.Rmax = solver.Rmax or 30.0
+        self.r_elements = OptimizeElements(self.Zval, solver.h_min, solver.h_max, solver.Rmax, solver.elem_tol)
 
         # set up the basis
         ne = len(self.r_elements) - 1
-        ng = solver.get('ng', 8)
-        self.basis = FEDVR_Basis(ne, ng, self.r_elements, build_integrals=True)
+        self.basis = FEDVR_Basis(ne, solver.ng, self.r_elements, build_integrals=True)
 
         self.grid = self.basis.GetGridpoints()
 
         self.num_grid = len(self.grid)
     #.......................................................
     def ReadUPF(self, read_density: bool = True, read_potential: bool = True):
-        upflib_dir = self.pseudo_config.get('upflib_dir', '')
-        lib_ext = self.pseudo_config.get('lib_ext', 'so')
-        file_upf = self.sysparams.get('file_upf', '')
-        file_upf = os.path.join(self.pseudo_config.get('pseudo_dir', ''), file_upf)
-
-        if not os.path.isfile(file_upf):
-            raise FileNotFoundError(f"UPF file '{file_upf}' does not exist.")
-
-        self.upf = upf_class(upflib_dir, lib_ext)
-        self.upf.Read_UPF(file_upf)
+        self.upf = upf_class(self.pseudo_config.upflib_dir, self.pseudo_config.lib_ext)
+        self.upf.Read_UPF(self.sysparams.file_upf)
         self.upf.ReadWavefunctions()
         self.upf.Read_PP()
 
@@ -88,17 +78,12 @@ class PseudoAtomDFT:
 
         V_Ha = denpot.HartreePotential(self.basis, rho_grid)
 
-        xc_driver = self.dft.get('driver', 'internal')
-        xc_functional = self.dft.get('xc_functional', 'PBE')
-
-        x_functional = self.dft.get('x_functional', 'gga_x_pbe')
-        c_functional = self.dft.get('c_functional', 'gga_c_pbe')
-        alpha_x = self.dft.get('alpha_x', 1.0)
         V_xc = denpot.ExchangeCorrelationPotential(self.basis, rho_grid,
-                                                   xc_functional=xc_functional,
-                                                   x_functional=x_functional,
-                                                   c_functional=c_functional,
-                                                   alpha_x=alpha_x, driver=xc_driver)
+                                                   xc_functional=self.dft.xc_functional,
+                                                   x_functional=self.dft.x_functional,
+                                                   c_functional=self.dft.c_functional,
+                                                   alpha_x=self.dft.alpha_x,
+                                                   driver=self.dft.driver)
 
         V_xc *= 0.5 # Convert to Hartree units
 
@@ -197,18 +182,15 @@ class PseudoAtomDFT:
 
         return eigenvalues, psi
     #.......................................................
-    def OptimizeSoftCoul(self, confinement:dict):
+    def OptimizeSoftCoul(self, confinement: ConfinementInput):
         """
         Optimize the soft Coulomb potential parameters for a given lmax and nmax.
         """
-        polarization_mode = confinement.get('polarization_mode', 'none')
-        if polarization_mode.lower() != 'softcoul':
+        if confinement.polarization_mode != 'softcoul':
             raise ValueError("Polarization mode must be 'softcoul' for this method.")
 
         eigenvalues_bound, psi_bound = self.GetBoundStates()
         psi_ref = psi_bound[-1, 0, :]  # Use the state with highest l as reference
-
-        softcoul_delta = confinement.get('softcoul_delta', 0.1)
 
         Vconf = self.GetConfinement(confinement)
 
@@ -216,7 +198,7 @@ class PseudoAtomDFT:
         def objective_func(Q):
 
             # Set up the soft Coulomb potential
-            Vsoftcoul = SoftCoulombPotential(self.grid, Q, softcoul_delta)
+            Vsoftcoul = SoftCoulombPotential(self.grid, Q, confinement.softcoul_delta)
 
             eps, psi = self.SolveSchrodinger(Vsoftcoul, self.lmax_pseudo, 1,
                                              Vconf=Vconf, lmin=self.lmax_pseudo)
@@ -345,19 +327,18 @@ class PseudoAtomDFT:
             'Veff': V_eff
         }
 
-        storage_dir = self.pseudo_config.get('storage_dir', './')
-        if not os.path.exists(storage_dir):
-            os.makedirs(storage_dir)
+        if not os.path.exists(self.pseudo_config.storage_dir):
+            os.makedirs(self.pseudo_config.storage_dir)
 
         filename = 'density_potential.pkl'
-        with open(os.path.join(storage_dir, filename), 'wb') as f:
+        with open(self.pseudo_config.storage_dir / filename, 'wb') as f:
             pickle.dump(data, f)
     #.......................................................
     def ReadDensityPotential(self):
         """
         Reads the charge density and potential from a file.
         """
-        storage_dir = self.pseudo_config.get('storage_dir', './')
+        storage_dir = self.pseudo_config.storage_dir
         filename = 'density_potential.pkl'
         filepath = os.path.join(storage_dir, filename)
 

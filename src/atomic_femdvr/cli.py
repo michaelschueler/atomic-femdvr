@@ -17,38 +17,60 @@ from time import perf_counter
 
 import click
 
-from atomic_femdvr.atomic import ReadInput, SolveAtomic
+import json
+from atomic_femdvr.atomic import AtomicInput, solve_atomic
+from atomic_femdvr.pseudo_atomic import PseudoAtomicInput, solve_pseudo_atomic
 from atomic_femdvr.utils import PlotWavefunctions, PrintEigenvalues, PrintTime
 
 __all__ = [
-    "main",
+    "atomic",
+    "pseudoatomic"
 ]
 
+@click.group()
+def main():
+    pass
 
 # If you want to have a multi-command CLI, see https://click.palletsprojects.com/en/latest/commands/
-@click.command()
+@main.command()
 @click.option("--plot", is_flag=True, help="Plot the results")
 @click.argument("input_file", type=click.Path(exists=True))
 @click.argument("output_file", type=click.Path(), required=False)
-def main(input_file: str, output_file: str | None, plot: bool) -> None:
+def atomic(input_file: str, output_file: str | None, plot: bool) -> None:
 
 
     tic = perf_counter()
 
     # Read input parameters
-    sysparams, solver = ReadInput(input_file)
+    with open(input_file, 'r') as f:
+        data = json.load(f)
+    inp = AtomicInput(**data)
 
-    eigenvalues, r_grid, psi = SolveAtomic(sysparams, solver)
+    eigenvalues, r_grid, psi = solve_atomic(inp.sysparams, inp.solver)
 
-    lmax = sysparams.get('lmax', 0)
-    PrintEigenvalues(lmax, eigenvalues)
+    PrintEigenvalues(inp.sysparams.lmax, eigenvalues)
 
     if plot:
-        PlotWavefunctions(r_grid, psi, lmax, eigenvalues)
+        PlotWavefunctions(r_grid, psi, inp.sysparams.lmax, eigenvalues)
 
     toc = perf_counter()
     PrintTime(tic, toc, "Total")
 
+@main.command()
+@click.argument("input_file", type=click.Path(exists=True))
+@click.option("-t", "--task", type=str, multiple=True, required=True)
+@click.option("--plot", is_flag=True, help="Plot the results")
+@click.argument("export_dir", type=click.Path(), required=False)
+def pseudoatomic(input_file: str, task: tuple[str, ...], plot: bool, export_dir: str | None) -> None:
+    
+    with open(input_file, 'r') as f:
+        data = json.load(f)
+
+    inp = PseudoAtomicInput(**data)
+
+    solve_pseudo_atomic(inp, task, plot, export_dir)
+
+    
 
 if __name__ == "__main__":
     main()
