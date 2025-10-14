@@ -1,19 +1,25 @@
 import os
 import pickle
 
+import numpy as np
+from scipy.interpolate import interp1d
+from scipy.optimize import minimize_scalar
+
 import atomic_femdvr.DensityPotential as denpot
 import atomic_femdvr.KohnSham as ks
-import numpy as np
 from atomic_femdvr.adaptive_elements import OptimizeElements
 from atomic_femdvr.Confinement import ParabolicConfinement, SoftCoulombPotential, SoftStep
 from atomic_femdvr.femdvr import FEDVR_Basis
+from atomic_femdvr.input import (
+    ConfinementInput,
+    ConfinementType,
+    PseudoConfigInput,
+    SolverInput,
+    SysParamsInput,
+)
 from atomic_femdvr.interp_tools import InterpolateDensity, InterpolatePotential
 from atomic_femdvr.Projectors import WriteProjectorFile
-from scipy.interpolate import interp1d
-from scipy.optimize import minimize_scalar
 from atomic_femdvr.upf_interface import upf_class
-
-from atomic_femdvr.input import PseudoConfigInput, SysParamsInput, SolverInput, ConfinementInput
 
 
 #==========================================================================
@@ -111,53 +117,42 @@ class PseudoAtomDFT:
 
         return eigenvalues, psi
     #.......................................................
-    def GetConfinement(self, confinement:dict):
+    def GetConfinement(self, confinement: ConfinementInput):
         """
         Returns the confinement potential based on the specified type.
         """
-        rc = confinement.get('rc', 20.0)
-        ri_factor = confinement.get('ri_factor', 0.9)
-        ri = ri_factor * rc
+        ri = confinement.ri_factor * confinement.rc
 
-        confinement_type = confinement.get('type', 'SoftStep')
-        if confinement_type.lower() == 'softstep':
-            Vbarrier = confinement.get('Vbarrier', 1.0)
-            return SoftStep(self.grid, ri, rc, Vbarrier=Vbarrier)
-        elif confinement_type.lower() == 'parabolic':
-            return ParabolicConfinement(self.grid, ri, rc)
+        if confinement.type == ConfinementType.SOFTSTEP:
+            return SoftStep(self.grid, ri, confinement.rc, Vbarrier=confinement.Vbarrier)
+        elif confinement.type == ConfinementType.HARMONIC:
+            return ParabolicConfinement(self.grid, ri, confinement.rc)
         else:
-            raise ValueError(f"Unknown confinement type: {confinement_type}")
+            raise ValueError(f"Unknown confinement type: {confinement.type}")
     #.......................................................
-    def GetAllStates(self, lmax:int, nmax:int, confinement:dict=None):
+    def GetAllStates(self, lmax:int, nmax:int, confinement: ConfinementInput | None = None):
         """
         Returns all bound states including unbound states.
         """
         V_eff = self.EffectivePotential()
 
-        if confinement is not None:
-            rc = confinement.get('rc', 20.0)
-            ri_factor = confinement.get('ri_factor', 0.9)
-            ri = ri_factor * rc
+        if confinement:
+            ri = confinement.ri_factor * confinement.rc
             # Vconf = SoftConfinement(self.grid, ri, rc)
 
             Vconf = self.GetConfinement(confinement)
 
-            polarization_mode = confinement.get('polarization_mode', 'none')
-
-            if polarization_mode.lower() == 'none':
+            if confinement.polarization_mode is None:
                 eps, psi = self.SolveSchrodinger(V_eff, lmax, nmax, Vconf=Vconf)
-            elif polarization_mode.lower() == 'softcoul':
+            elif confinement.polarization_mode == 'softcoul':
 
                 # solve first for the bound states
                 eps_bound, psi_bound = self.SolveSchrodinger(V_eff, self.lmax_pseudo, nmax,
                                                              Vconf=Vconf)
 
                 # now solve remaining l-channels with soft Coulomb potential
-                softcoul_delta = confinement.get('softcoul_delta', 0.1)
-                softcoul_charge = confinement.get('softcoul_charge', 1.0)
-
-                Vsoftcoul = SoftCoulombPotential(self.grid, softcoul_charge,
-                                                   softcoul_delta)
+                Vsoftcoul = SoftCoulombPotential(self.grid, confinement.softcoul_charge,
+                                                  confinement.softcoul_delta)
 
                 eps_unbound, psi_unbound = self.SolveSchrodinger(Vsoftcoul, lmax, nmax,
                                                                  Vconf=Vconf, lmin=self.lmax_pseudo + 1)
@@ -170,7 +165,7 @@ class PseudoAtomDFT:
                 eps[self.lmax_pseudo+1:lmax+1, :] = eps_unbound
                 psi[self.lmax_pseudo+1:lmax+1, :, :] = psi_unbound
             else:
-                raise ValueError(f"Unknown polarization mode: {polarization_mode}")
+                raise ValueError(f"Unknown polarization mode: {confinement.polarization_mode}")
 
         else:
             eps, psi = self.SolveSchrodinger(V_eff, lmax, nmax)
@@ -219,7 +214,7 @@ class PseudoAtomDFT:
 
         return Q_opt
     #.......................................................
-    def GetStatesEnergyShift(self, lmax:int, nmax:int, confinement:dict):
+    def GetStatesEnergyShift(self, lmax:int, nmax:int, confinement: ConfinementInput):
         eigenvalues_bounds, psi_bound = self.GetBoundStates()
         eigenvalues_all, psi_all = self.GetAllStates(lmax, nmax, confinement=confinement)
 
@@ -234,7 +229,7 @@ class PseudoAtomDFT:
 
         return energy_shifts, eigenvalues_all, psi_all
     #.......................................................
-    def ExportProjector(self, lmax:int, nmax:int, psi:np.ndarray, confinement:dict,
+    def ExportProjector(self, lmax:int, nmax:int, psi:np.ndarray, confinement: ConfinementInput,
                         out_dir:str, nr:int=1001, rmin=1.0e-8):
         Rmax = self.r_elements[-1]
         rs = np.logspace(np.log10(rmin), np.log10(Rmax), nr)
@@ -266,9 +261,8 @@ class PseudoAtomDFT:
 
         tag = zeta_tag + p_tag
 
-        rc = confinement.get('rc', 'none')
-        if rc != 'none':
-            tag += f'_rc{rc}'
+        if confinement.type != ConfinementType.NONE:
+            tag += f'_rc{confinement.rc}'
 
         psi_interp = np.reshape(psi_interp, [nproj, nr])
         WriteProjectorFile(out_dir, elem, tag, larr, psi_interp, rs)

@@ -2,7 +2,7 @@ import matplotlib.pyplot as plt
 
 
 #==================================================================
-def PrintTime(tic, toc, msg):
+def PrintTime(tic: float, toc: float, msg: str):
     """
     Print the elapsed time for a given operation.
     """
@@ -15,7 +15,7 @@ def PrintTime(tic, toc, msg):
         print(f"Time[{msg}] : {elapsed:.2f} s")
 #==================================================================
 #==================================================================
-def GetOrbitalLabel(n, l):
+def GetOrbitalLabel(n: int, l: int) -> str:
     """
     Get the orbital label for a given principal quantum number n and angular momentum quantum number l.
     """
@@ -28,7 +28,7 @@ def GetOrbitalLabel(n, l):
     else:
         return f"{nq}l{l}"  # Fallback for higher angular momentum states
 #==================================================================
-def PrintEigenvalues(lmax, eigenvalues, energy_shifts=None):
+def PrintEigenvalues(lmax: int, eigenvalues, energy_shifts=None):
     """
     Print the eigenvalues for each angular momentum quantum number.
     """
@@ -54,11 +54,11 @@ def PrintEigenvalues(lmax, eigenvalues, energy_shifts=None):
                 print(f"  Energy shift = {Hr_to_eV * energy_shifts[l]:.6f} eV")
     print(40 * '-')
 #==================================================================
-def PlotWavefunctions(r_grid, psi, lmax, eigenvalues):
+def PlotWavefunctions(r_grid, psi, lmax: int, eigenvalues):
     """
     Plot the wavefunctions for each angular momentum quantum number.
     """
-    fig, ax = plt.subplots(1, lmax + 1, figsize=(4*(lmax + 1), 6))
+    _, ax = plt.subplots(1, lmax + 1, figsize=(4*(lmax + 1), 6))
 
     for l in range(lmax + 1):
         ax[l].set_title(rf"$\ell$ = {l}")

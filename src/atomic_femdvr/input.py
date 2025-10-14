@@ -1,23 +1,18 @@
-import json
-import os
-from time import perf_counter
 
-import numpy as np
-from scipy.interpolate import UnivariateSpline
 
-from atomic_femdvr.adaptive_elements import OptimizeElements
-from atomic_femdvr.SchrodingerSolver import SolveNR, SolveSR, SolveZORA
-from atomic_femdvr.utils import PrintTime
 
-from pathlib import Path
-from typing import Literal
-from pydantic import BaseModel as PydanticBaseModel
-from pydantic import Field, FilePath, ConfigDict, field_validator, create_model, DirectoryPath
 from enum import Enum
+from pathlib import Path
+from typing import Literal, TypeVar
+
+from pydantic import BaseModel as PydanticBaseModel
+from pydantic import ConfigDict, DirectoryPath, Field, FilePath, create_model, field_validator
+
 
 class EnergyUnit(str, Enum):
-    RYDBERG = "Rydberg"
-    EV = "eV"
+    RYDBERG = "Ry"
+    ELECTRONVOLTS = "eV"
+    HARTREE = "Ha"
 
 
 class BaseModel(PydanticBaseModel):
@@ -29,7 +24,7 @@ class SysParamsInput(BaseModel):
     file_upf: FilePath | None = None
     file_vhx: FilePath | None = None
     pot_columns: tuple[int, int] = Field(default=(0, 4))
-    pot_energy_unit: Literal["Ry", "eV", "Ha"] = Field(default="Rydberg")
+    pot_energy_unit: EnergyUnit = Field(default=EnergyUnit.RYDBERG)
     lmax: int = Field(default=0, ge=0)
     nmax: int = Field(default=4, ge=1)
 
@@ -55,7 +50,8 @@ class SolverInput(BaseModel):
     ng: int = Field(default=8, ge=1)
     elem_tol: float = Field(default=1.0e-2, gt=0)
 
-def solver_input_factory(default_hmin: float, default_hmax: float) -> type[SolverInput]:
+SolverInputType = TypeVar("SolverInputType", bound=SolverInput)
+def solver_input_factory(default_hmin: float, default_hmax: float) -> type[SolverInputType]:
     model = create_model(
         "SolverInput",
         __base__ = SolverInput,
@@ -81,13 +77,27 @@ class PseudoConfigInput(BaseModel):
     storage_dir: Path
 
 
+class ConfinementType(str, Enum):
+    SOFTSTEP = "softstep"
+    HARMONIC = "harmonic"
+    NONE = None
+
 class ConfinementInput(BaseModel):
-    type: str
-    rc: float
-    ri_factor: float
-    Vbarrier: float
+    type: ConfinementType = ConfinementType.NONE
+    rc: float = 20.0
+    ri_factor: float = 0.9
+    Vbarrier: float = 1.0
     polarization_mode: Literal[None, "softcoul"] = None
     softcoul_delta: float = 0.1
+    softcoul_charge: float = 1.0
+
+    @field_validator("type", mode="before")
+    @classmethod
+    def make_lower(cls, v: str) -> str:
+        """Convert to lower case to make the input case-insensitive."""
+        return v.lower()
 
 class ProjectorInput(BaseModel):
+    nr: int = 1001
+    rmin: float = 1.0e-8
     pass

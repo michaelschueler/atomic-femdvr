@@ -15,7 +15,7 @@ def SetPhase(psi):
             psi[:, i] *= -1.0
     return psi
 #------------------------------------------------------------
-def SolveNR(r_elements, Vpot_fnc, l, nr, ng):
+def SolveNR(r_elements, Vpot_fnc, l: int, nr: int, ng: int):
     """
     Solve the radial Schrödinger equation using finite element method
     """

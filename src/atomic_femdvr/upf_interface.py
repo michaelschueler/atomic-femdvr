@@ -1,9 +1,8 @@
 import ctypes
-import os
+from pathlib import Path
 
 import numpy as np
 from numpy.ctypeslib import ndpointer
-from pathlib import Path
 
 
 #==================================================================

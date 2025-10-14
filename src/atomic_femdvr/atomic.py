@@ -1,32 +1,45 @@
 from time import perf_counter
+from typing import TYPE_CHECKING
 
 import numpy as np
 from scipy.interpolate import UnivariateSpline
 
 from atomic_femdvr.adaptive_elements import OptimizeElements
+from atomic_femdvr.input import (
+    BaseModel,
+    EnergyUnit,
+    SolverInput,
+    SysParamsInput,
+    solver_input_factory,
+)
 from atomic_femdvr.SchrodingerSolver import SolveNR, SolveSR, SolveZORA
 from atomic_femdvr.utils import PrintTime
 
-from atomic_femdvr.input import SysParamsInput, BaseModel, solver_input_factory, SolverInput
+if TYPE_CHECKING:
+    # Stub for type checking
+    AtomicSolverInput = SolverInput
+else:
+    # Dynamically-created type for runtime
+    AtomicSolverInput = solver_input_factory(default_hmin=0.01, default_hmax=4.0)
+
 
 class AtomicInput(BaseModel):
     sysparams: SysParamsInput
-    solver: solver_input_factory(default_hmin=0.01, default_hmax=4.0)
+    solver: AtomicSolverInput
 
 #==================================================================
 def solve_atomic(sysparams: SysParamsInput, solver: SolverInput):
     """
     Solve the atomic system based on the provided parameters.
     """
-
     # Read potential from file
     rs, Vpot = np.loadtxt(sysparams.file_pot, usecols=sysparams.pot_columns, unpack=True)
     Rmax_ = rs[-1]
 
     pot_energy_unit = sysparams.pot_energy_unit
-    if pot_energy_unit == "Ry":
+    if pot_energy_unit == EnergyUnit.RYDBERG:
         Vpot *= 0.5
-    elif pot_energy_unit == "eV":
+    elif pot_energy_unit == EnergyUnit.ELECTRONVOLTS:
         Vpot *= 1. / (2 * 13.605693009 )
 
     spl = UnivariateSpline(rs, Vpot, s=0, k=3)
@@ -72,7 +85,7 @@ def solve_atomic(sysparams: SysParamsInput, solver: SolverInput):
     PrintTime(tic, toc, "Schrödinger equation")
     print("\n")
 
-    eigenvalues = {}
+    eigenvalues: dict[str, list] = {}
     for l in range(lmax + 1):
         Ie, = np.where(eps[l, :nmax] < 0)
         eps_bound = eps[l, Ie]

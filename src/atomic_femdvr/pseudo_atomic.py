@@ -1,19 +1,32 @@
 import json
 import sys
 from time import perf_counter
+from typing import TYPE_CHECKING
 
-from pathlib import Path
-from pydantic import Field, FilePath, DirectoryPath
+from pydantic import Field
 
+from atomic_femdvr.input import (
+    BaseModel,
+    ConfinementInput,
+    DFTInput,
+    PseudoConfigInput,
+    SolverInput,
+    SysParamsInput,
+    solver_input_factory,
+)
 from atomic_femdvr.PseudoAtomDFT import PseudoAtomDFT
 from atomic_femdvr.utils import PlotWavefunctions, PrintEigenvalues, PrintTime
 
-from atomic_femdvr.input import (SysParamsInput, SolverInput, BaseModel, DFTInput, PseudoConfigInput,
-    ConfinementInput, solver_input_factory)
+if TYPE_CHECKING:
+    # Stub for type checking
+    PseudoAtomicSolverInput = SolverInput
+else:
+    # Runtime type
+    PseudoAtomicSolverInput = solver_input_factory(default_hmin=0.5, default_hmax=4.0)
 
 class PseudoAtomicInput(BaseModel):
     sysparams: SysParamsInput
-    solver: solver_input_factory(default_hmin=0.5, default_hmax=4.0)
+    solver: PseudoAtomicSolverInput
     pseudo_config: PseudoConfigInput = Field(default_factory=PseudoConfigInput)
     dft: DFTInput = Field(default_factory=DFTInput)
     confinement: ConfinementInput = Field(default_factory=ConfinementInput)
@@ -48,10 +61,6 @@ def ReadInput(fname):
 #==================================================================
 def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...], plot: bool, export_dir: str | None) -> None:
     """Solve the pseudo-atomic problem."""
-
-    short_options = "hpi:t:e:"
-    long_options = ["help", "plot", "input=", "task=", "export="]
-
     print(60 * '*')
     print("Pseudo-atomic Schrödinger Equation Solver".center(60))
     print(60 * '*')
@@ -102,15 +111,17 @@ def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...], plot
 
         eigenvalues, psi = pseudo_atom.GetBoundStates()
 
-        PrintEigenvalues(pseudo_atom.upf.lmax, eigenvalues)
+        assert pseudo_atom.upf is not None
+
+        PrintEigenvalues(int(pseudo_atom.upf.lmax), eigenvalues)
 
         pseudo_atom.SaveDensityPotential()
 
         if plot:
-            PlotWavefunctions(pseudo_atom.grid, psi, pseudo_atom.upf.lmax, eigenvalues)
+            PlotWavefunctions(pseudo_atom.grid, psi, int(pseudo_atom.upf.lmax), eigenvalues)
 
         scf_done = True
-    
+
     if 'optimize' in task_list:
         if not scf_done and not restart_success:
             print("Error: Non-SCF task requires SCF to be completed first or a valid restart file.")
@@ -122,7 +133,7 @@ def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...], plot
         PrintTime(tic, toc, "Optimizing Soft Coulomb Confinement")
         print("")
         print(f"Optimized soft Coulomb confinement parameter Q: {Q_opt:.4f}\n")
-        confinement['softcoul_charge'] = Q_opt
+        inp.confinement.softcoul_charge = Q_opt
 
     if 'nscf' in task_list:
         if not scf_done and not restart_success:
@@ -130,17 +141,15 @@ def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...], plot
             sys.exit(2)
 
         tic = perf_counter()
-        lmax = sysparams.get('lmax', 2)
-        nmax = sysparams.get('nmax', 2)
-        energy_shifts, eigenvalues, psi = pseudo_atom.GetStatesEnergyShift(lmax, nmax, confinement=confinement)
+        energy_shifts, eigenvalues, psi = pseudo_atom.GetStatesEnergyShift(inp.sysparams.lmax, inp.sysparams.nmax, confinement=inp.confinement)
         toc = perf_counter()
         PrintTime(tic, toc, "Non-SCF Calculation")
         print("")
 
-        PrintEigenvalues(lmax, eigenvalues, energy_shifts=energy_shifts)
+        PrintEigenvalues(inp.sysparams.lmax, eigenvalues, energy_shifts=energy_shifts)
 
-        if plot_results:
-            PlotWavefunctions(pseudo_atom.grid, psi, lmax, eigenvalues)
+        if plot:
+            PlotWavefunctions(pseudo_atom.grid, psi, inp.sysparams.lmax, eigenvalues)
 
         nscf_done = True
 
@@ -150,16 +159,10 @@ def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...], plot
             sys.exit(2)
 
         tic = perf_counter()
-        nr = proj.get('nr', 1001)
-        rmin = proj.get('rmin', 1.0e-8)
-        pseudo_atom.ExportProjector(lmax, nmax, psi, confinement, export_dir, nr=nr, rmin=rmin)
+        pseudo_atom.ExportProjector(inp.sysparams.lmax, inp.sysparams.nmax, psi, inp.confinement, export_dir, nr=inp.projector.nr, rmin=inp.projector.rmin)
         toc = perf_counter()
         PrintTime(tic, toc, "Exporting Projectors")
 
     toc = perf_counter()
     PrintTime(tic, toc, "Total")
     print(60 * '*')
-
-#==================================================================
-if __name__ == "__main__":
-    main(sys.argv[1:])
