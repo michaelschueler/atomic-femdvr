@@ -126,9 +126,9 @@ libxc = [
 # See https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#urls
 # and also https://packaging.python.org/en/latest/specifications/well-known-project-urls/
 [project.urls]
-"Bug Tracker" = "https://github.com//atomic-femdvr/issues"
-Homepage = "https://github.com//atomic-femdvr"
-Repository = "https://github.com//atomic-femdvr.git"
+"Bug Tracker" = "https://github.com/michaelschueler/atomic-femdvr/issues"
+Homepage = "https://github.com/michaelschueler/atomic-femdvr"
+Repository = "https://github.com/michaelschueler/atomic-femdvr.git"
 Documentation = "https://atomic_femdvr.readthedocs.io"
 Funding = "https://github.com/sponsors/michaelschueler"
 

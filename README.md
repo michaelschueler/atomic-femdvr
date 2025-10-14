@@ -1,6 +1,6 @@
 <!--
 <p align="center">
-  <img src="https://github.com//atomic-femdvr/raw/main/docs/source/logo.png" height="150">
+  <img src="https://github.com/michaelschueler/atomic-femdvr/raw/main/docs/source/logo.png" height="150">
 </p>
 -->
 
@@ -9,23 +9,23 @@
 </h1>
 
 <p align="center">
-    <a href="https://github.com//atomic-femdvr/actions/workflows/tests.yml">
-        <img alt="Tests" src="https://github.com//atomic-femdvr/actions/workflows/tests.yml/badge.svg" /></a>
+    <a href="https://github.com/michaelschueler/atomic-femdvr/actions/workflows/tests.yml">
+        <img alt="Tests" src="https://github.com/michaelschueler/atomic-femdvr/actions/workflows/tests.yml/badge.svg" /></a>
     <a href="https://pypi.org/project/atomic_femdvr">
         <img alt="PyPI" src="https://img.shields.io/pypi/v/atomic_femdvr" /></a>
     <a href="https://pypi.org/project/atomic_femdvr">
         <img alt="PyPI - Python Version" src="https://img.shields.io/pypi/pyversions/atomic_femdvr" /></a>
-    <a href="https://github.com//atomic-femdvr/blob/main/LICENSE">
+    <a href="https://github.com/michaelschueler/atomic-femdvr/blob/main/LICENSE">
         <img alt="PyPI - License" src="https://img.shields.io/pypi/l/atomic_femdvr" /></a>
     <a href='https://atomic_femdvr.readthedocs.io/en/latest/?badge=latest'>
         <img src='https://readthedocs.org/projects/atomic_femdvr/badge/?version=latest' alt='Documentation Status' /></a>
-    <a href="https://codecov.io/gh//atomic-femdvr/branch/main">
-        <img src="https://codecov.io/gh//atomic-femdvr/branch/main/graph/badge.svg" alt="Codecov status" /></a>  
+    <a href="https://codecov.io/gh/michaelschueler/atomic-femdvr/branch/main">
+        <img src="https://codecov.io/gh/michaelschueler/atomic-femdvr/branch/main/graph/badge.svg" alt="Codecov status" /></a>  
     <a href="https://github.com/cthoyt/cookiecutter-python-package">
         <img alt="Cookiecutter template from @cthoyt" src="https://img.shields.io/badge/Cookiecutter-snekpack-blue" /></a>
     <a href="https://github.com/astral-sh/ruff">
         <img src="https://img.shields.io/endpoint?url=https://raw.githubusercontent.com/astral-sh/ruff/main/assets/badge/v2.json" alt="Ruff" style="max-width:100%;"></a>
-    <a href="https://github.com//atomic-femdvr/blob/main/.github/CODE_OF_CONDUCT.md">
+    <a href="https://github.com/michaelschueler/atomic-femdvr/blob/main/.github/CODE_OF_CONDUCT.md">
         <img src="https://img.shields.io/badge/Contributor%20Covenant-2.1-4baaaa.svg" alt="Contributor Covenant"/></a>
     <!-- uncomment if you archive on zenodo
     <a href="https://zenodo.org/badge/latestdoi/XXXXXX">
@@ -74,20 +74,20 @@ $ python3 -m pip install atomic_femdvr
 The most recent code and data can be installed directly from GitHub with uv:
 
 ```console
-$ uv pip install git+https://github.com//atomic-femdvr.git
+$ uv pip install git+https://github.com/michaelschueler/atomic-femdvr.git
 ```
 
 or with pip:
 
 ```console
-$ python3 -m pip install git+https://github.com//atomic-femdvr.git
+$ python3 -m pip install git+https://github.com/michaelschueler/atomic-femdvr.git
 ```
 
 ## 👐 Contributing
 
 Contributions, whether filing an issue, making a pull request, or forking, are
 appreciated. See
-[CONTRIBUTING.md](https://github.com//atomic-femdvr/blob/master/.github/CONTRIBUTING.md)
+[CONTRIBUTING.md](https://github.com/michaelschueler/atomic-femdvr/blob/master/.github/CONTRIBUTING.md)
 for more information on getting involved.
 
 ## 👋 Attribution
@@ -143,7 +143,7 @@ code contribution.
 To install in development mode, use the following:
 
 ```console
-$ git clone git+https://github.com//atomic-femdvr.git
+$ git clone git+https://github.com/michaelschueler/atomic-femdvr.git
 $ cd atomic-femdvr
 $ uv pip install -e .
 ```
@@ -165,14 +165,14 @@ $ tox -e py
 ```
 
 Additionally, these tests are automatically re-run with each commit in a
-[GitHub Action](https://github.com//atomic-femdvr/actions?query=workflow%3ATests).
+[GitHub Action](https://github.com/michaelschueler/atomic-femdvr/actions?query=workflow%3ATests).
 
 ### 📖 Building the Documentation
 
 The documentation can be built locally using the following:
 
 ```console
-$ git clone git+https://github.com//atomic-femdvr.git
+$ git clone git+https://github.com/michaelschueler/atomic-femdvr.git
 $ cd atomic-femdvr
 $ tox -e docs
 $ open docs/build/html/index.html
@@ -232,7 +232,7 @@ to each release of your package. Do the following for each repository:
 
 After these steps, you're ready to go! After you make "release" on GitHub (steps
 for this are below), you can navigate to
-https://zenodo.org/account/settings/github/repository//atomic-femdvr to see the
+https://zenodo.org/account/settings/github/repository/michaelschueler/atomic-femdvr to see the
 DOI for the release and link to the Zenodo record for it.
 
 #### Registering with the Python Package Index (PyPI)
@@ -294,7 +294,7 @@ This script does the following:
 
 #### Releasing on GitHub
 
-1. Navigate to https://github.com//atomic-femdvr/releases/new to draft a new
+1. Navigate to https://github.com/michaelschueler/atomic-femdvr/releases/new to draft a new
    release
 2. Click the "Choose a Tag" dropdown and select the tag corresponding to the
    release you just made
