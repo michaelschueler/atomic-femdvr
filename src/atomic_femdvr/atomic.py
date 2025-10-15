@@ -27,12 +27,20 @@ class AtomicInput(BaseModel):
     sysparams: SysParamsInput
     solver: AtomicSolverInput
 
+    # Ignore extra fields, to allow for the same input files to be used for atomic and pseudoatomic
+    model_config = {'extra': 'ignore'}
+
 #==================================================================
-def solve_atomic(sysparams: SysParamsInput, solver: SolverInput):
+def solve_atomic(inp: AtomicInput):
     """
     Solve the atomic system based on the provided parameters.
     """
+
+    sysparams = inp.sysparams
+    solver = inp.solver
+
     # Read potential from file
+    assert sysparams.file_pot is not None
     rs, Vpot = np.loadtxt(sysparams.file_pot, usecols=sysparams.pot_columns, unpack=True)
     Rmax_ = rs[-1]
 

@@ -1,57 +1,15 @@
 """Tests for the `atomic_femdvr.pseudo_atomic` module."""
 
 import pytest
-from pathlib import Path
 from atomic_femdvr.pseudo_atomic import PseudoAtomicInput, solve_pseudo_atomic
 
-@pytest.skip(reason="Waiting for upf-independent implementation")
-@pytest.fixture
-def molybdenum_input(data_directory: Path) -> PseudoAtomicInput:
-    return PseudoAtomicInput(
-        pseudo_config={
-            "upflib_dir": "/home/linsco_e/code/schueler/qe_upflib/lib",
-            "lib_ext": "so",
-            "storage_dir": "./Mo_Pseudo"
-        },
-        sysparams={
-            "file_upf": data_directory / "pseudos/Mo.upf",
-            "element": "Mo",
-            "lmax": 3,
-            "nmax": 2
-        },
-        solver={
-            "h_min": 0.5,
-            "h_max": 4.0,
-            "Rmax": 30.0,
-            "elem_tol": 1.0e-2,
-            "ng": 8
-        },
-        dft={
-            "driver": "internal",
-            "x_functional": "GGA_X_PBE",
-            "c_functional": "GGA_C_PBE",
-            "alpha_x": 1.0,
-            "max_iter": 100,
-            "conv_tol": 1.0e-6
-        },
-        confinement={
-            "type": "SoftStep",
-            "rc": 10.0,
-            "ri_factor": 0.5,
-            "Vbarrier": 1.0,
-            "polarization_mode": "SoftCoul",
-            "softcoul_delta": 0.1
-        },
-        projector={
-            "nr": 1001,
-            "rmin": 1.0e-8
-        }
-    )
-
-def test_Mo(molybdenum_input: PseudoAtomicInput):
+@pytest.mark.skip(reason="Waiting for upf-independent implementation")
+def test_scf(molybdenum_input_dict):
     """Test the pseudo-atomic solver for molybdenum using only SCF"""
 
-    eigenvalues = solve_pseudo_atomic(molybdenum_input, task_list=('scf',))
+    inp = PseudoAtomicInput(**molybdenum_input_dict)
+
+    eigenvalues = solve_pseudo_atomic(inp, task_list=('scf',))
 
     assert 'scf' in eigenvalues
 

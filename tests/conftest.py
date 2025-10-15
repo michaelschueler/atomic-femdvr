@@ -2,8 +2,7 @@
 
 import pytest
 from pathlib import Path
+from .fixtures.systems import molybdenum_input_dict, silicon_input_dict
+from .fixtures.directories import data_directory
 
-@pytest.fixture
-def data_directory():
-    """Return the directory where various reference files are stored."""
-    return Path(__file__).parents[0] / 'data'
+

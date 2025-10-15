@@ -45,7 +45,7 @@ def atomic(input_file: str, plot: bool) -> None:
         data = json.load(f)
     inp = AtomicInput(**data)
 
-    eigenvalues, r_grid, psi = solve_atomic(inp.sysparams, inp.solver)
+    eigenvalues, r_grid, psi = solve_atomic(inp)
 
     PrintEigenvalues(inp.sysparams.lmax, eigenvalues)
 
@@ -68,8 +68,6 @@ def pseudoatomic(input_file: str, task: tuple[str, ...], plot: bool, export_dir:
     inp = PseudoAtomicInput(**data)
 
     solve_pseudo_atomic(inp, task, plot, export_dir)
-
-
 
 if __name__ == "__main__":
     main()
