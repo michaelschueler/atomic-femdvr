@@ -86,7 +86,9 @@ jobs:
         uses: actions/cache@v4
         with:
           path: ~/.cache/pip
-          key: ${{ runner.os }}-pylibxc-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
+          key: ${{ matrix.os }}-pylibxc-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
+        restore-keys: |
+          ${{ matrix.os }}-pylibxc-
       - name: Install with libxc
         run: |
           uv pip install --system .[libxc]

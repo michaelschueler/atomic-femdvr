@@ -116,12 +116,12 @@ release = [
     "uv",
     "keyring",
 ]
+
+# see https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#dependencies-optional-dependencies
+[project.optional-dependencies]
 libxc = [
     "pylibxc @ git+https://gitlab.com/libxc/libxc.git"
 ]
-
-# see https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#dependencies-optional-dependencies
-# [project.optional-dependencies]
 
 
 # See https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#urls
