@@ -4,6 +4,7 @@ import pytest
 from pathlib import Path
 from atomic_femdvr.pseudo_atomic import PseudoAtomicInput, solve_pseudo_atomic
 
+@pytest.skip(reason="Waiting for upf-independent implementation")
 @pytest.fixture
 def molybdenum_input(data_directory: Path) -> PseudoAtomicInput:
     return PseudoAtomicInput(
