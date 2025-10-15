@@ -20,7 +20,7 @@ class BaseModel(PydanticBaseModel):
     model_config = ConfigDict(extra="forbid")
 
 class SysParamsInput(BaseModel):
-    file_pot: FilePath
+    file_pot: FilePath | None = None
     file_upf: FilePath | None = None
     file_vhx: FilePath | None = None
     pot_columns: tuple[int, int] = Field(default=(0, 4))
@@ -91,7 +91,7 @@ class ConfinementInput(BaseModel):
     softcoul_delta: float = 0.1
     softcoul_charge: float = 1.0
 
-    @field_validator("type", mode="before")
+    @field_validator("type", "polarization_mode", mode="before")
     @classmethod
     def make_lower(cls, v: str) -> str:
         """Convert to lower case to make the input case-insensitive."""
