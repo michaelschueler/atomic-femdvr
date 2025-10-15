@@ -87,8 +87,7 @@ jobs:
         with:
           path: ~/.cache/pip
           key: ${{ runner.os }}-pylibxc-${{ matrix.python-version }}-${{ hashFiles('pyproject.toml') }}
-          restore-keys: |
-            ${{ runner.os }}-pylibxc-
+          restore-keys: ${{ runner.os }}-pylibxc-
       - name: Install with libxc
         run: |
           uv pip install --system .[libxc]
