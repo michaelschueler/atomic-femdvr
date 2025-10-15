@@ -83,12 +83,14 @@ jobs:
           enable-cache: true
           cache-dependency-glob: "pyproject.toml"
       - name: Restore pylibxc wheel cache
+        id: cache-pylibxc
         uses: actions/cache@v4
         with:
           path: wheels
           key: ${{ matrix.os }}-pylibxc-wheel-${{ matrix.python-version }}
           restore-keys: ${{ matrix.os }}-pylibxc-wheel-${{ matrix.python-version }}
       - name: Build pylibxc wheel
+        if: steps.cache-pylibxc.outputs.cache-hit != 'true'
         run: |
           mkdir -p wheels
           uvx -p ${{ matrix.python-version }} pip wheel --no-deps --wheel-dir wheels git+https://gitlab.com/libxc/libxc.git
