@@ -61,7 +61,7 @@ def ReadInput(fname: str):
 
 
 #==================================================================
-def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...], plot: bool, export_dir: str | None) -> None:
+def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...], plot: bool = False, export_dir: str | None = None) -> dict[str, dict[int, list[float]]]:
     """Solve the pseudo-atomic problem."""
     print(60 * '*')
     print("Pseudo-atomic Schrödinger Equation Solver".center(60))
@@ -95,6 +95,7 @@ def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...], plot
     scf_done = False
     nscf_done = False
 
+    all_eigenvalues = {}
     if 'scf' in task_list:
 
         tic = perf_counter()
@@ -112,6 +113,7 @@ def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...], plot
         PrintTime(tic, toc, "SCF")
 
         eigenvalues, psi = pseudo_atom.GetBoundStates()
+        all_eigenvalues['scf'] = eigenvalues
 
         assert pseudo_atom.upf is not None
 
@@ -149,6 +151,7 @@ def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...], plot
         print("")
 
         PrintEigenvalues(inp.sysparams.lmax, eigenvalues, energy_shifts=energy_shifts)
+        all_eigenvalues['nscf'] = eigenvalues
 
         if plot:
             PlotWavefunctions(pseudo_atom.grid, psi, inp.sysparams.lmax, eigenvalues)
@@ -168,3 +171,5 @@ def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...], plot
     toc = perf_counter()
     PrintTime(tic, toc, "Total")
     print(60 * '*')
+
+    return all_eigenvalues
