@@ -20,7 +20,6 @@ class BaseModel(PydanticBaseModel):
     model_config = ConfigDict(extra="forbid")
 
 class SysParamsInput(BaseModel):
-    element: str
     file_pot: FilePath
     file_upf: FilePath | None = None
     file_vhx: FilePath | None = None
@@ -28,6 +27,7 @@ class SysParamsInput(BaseModel):
     pot_energy_unit: EnergyUnit = Field(default=EnergyUnit.RYDBERG)
     lmax: int = Field(default=0, ge=0)
     nmax: int = Field(default=4, ge=1)
+    element: str | None = None
 
     @field_validator("pot_energy_unit", mode="before")
     @classmethod
