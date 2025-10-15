@@ -232,8 +232,8 @@ to each release of your package. Do the following for each repository:
 
 After these steps, you're ready to go! After you make "release" on GitHub (steps
 for this are below), you can navigate to
-https://zenodo.org/account/settings/github/repository/michaelschueler/atomic-femdvr to see the
-DOI for the release and link to the Zenodo record for it.
+https://zenodo.org/account/settings/github/repository/michaelschueler/atomic-femdvr
+to see the DOI for the release and link to the Zenodo record for it.
 
 #### Registering with the Python Package Index (PyPI)
 
@@ -294,8 +294,8 @@ This script does the following:
 
 #### Releasing on GitHub
 
-1. Navigate to https://github.com/michaelschueler/atomic-femdvr/releases/new to draft a new
-   release
+1. Navigate to https://github.com/michaelschueler/atomic-femdvr/releases/new to
+   draft a new release
 2. Click the "Choose a Tag" dropdown and select the tag corresponding to the
    release you just made
 3. Click the "Generate Release Notes" button to get a quick outline of recent
