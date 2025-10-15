@@ -1,17 +1,19 @@
-import pytest
+"""Tests for the `atomic_femdvr.pseudo_atomic` module."""
 
+import pytest
+from pathlib import Path
 from atomic_femdvr.pseudo_atomic import PseudoAtomicInput, solve_pseudo_atomic
 
-
-def test_Mo():
-    inp = PseudoAtomicInput(
+@pytest.fixture
+def molybdenum_input(data_directory: Path) -> PseudoAtomicInput:
+    return PseudoAtomicInput(
         pseudo_config={
             "upflib_dir": "/home/linsco_e/code/schueler/qe_upflib/lib",
             "lib_ext": "so",
             "storage_dir": "./Mo_Pseudo"
         },
         sysparams={
-            "file_upf": "/home/linsco_e/code/koopmans/src/koopmans/pseudopotentials/PseudoDojo/0.4/PBE/SR/standard/upf/Mo.upf",
+            "file_upf": data_directory / "pseudos/Mo.upf",
             "element": "Mo",
             "lmax": 3,
             "nmax": 2
@@ -45,7 +47,10 @@ def test_Mo():
         }
     )
 
-    eigenvalues = solve_pseudo_atomic(inp, task_list=('scf',))
+def test_Mo(molybdenum_input: PseudoAtomicInput):
+    """Test the pseudo-atomic solver for molybdenum using only SCF"""
+
+    eigenvalues = solve_pseudo_atomic(molybdenum_input, task_list=('scf',))
 
     assert 'scf' in eigenvalues
 
