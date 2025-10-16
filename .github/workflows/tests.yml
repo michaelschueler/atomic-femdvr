@@ -54,17 +54,18 @@ jobs:
       - name: "Install uv"
         uses: "astral-sh/setup-uv@v7"
         with:
+          python-version: ${{ matrix.python-version }}
           enable-cache: true
           cache-dependency-glob: "pyproject.toml"
       - name: Install dependencies
         run: |
           sudo apt-get install graphviz
       - name: Lint documentation
-        run: uvx -p ${{ matrix.python-version }} --with tox-uv tox -e docs-lint
+        run: uvx --with tox-uv tox -e docs-lint
       - name: Check docstring coverage
-        run: uvx -p ${{ matrix.python-version }} --with tox-uv tox -e docstr-coverage
+        run: uvx --with tox-uv tox -e docstr-coverage
       - name: Check documentation build with Sphinx
-        run: uvx -p ${{ matrix.python-version }} --with tox-uv tox -e docs-test
+        run: uvx --with tox-uv tox -e docs-test
 
   tests:
     name: Tests
@@ -78,10 +79,20 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: "Install uv"
-        uses: "astral-sh/setup-uv@v3"
+        uses: "astral-sh/setup-uv@v7"
         with:
+          python-version: ${{ matrix.python-version }}
           enable-cache: true
           cache-dependency-glob: "pyproject.toml"
       - name: Test with pytest and generate coverage file
         run:
-          uvx -p ${{ matrix.python-version }} --with tox-uv tox -e py
+          uvx --with tox-uv tox -e py
+      - name: Run doctests
+        run:
+          uvx --with tox-uv tox -e doctests
+      - name: Upload coverage report to codecov
+        uses: codecov/codecov-action@v5
+        if: success()
+        with:
+          file: coverage.xml
+          token: ${{ secrets.CODECOV_TOKEN }}
