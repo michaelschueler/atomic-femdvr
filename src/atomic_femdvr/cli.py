@@ -21,6 +21,7 @@ import click
 from atomic_femdvr.atomic import AtomicInput, solve_atomic
 from atomic_femdvr.pseudo_atomic import PseudoAtomicInput, solve_pseudo_atomic
 from atomic_femdvr.utils import PlotWavefunctions, PrintEigenvalues, PrintTime
+from atomic_femdvr.version import get_version
 
 __all__ = [
     "atomic",
@@ -28,6 +29,7 @@ __all__ = [
 ]
 
 @click.group()
+@click.version_option(version=get_version(),message="atomic_femdvr %(version)s")
 def main() -> None:
     pass
 
