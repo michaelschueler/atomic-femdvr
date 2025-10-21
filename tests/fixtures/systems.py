@@ -1,31 +1,34 @@
-import pytest
+"""Fixtures providing input parameters for test calculations on different elements."""
 
 from pathlib import Path
 from typing import Any
 
+import pytest
+
+
 @pytest.fixture
-def molybdenum_input_dict(data_directory) -> dict[str, dict[str, Any]]:
+def molybdenum_input_dict(data_directory: Path) -> dict[str, dict[str, Any]]:
     """Fixture providing input parameters for a calculation on molybdenum."""
-    return dict(
-        pseudo_config={
+    return {
+        "pseudo_config": {
             "upflib_dir": "/home/linsco_e/code/schueler/qe_upflib/lib",
             "lib_ext": "so",
             "storage_dir": "./Mo_Pseudo"
         },
-        sysparams={
+        "sysparams": {
             "file_upf": data_directory / "Mo/Mo.upf",
             "element": "Mo",
             "lmax": 3,
             "nmax": 2
         },
-        solver={
+        "solver": {
             "h_min": 0.5,
             "h_max": 4.0,
             "Rmax": 30.0,
             "elem_tol": 1.0e-2,
             "ng": 8
         },
-        dft={
+        "dft": {
             "driver": "internal",
             "x_functional": "GGA_X_PBE",
             "c_functional": "GGA_C_PBE",
@@ -33,7 +36,7 @@ def molybdenum_input_dict(data_directory) -> dict[str, dict[str, Any]]:
             "max_iter": 100,
             "conv_tol": 1.0e-6
         },
-        confinement={
+        "confinement": {
             "type": "SoftStep",
             "rc": 10.0,
             "ri_factor": 0.5,
@@ -41,14 +44,14 @@ def molybdenum_input_dict(data_directory) -> dict[str, dict[str, Any]]:
             "polarization_mode": "SoftCoul",
             "softcoul_delta": 0.1
         },
-        projector={
+        "projector": {
             "nr": 1001,
             "rmin": 1.0e-8
         }
-    )
+    }
 
 @pytest.fixture
-def silicon_input_dict(data_directory) -> dict[str, dict[str, Any]]:
+def silicon_input_dict(data_directory: Path) -> dict[str, dict[str, Any]]:
     """Fixture providing input parameters for a calculation on silicon."""
     return {
         "pseudo_config": {

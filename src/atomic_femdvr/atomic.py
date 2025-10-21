@@ -35,7 +35,6 @@ def solve_atomic(inp: AtomicInput):
     """
     Solve the atomic system based on the provided parameters.
     """
-
     sysparams = inp.sysparams
     solver = inp.solver
 

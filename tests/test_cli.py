@@ -1,5 +1,7 @@
-import pytest
+"""Tests for the command-line interface (CLI) of atomic_femdvr."""
+
 from atomic_femdvr.version import get_version
+
 
 def test_cli_help(script_runner):
     """Test `atomic_femdvr --help`."""

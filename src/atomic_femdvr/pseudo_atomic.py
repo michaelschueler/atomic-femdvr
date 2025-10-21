@@ -61,7 +61,7 @@ def ReadInput(fname: str):
 
 
 #==================================================================
-def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...], plot: bool = False, export_dir: str | None = None) -> dict[str, dict[int, list[float]]]:
+def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...], plot: bool = False, export_dir: str | None = None) -> dict[str, dict[str, list[float]]]:
     """Solve the pseudo-atomic problem."""
     print(60 * '*')
     print("Pseudo-atomic Schrödinger Equation Solver".center(60))
