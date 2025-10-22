@@ -11,8 +11,6 @@ def molybdenum_input_dict(data_directory: Path) -> dict[str, dict[str, Any]]:
     """Fixture providing input parameters for a calculation on molybdenum."""
     return {
         "pseudo_config": {
-            "upflib_dir": "/home/linsco_e/code/schueler/qe_upflib/lib",
-            "lib_ext": "so",
             "storage_dir": "./Mo_Pseudo"
         },
         "sysparams": {
@@ -55,10 +53,7 @@ def silicon_input_dict(data_directory: Path) -> dict[str, dict[str, Any]]:
     """Fixture providing input parameters for a calculation on silicon."""
     return {
         "pseudo_config": {
-            "upflib_dir": "/home/linsco_e/code/schueler/qe_upflib/lib",
-            "lib_ext": "so",
         },
-
         "sysparams": {
             "file_upf": data_directory / "Si/Si.oncvpsp.upf",
             "file_pot": data_directory / "Si/Si_Vpsloc.plot",
