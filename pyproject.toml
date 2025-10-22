@@ -58,6 +58,7 @@ dependencies = [
     "scipy",
     "matplotlib",
     "pydantic",
+    "upf_tools",
 ]
 
 # see https://peps.python.org/pep-0735/ and https://docs.astral.sh/uv/concepts/dependencies/#dependency-groups

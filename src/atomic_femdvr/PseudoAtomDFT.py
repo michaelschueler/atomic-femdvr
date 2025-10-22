@@ -20,7 +20,7 @@ from atomic_femdvr.input import (
 )
 from atomic_femdvr.interp_tools import InterpolateDensity, InterpolatePotential
 from atomic_femdvr.Projectors import WriteProjectorFile
-from atomic_femdvr.upf_interface import UPFInterface
+from atomic_femdvr.upf import UPFInterface
 
 
 #==========================================================================
@@ -72,18 +72,15 @@ class PseudoAtomDFT:
         self._Vloc_grid = value
 
     def ReadUPF(self, read_density: bool = True, read_potential: bool = True):
-        self.upf = UPFInterface(self.pseudo_config.upflib_dir, self.pseudo_config.lib_ext)
         assert self.sysparams.file_upf is not None
-        self.upf.Read_UPF(self.sysparams.file_upf)
-        self.upf.ReadWavefunctions()
-        self.upf.Read_PP()
+        self.upf = UPFInterface.from_upf(self.sysparams.file_upf)
 
         self.Zval = self.upf.zp
         self.lmax_pseudo = np.amax(self.upf.lchi)
         self.nmax_pseudo = np.amax(self.upf.nnodes_chi)
 
         if read_density:
-            rho_upf = self.upf.GetChargeDensity()
+            rho_upf = self.upf.get_charge_density()
             self.rho_grid = InterpolateDensity(self.upf.r, rho_upf, self.grid)
 
         if read_potential:
@@ -94,7 +91,7 @@ class PseudoAtomDFT:
         # interpolate beta projectors to new grid
         self.nbeta = self.upf.nbeta
         beta = np.ascontiguousarray(self.upf.beta.T)
-        kbeta_max = self.upf.kbeta_max
+        kbeta_max = np.max(self.upf.kbeta)
         interp = interp1d(self.upf.r[0:kbeta_max], beta[:, 0:kbeta_max], axis=1,
                           kind='cubic', bounds_error=False, fill_value=0.0)
         self.beta_grid = interp(self.grid)

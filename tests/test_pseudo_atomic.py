@@ -5,7 +5,6 @@ import pytest
 from atomic_femdvr.pseudo_atomic import PseudoAtomicInput, solve_pseudo_atomic
 
 
-@pytest.mark.skip(reason="Waiting for upf-independent implementation")
 def test_scf(molybdenum_input_dict):
     """Test the pseudo-atomic solver for molybdenum using only SCF."""
     inp = PseudoAtomicInput(**molybdenum_input_dict)

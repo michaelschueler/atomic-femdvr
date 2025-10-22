@@ -72,8 +72,6 @@ class DFTInput(BaseModel):
     conv_tol: float = 1.0e-6
 
 class PseudoConfigInput(BaseModel):
-    upflib_dir: DirectoryPath = Field(default=Path())
-    lib_ext: str = "so"
     storage_dir: Path = Field(default=Path())
 
 

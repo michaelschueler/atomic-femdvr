@@ -1,5 +1,6 @@
 import ctypes
 from pathlib import Path
+import warnings
 
 import numpy as np
 import numpy.typing as npt
@@ -14,6 +15,10 @@ class UPFInterface:
 
     #-------------------------------------------------------------------
     def __init__(self, lib_path: Path, extension: str = "so"):
+        warnings.warn("This UPFInterface is deprecated. Use atomic_femdvr.upf.UPFInterface instead.",
+                      DeprecationWarning,
+                      stacklevel=2)
+
         lib_so = lib_path / ('libupflib' + '.' + extension)
         self.lib = ctypes.CDLL(lib_so)
 

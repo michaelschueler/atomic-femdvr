@@ -6,7 +6,6 @@ import pytest
 from atomic_femdvr.atomic import AtomicInput, solve_atomic
 
 
-@pytest.mark.skip(reason="Waiting for upf-independent implementation")
 def test_atomic(silicon_input_dict: AtomicInput):
     """Test the atomic solver for molybdenum."""
     inp = AtomicInput(**silicon_input_dict)
