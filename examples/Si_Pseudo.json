@@ -1,13 +1,12 @@
 {
     "pseudo_config": {
-        "upflib_dir": "/Users/michael/opt/lib",
-        "lib_ext": "dylib",
-        "pseudo_dir": "./data",
+        "upflib_dir": "/home/linsco_e/code/schueler/qe_upflib/lib",
+        "lib_ext": "so",
         "storage_dir": "./Si_Pseudo"
     },
 
     "sysparams": {
-        "file_upf": "Si.oncvpsp.upf",
+        "file_upf": "data/Si.oncvpsp.upf",
         "file_pot": "data/Si_Vpsloc.plot",
         "file_vhx": "data/Si_Vhxc.plot",
         "pot_columns": [0, 1],
