@@ -7,37 +7,20 @@ from scipy.interpolate import interp1d
 import primme
 
 from atomic_femdvr.femdvr import FEDVR_Basis
+from atomic_femdvr.kohn_sham import solve_schrodinger_local
 #========================================================================================================
-def solve_direct(basis:FEDVR_Basis, Z:float, l:int, num_states:int, a0:float=1.0e-2):
+def solve_direct(basis:FEDVR_Basis, Z:float, lmax:int, num_states:int, a0:float=1.0e-2, solver:str = 'full'):
     """
     Solve the radial Schrödinger equation for a soft-Coulomb potential using direct diagonalization.
     """
-    ne = basis.ne  # Number of elements
-    ng = basis.ng  # Number of grid points per element
-    nb = ne * ng - 1  # Total number of grid points
-    r_grid = basis.get_gridpoints()
-
-    # construct kinetic energy matrix
-    Tmat = basis.get_kinetic_energy_matrix()
 
     # construct soft-Coulomb potential
+    r_grid = basis.get_gridpoints()
     Vsc_grid = -Z / np.sqrt(r_grid**2 + a0**2)
 
-    # add centrifugal term
-    if l > 0:
-        Vsc_grid[1:] += l * (l + 1) / (2. * r_grid[1:]**2)
-        Vsc_grid[0] = Vsc_grid[1]  # Avoid division by zero
+    eps_l, psi_l = solve_schrodinger_local(basis, Vsc_grid, lmax, num_states, solver=solver)
 
-    Vsc_mat = np.diag(basis.get_potential_from_grid(Vsc_grid))
-
-    # construct Hamiltonian matrix
-    H_mat = Tmat + Vsc_mat
-
-    # solve eigenvalue problem
-    eigvals, eigvecs = la.eigh(H_mat, subset_by_index=[0, num_states - 1])
-
-
-    return eigvals, eigvecs
+    return eps_l, psi_l
 #========================================================================================================
 def get_derivative_matrix(rs: np.ndarray) -> np.ndarray:
     """
