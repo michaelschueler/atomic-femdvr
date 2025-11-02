@@ -8,7 +8,8 @@ from atomic_femdvr.legendre_integrals import get_legendre_integrals
 class FEDVR_Basis:
 	"""docstring for FEDVR_Basis"""
 
-	def __init__(self, ne: int, ng: int, xp: list, build_integrals: bool = False):
+	def __init__(self, ne: int, ng: int, xp: list, build_derivatives: bool = True,
+			   build_integrals: bool = False):
 		self.ne = ne
 		self.ng = ng
 		self.xp = np.array(xp)
@@ -19,6 +20,11 @@ class FEDVR_Basis:
 		for i1 in range(self.ne):
 			self.tts[:,:,i1] = ttilde(self.leg,self.xp[i1+1]-self.xp[i1])
 			self.dts[:,:,i1] = dtilde(self.leg,self.xp[i1+1]-self.xp[i1])
+
+		self.have_derivatives = build_derivatives
+		if self.have_derivatives:
+			self.der1_full = self.get_deriv_matrix_full(n=1, cplx=False)
+			self.der2_full = self.get_deriv_matrix_full(n=2, cplx=False)
 
 		self.have_integrals = build_integrals
 		if self.have_integrals:
@@ -46,7 +52,7 @@ class FEDVR_Basis:
 			psi = np.zeros([ne*ng+1, nvec])
 
 		for i in range(nvec):
-			psi[:,i] = self.GetPsi(cff[:,i], cplx=cplx)
+			psi[:,i] = self.get_psi(cff[:,i], cplx=cplx)
 		return psi
 	#------------------------------------------------------------
 	def get_psi(self, cff: np.ndarray, cplx: bool = False) -> np.ndarray:
@@ -346,6 +352,27 @@ class FEDVR_Basis:
 			Tmat, Rvec = self.__get_kinetic_energy_matrix_asymbound(alpha, beta)
 			return Tmat, Rvec
 	#------------------------------------------------------------
+	def get_kinetic_energy_banded(self) -> np.ndarray:
+		Tmat = self.__get_kinetic_energy_matrix_zerobound()
+		ne = self.ne
+		ng = self.ng
+		nb = ne * ng - 1
+
+		# Determine the bandwidth
+		upper_bw = ng 
+
+		Tmat_banded = np.zeros([upper_bw + 1, nb])
+
+		# for j in range(nb):
+		# 	for i in range(max(0, j - upper_bw), j + 1):
+		# 		Tmat_banded[upper_bw + i - j, j] = Tmat[i, j]
+
+		for k in range(upper_bw + 1):
+			j_range = np.arange(k, nb)
+			Tmat_banded[upper_bw - k, j_range] = np.diagonal(Tmat, offset=-k)
+
+		return Tmat_banded
+	#------------------------------------------------------------
 	def get_deriv_matrix(self) -> np.ndarray:
 		Dmat = self.__get_deriv_matrix_zerobound()
 		return Dmat
@@ -355,8 +382,10 @@ class FEDVR_Basis:
 		ng = self.ng
 		nb = ne*ng-1
 
-		T4 = self.get_deriv_matrix_full(n=2, cplx=False)
-		T2 = np.reshape(np.flip(T4, axis=(1,3)), [ne*ng,ne*ng])
+		if not self.have_derivatives:
+			self.der2_full = self.get_deriv_matrix_full(n=2, cplx=False)
+
+		T2 = np.reshape(np.flip(self.der2_full, axis=(1,3)), [ne*ng,ne*ng])
 		Tmat = T2[0:nb,0:nb]
 
 		return Tmat
@@ -366,8 +395,10 @@ class FEDVR_Basis:
 		ng = self.ng
 		nb = ne*ng-1
 
-		T4 = self.get_deriv_matrix_full(n=1, cplx=False)
-		T2 = np.reshape(np.flip(T4, axis=(1,3)), [ne*ng,ne*ng])
+		if not self.have_derivatives:
+			self.der1_full = self.get_deriv_matrix_full(n=1, cplx=False)
+
+		T2 = np.reshape(np.flip(self.der1_full, axis=(1,3)), [ne*ng,ne*ng])
 		# T2 = np.reshape(T4, [ne*ng,ne*ng])
 		Dmat = T2[0:nb,0:nb]
 
@@ -386,10 +417,12 @@ class FEDVR_Basis:
 		alg = np.sqrt(w1 / w2) * alpha
 		btg = np.sqrt(w1) * beta
 
-		T4 = self.Deriv_Matrix_full(n=2, cplx=True)
+		if self.have_derivatives:
+			T4 = np.array(self.der2_full, copy=True, dtype=np.complex128)
+		else:
+			T4 = self.get_deriv_matrix_full(n=2, cplx=True)
 
 		tt = ttilde(self.leg,xp[ne]-xp[ne-1])
-
 
 		w1 = 0.5*Le * self.leg.w_i
 		w2 = 0.5*Le * self.leg.w_i[ng]
