@@ -54,13 +54,22 @@ def adaptive_runge_kutta_23(f, y0, t0, t1, h_min, h_max, tol, arg=None):
 
     return np.array(t_values), np.array(y_values)
 #=================================================================
-def optimize_elements(Zc, h_min, h_max, Rmax, tol=1.0e-2, Za=1.0):
+def optimize_elements(Zc: float, h_min: float, h_max: float, Rmax: float, 
+                      tol: float = 1.0e-2, Za: float = 1.0,
+                      method: str = 'exponential') -> np.ndarray:
 
-    wght_fnc = lambda r: np.exp(-Zc *r) + np.exp(-Za * r)
+    if method.lower() == 'exponential':
+        wght_fnc = lambda r: np.exp(-Zc *r) + np.exp(-Za * r)
+
+    elif method.lower() == 'wkb':
+        Vc_fnc  = lambda r: -Zc / np.sqrt(r**2 + 1.0e-2)
+        wght_fnc = lambda r: np.sqrt(2.0 * np.abs(Vc_fnc(r)))
+    else:
+        raise ValueError(f"Unknown method '{method}' for optimizing elements.")
+
     wght_fnc_r = lambda r, y, L: wght_fnc(Rmax - r)
-
     xk, wk = adaptive_runge_kutta_23(wght_fnc_r, 0.0, 0.0, Rmax,
-                                   h_min, h_max, tol, arg=Rmax)
+                                    h_min, h_max, tol, arg=Rmax)
     grid = np.flip(Rmax - xk)
 
     return grid
