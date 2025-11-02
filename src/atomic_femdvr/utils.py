@@ -1,8 +1,9 @@
+import numpy as np
 import matplotlib.pyplot as plt
 
 
 #==================================================================
-def PrintTime(tic: float, toc: float, msg: str):
+def print_time(tic: float, toc: float, msg: str) -> None:
     """
     Print the elapsed time for a given operation.
     """
@@ -15,7 +16,7 @@ def PrintTime(tic: float, toc: float, msg: str):
         print(f"Time[{msg}] : {elapsed:.2f} s")
 #==================================================================
 #==================================================================
-def GetOrbitalLabel(n: int, l: int) -> str:
+def get_orbital_label(n: int, l: int) -> str:
     """
     Get the orbital label for a given principal quantum number n and angular momentum quantum number l.
     """
@@ -28,7 +29,7 @@ def GetOrbitalLabel(n: int, l: int) -> str:
     else:
         return f"{nq}l{l}"  # Fallback for higher angular momentum states
 #==================================================================
-def PrintEigenvalues(lmax: int, eigenvalues, energy_shifts=None):
+def print_eigenvalues(lmax: int, eigenvalues: dict, energy_shifts: list = None) -> None:
     """
     Print the eigenvalues for each angular momentum quantum number.
     """
@@ -46,7 +47,7 @@ def PrintEigenvalues(lmax: int, eigenvalues, energy_shifts=None):
             print("  No bound states found.")
         else:
             for n in range(n_bound):
-                orb = GetOrbitalLabel(n, l)
+                orb = get_orbital_label(n, l)
                 print(f"  E({orb}) = {Hr_to_eV * eps_bound[n]:.6f} eV")
 
         if energy_shifts is not None:
@@ -54,7 +55,7 @@ def PrintEigenvalues(lmax: int, eigenvalues, energy_shifts=None):
                 print(f"  Energy shift = {Hr_to_eV * energy_shifts[l]:.6f} eV")
     print(40 * '-')
 #==================================================================
-def PlotWavefunctions(r_grid, psi, lmax: int, eigenvalues):
+def plot_wavefunctions(r_grid: np.ndarray, psi: np.ndarray, lmax: int, eigenvalues: dict) -> None:
     """
     Plot the wavefunctions for each angular momentum quantum number.
     """
@@ -69,7 +70,7 @@ def PlotWavefunctions(r_grid, psi, lmax: int, eigenvalues):
         n_bound = len(eps_bound)
 
         for n in range(n_bound):
-            orb = GetOrbitalLabel(n, l)
+            orb = get_orbital_label(n, l)
             ax[l].plot(r_grid, psi[l, n, :], label=orb)
 
         ax[l].legend()

@@ -66,7 +66,7 @@ class DFTInput(BaseModel):
     xc_functional: str = "PBE"
     x_functional: str | None = "gga_x_pbe"
     c_functional: str | None = "gga_c_pbe"
-    alpha: float = 0.6
+    alpha_mix: float = 0.6
     alpha_x: float = 1.0
     max_iter: int = 100
     conv_tol: float = 1.0e-6

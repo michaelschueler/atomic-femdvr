@@ -1,14 +1,14 @@
 import numpy as np
 
 from atomic_femdvr.legendre import Legendre
-from atomic_femdvr.legendre_integrals import GetLegendreIntegrals
+from atomic_femdvr.legendre_integrals import get_legendre_integrals
 
 
 #=================================================================
 class FEDVR_Basis:
 	"""docstring for FEDVR_Basis"""
 
-	def __init__(self, ne, ng, xp, build_integrals=False):
+	def __init__(self, ne: int, ng: int, xp: list, build_integrals: bool = False):
 		self.ne = ne
 		self.ng = ng
 		self.xp = np.array(xp)
@@ -22,9 +22,9 @@ class FEDVR_Basis:
 
 		self.have_integrals = build_integrals
 		if self.have_integrals:
-			self.leg_integ = GetLegendreIntegrals(self.leg, self.xp)
+			self.leg_integ = get_legendre_integrals(self.leg, self.xp)
 	#------------------------------------------------------------
-	def GetGridpoints(self):
+	def get_gridpoints(self) -> np.ndarray:
 		ne = self.ne
 		ng = self.ng
 		xp = self.xp
@@ -35,7 +35,7 @@ class FEDVR_Basis:
 
 		return xg
 	#------------------------------------------------------------
-	def GetPsi_All(self,cff,cplx=False):
+	def get_psi_all(self, cff: np.ndarray, cplx: bool = False) -> np.ndarray:
 		ne = self.ne
 		ng = self.ng
 		nvec = cff.shape[1]
@@ -49,7 +49,7 @@ class FEDVR_Basis:
 			psi[:,i] = self.GetPsi(cff[:,i], cplx=cplx)
 		return psi
 	#------------------------------------------------------------
-	def GetPsi(self,cff,cplx=False):
+	def get_psi(self, cff: np.ndarray, cplx: bool = False) -> np.ndarray:
 		ne = self.ne
 		ng = self.ng
 		xp = self.xp
@@ -80,16 +80,16 @@ class FEDVR_Basis:
 
 		return psi
 	#------------------------------------------------------------
-	def GetOverlap(self, psi, phi):
+	def get_overlap(self, psi: np.ndarray, phi: np.ndarray) -> float:
 
-		cff_psi = self.GetCoeffs(psi, cplx=False)
-		cff_phi = self.GetCoeffs(phi, cplx=False)
+		cff_psi = self.get_coeffs(psi, cplx=False)
+		cff_phi = self.get_coeffs(phi, cplx=False)
 
 		overlap = np.dot(cff_psi, cff_phi)
 
 		return overlap
 	#------------------------------------------------------------
-	def GetCoeffs(self, psi, cplx=False):
+	def get_coeffs(self, psi: np.ndarray, cplx: bool = False) -> np.ndarray:
 		ne = self.ne
 		ng = self.ng
 		nb = ne*ng - 1
@@ -114,7 +114,7 @@ class FEDVR_Basis:
 
 		return cff2[0:nb]
 	#------------------------------------------------------------
-	def ToLinearGrid(self, psi, nx):
+	def to_linear_grid(self, psi: np.ndarray, nx: int) -> tuple[np.ndarray, np.ndarray]:
 
 		ne = self.ne
 		ng = self.ng
@@ -138,7 +138,7 @@ class FEDVR_Basis:
 
 		return grid, psi_grid
 	#------------------------------------------------------------
-	def Interpolate(self, psi, x):
+	def interpolate(self, psi: np.ndarray, x: np.ndarray) -> np.ndarray:
 		ne = self.ne
 		ng = self.ng
 
@@ -160,57 +160,7 @@ class FEDVR_Basis:
 
 		return psi_interp
 	#------------------------------------------------------------
-	def GenCompressed_KinEn(self):
-		ne = self.ne
-		ng = self.ng
-		xp = self.xp
-		w_i = self.leg.w_i
-
-		self.K_el_diag = np.zeros([ne,ng,ng])
-
-		for i1 in range(ne):
-			Li = xp[i1+1]-xp[i1]
-			self.K_el_diag[i1,1:ng,1:ng] = 0.5*self.tts[1:ng,1:ng,i1] / (0.5*Li * np.sqrt(w_i[1:ng,None]*w_i[None,1:ng]))
-
-		self.K_el_off = np.zeros([2,ne,ng])
-
-		for i1 in range(ne-1):
-			w1 = 0.5*(xp[i1+1]-xp[i1]) * w_i[ng] + 0.5*(xp[i1+2]-xp[i1+1]) * w_i[0]
-			w2 = 0.5*(xp[i1+1]-xp[i1]) * w_i
-			# T[i1,0,i1,1:ng]
-			self.K_el_off[0,i1,1:ng] = 0.5*self.tts[ng,1:ng,i1]/np.sqrt(w1*w2[1:ng])
-			# T[i1,0,i1+1,1:ng]
-			w2 = 0.5*(xp[i1+2]-xp[i1+1]) * w_i
-			self.K_el_off[1,i1,1:ng] = 0.5*self.tts[0,1:ng,i1+1]/np.sqrt(w1*w2[1:ng])
-
-			# T4[i1,1:ng,i1,0] = T4[i1,0,i1,1:ng]
-			# T4[i1+1,1:ng,i1,0] = T4[i1,0,i1+1,1:ng]
-
-		self.K_el_corner = np.zeros([3,ne])
-
-		for i1 in range(ne-1):
-			i2 = i1
-			w1 = 0.5*(xp[i1+1]-xp[i1]) * w_i[ng] + 0.5*(xp[i1+2]-xp[i1+1]) * w_i[0]
-			w2 = w1
-			# T[i1,0,i1,0]
-			self.K_el_corner[0,i1] = 0.5*(self.tts[ng,ng,i1] + self.tts[0,0,i1+1])/np.sqrt(w1*w2)
-
-			# T[i1,0,i1+1,0]
-			i2 = i1+1
-			if i2 <= ne-2:
-				w1 = 0.5*(xp[i1+1]-xp[i1]) * w_i[ng] + 0.5*(xp[i1+2]-xp[i1+1]) * w_i[0]
-				w2 = 0.5*(xp[i2+1]-xp[i2]) * w_i[ng] + 0.5*(xp[i2+2]-xp[i2+1]) * w_i[0]
-				self.K_el_corner[1,i1] = 0.5*self.tts[0,ng,i2] / np.sqrt(w1*w2)
-
-			# T[i1,0,ii-1,0]
-			i2 = i1 - 1
-			if i2 >= 0:
-				w1 = 0.5*(xp[i1+1]-xp[i1]) * w_i[ng] + 0.5*(xp[i1+2]-xp[i1+1]) * w_i[0]
-				w2 = 0.5*(xp[i2+1]-xp[i2]) * w_i[ng] + 0.5*(xp[i2+2]-xp[i2+1]) * w_i[0]
-				self.K_el_corner[2,i1] = 0.5*self.tts[ng,0,i1] / 	np.sqrt(w1*w2)
-
-	#------------------------------------------------------------
-	def Deriv_Matrix_full(self, n=2, cplx=False):
+	def get_deriv_matrix_full(self, n: int = 2, cplx: bool = False) -> np.ndarray:
 		ne = self.ne
 		ng = self.ng
 		xp = self.xp
@@ -254,21 +204,6 @@ class FEDVR_Basis:
 				w1 = 0.5*(xp[i1+1]-xp[i1]) * w_i
 				T4[i1, 1:ng, i2, 0] = de[1:ng, 0, i1] / np.sqrt(w1[1:ng] * w2)
 
-			# i2 = i1
-			# if i1 < ne-1:
-			# 	w2 = 0.5*(xp[i2+1]-xp[i2]) * w_i[-1] + 0.5*(xp[i2+2]-xp[i2+1]) * w_i[0]
-			# 	T4[i1, 1:ng, i2, 0] = de[1:ng, 0, i2] / np.sqrt(w1[1:ng] * w2)
-
-			# i2 = i1 - 1
-			# if i2 >= 0:
-			# 	w2 = 0.5*(xp[i2+1]-xp[i2]) * w_i[-1] + 0.5*(xp[i2+2]-xp[i2+1]) * w_i[0]
-			# 	T4[i1, 1:ng, i2, 0] = de[1:ng, 0, i1] / np.sqrt(w1[1:ng] * w2)
-
-			# w2 = 0.5*(xp[i1+2]-xp[i1+1]) * w_i
-			# T4[i1,0,i1+1,1:ng] = de[0,1:ng,i1+1]/np.sqrt(w1*w2[1:ng])
-			# T4[i1,1:ng,i1,0] = T4[i1,0,i1,1:ng]
-			# T4[i1+1,1:ng,i1,0] = T4[i1,0,i1+1,1:ng]
-
 		for i1 in range(ne-1):
 			i2 = i1
 			w1 = 0.5*(xp[i1+1]-xp[i1]) * w_i[ng] + 0.5*(xp[i1+2]-xp[i1+1]) * w_i[0]
@@ -289,7 +224,7 @@ class FEDVR_Basis:
 
 		return T4
 	#------------------------------------------------------------
-	def PotEn_Matrix(self,Vfunc):
+	def get_potential_from_func(self, Vfunc: callable) -> np.ndarray:
 		ne = self.ne
 		ng = self.ng
 		xp = self.xp
@@ -317,7 +252,7 @@ class FEDVR_Basis:
 
 		return Vvec
 	#------------------------------------------------------------
-	def PotEn_Matrix_grid(self, V_grid):
+	def get_potential_from_grid(self, V_grid: np.ndarray) -> np.ndarray:
 		ne = self.ne
 		ng = self.ng
 		xp = self.xp
@@ -335,15 +270,12 @@ class FEDVR_Basis:
 			for m in range(1,ng):
 				V4[i,m] = V_grid[i*ng+m]
 
-		# for i1 in range(ne):
-		# 	V4[i1, :] = V_grid[i1 * ng: (i1+1) * ng]
-
 		V2 = np.reshape(np.flip(V4, axis=1), [ne*ng])
 		Vvec = V2[0:nb]
 
 		return Vvec
 	#------------------------------------------------------------
-	def Get_coeffs(self, f_fnc):
+	def get_coeffs_from_func(self, f_fnc: callable) -> np.ndarray:
 		ne = self.ne
 		ng = self.ng
 		xp = self.xp
@@ -372,7 +304,7 @@ class FEDVR_Basis:
 
 		return f_vec
 #------------------------------------------------------------
-	def Get_coeffs_batch(self, ndim, f_fnc):
+	def get_coeffs_from_func_batch(self, ndim: int, f_fnc: callable) -> np.ndarray:
 		ne = self.ne
 		ng = self.ng
 		xp = self.xp
@@ -404,31 +336,44 @@ class FEDVR_Basis:
 		# f_vec = f2[0:ndim, 0:nb]
 
 		return f_vec
-	# --------------------------------
-	def KinEn_Matrix_zerobound(self):
+	#------------------------------------------------------------
+	def get_kinetic_energy_matrix(self, alpha: float = 0.0, beta: float = 0.0) -> np.ndarray:
+
+		if alpha == 0.0 and  beta == 0.0:
+			Tmat = self.__get_kinetic_energy_matrix_zerobound()
+			return Tmat
+		else:
+			Tmat, Rvec = self.__get_kinetic_energy_matrix_asymbound(alpha, beta)
+			return Tmat, Rvec
+	#------------------------------------------------------------
+	def get_deriv_matrix(self) -> np.ndarray:
+		Dmat = self.__get_deriv_matrix_zerobound()
+		return Dmat
+	#------------------------------------------------------------
+	def __get_kinetic_energy_matrix_zerobound(self):
 		ne = self.ne
 		ng = self.ng
 		nb = ne*ng-1
 
-		T4 = self.Deriv_Matrix_full(n=2, cplx=False)
+		T4 = self.get_deriv_matrix_full(n=2, cplx=False)
 		T2 = np.reshape(np.flip(T4, axis=(1,3)), [ne*ng,ne*ng])
 		Tmat = T2[0:nb,0:nb]
 
 		return Tmat
 	#------------------------------------------------------------
-	def GetDeriv_Matrix_zerobound(self):
+	def __get_deriv_matrix_zerobound(self):
 		ne = self.ne
 		ng = self.ng
 		nb = ne*ng-1
 
-		T4 = self.Deriv_Matrix_full(n=1, cplx=False)
+		T4 = self.get_deriv_matrix_full(n=1, cplx=False)
 		T2 = np.reshape(np.flip(T4, axis=(1,3)), [ne*ng,ne*ng])
 		# T2 = np.reshape(T4, [ne*ng,ne*ng])
 		Dmat = T2[0:nb,0:nb]
 
 		return Dmat
 	#------------------------------------------------------------
-	def KinEn_Matrix_asybound(self,alpha,beta):
+	def __get_kinetic_energy_matrix_asymbound(self, alpha: float, beta: float) -> np.ndarray:
 		ne = self.ne
 		ng = self.ng
 		xp = self.xp

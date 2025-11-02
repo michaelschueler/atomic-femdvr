@@ -3,7 +3,7 @@ from scipy.interpolate import UnivariateSpline, interp1d
 
 
 #===================================================================
-def fit_inverse_power_potential(r_vals, V_vals, N):
+def fit_inverse_power_potential(r_vals: np.ndarray, V_vals: np.ndarray, N: int) -> np.ndarray:
     """
     Fits V(r) ≈ sum_{n=1}^N A_n / r^n
     """
@@ -18,7 +18,7 @@ def fit_inverse_power_potential(r_vals, V_vals, N):
 
     return coeffs
 #===================================================================
-def InterpolatePotential(rs, Vs, r_new):
+def interpolate_potential(rs: np.ndarray, Vs: np.ndarray, r_new: np.ndarray) -> np.ndarray:
     """
     Interpolates the potential V(r) at a new radius r_new
     using the provided radial points rs and potential values Vs.
@@ -42,7 +42,7 @@ def InterpolatePotential(rs, Vs, r_new):
 
     return V_new
 #===================================================================
-def InterpolateDensity(rs, rho, r_new):
+def interpolate_density(rs: np.ndarray, rho: np.ndarray, r_new: np.ndarray) -> np.ndarray:
     """
     Interpolates the charge density rho at new radial points r_new
     using the provided radial points rs and density values rho.

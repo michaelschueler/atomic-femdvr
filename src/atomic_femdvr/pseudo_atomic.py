@@ -15,8 +15,8 @@ from atomic_femdvr.input import (
     SysParamsInput,
     solver_input_factory,
 )
-from atomic_femdvr.PseudoAtomDFT import PseudoAtomDFT
-from atomic_femdvr.utils import PlotWavefunctions, PrintEigenvalues, PrintTime
+from atomic_femdvr.pseudo_atom_dft import PseudoAtomDFT
+from atomic_femdvr.utils import plot_wavefunctions, print_eigenvalues, print_time
 
 if TYPE_CHECKING:
     # Stub for type checking
@@ -34,7 +34,7 @@ class PseudoAtomicInput(BaseModel):
     projector: ProjectorInput = Field(default_factory=lambda: ProjectorInput())
 
 #==================================================================
-def ReadInput(fname: str):
+def read_input(fname: str):
     """
     Read input parameters from a JSON file.
     """
@@ -61,7 +61,8 @@ def ReadInput(fname: str):
 
 
 #==================================================================
-def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...], plot: bool = False, export_dir: str | None = None) -> dict[str, dict[str, list[float]]]:
+def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...], 
+                        plot: bool = False, export_dir: str | None = None) -> dict[str, dict[str, list[float]]]:
     """Solve the pseudo-atomic problem."""
     print(60 * '*')
     print("Pseudo-atomic Schrödinger Equation Solver".center(60))
@@ -72,7 +73,7 @@ def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...], plot
     tic = perf_counter()
     pseudo_atom = PseudoAtomDFT(inp.pseudo_config, inp.sysparams, inp.solver, inp.dft)
     toc = perf_counter()
-    PrintTime(tic, toc, "Initializing PseudoAtomDFT")
+    print_time(tic, toc, "Initializing PseudoAtomDFT")
     print("")
 
     print(f"number of elements: {len(pseudo_atom.r_elements) - 1}")
@@ -80,12 +81,12 @@ def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...], plot
 
     # Read UPF file
     tic = perf_counter()
-    pseudo_atom.ReadUPF(read_density=True, read_potential=True)
+    pseudo_atom.read_upf(read_density=True, read_potential=True)
     toc = perf_counter()
-    PrintTime(tic, toc, "Reading UPF file")
+    print_time(tic, toc, "Reading UPF file")
     print("")
 
-    restart_success = pseudo_atom.ReadDensityPotential()
+    restart_success = pseudo_atom.read_density_potential()
     if restart_success:
         print("Restarting from saved density and potential.\n")
     else:
@@ -100,7 +101,8 @@ def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...], plot
 
         tic = perf_counter()
         if inp.dft.max_iter > 0:
-            num_iter, err = pseudo_atom.KS_SelfConsistency(max_iter=inp.dft.max_iter, tol=inp.dft.conv_tol, alpha=inp.dft.alpha)
+            num_iter, err = pseudo_atom.ks_self_consistency(max_iter=inp.dft.max_iter, tol=inp.dft.conv_tol,
+                                                             alpha_mix=inp.dft.alpha_mix)
 
             if err < inp.dft.conv_tol:
                 print(f"Self-consistency converged in {num_iter} iterations with error: {err:.2e}")
@@ -110,19 +112,19 @@ def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...], plot
             print("Skipping self-consistency loop as max_iter is set to 0.")
 
         toc = perf_counter()
-        PrintTime(tic, toc, "SCF")
+        print_time(tic, toc, "SCF")
 
-        eigenvalues, psi = pseudo_atom.GetBoundStates()
+        eigenvalues, psi = pseudo_atom.get_bound_states()
         all_eigenvalues['scf'] = eigenvalues
 
         assert pseudo_atom.upf is not None
 
-        PrintEigenvalues(int(pseudo_atom.upf.lmax), eigenvalues)
+        print_eigenvalues(int(pseudo_atom.upf.lmax), eigenvalues)
 
-        pseudo_atom.SaveDensityPotential()
+        pseudo_atom.save_density_potential()
 
         if plot:
-            PlotWavefunctions(pseudo_atom.grid, psi, int(pseudo_atom.upf.lmax), eigenvalues)
+            plot_wavefunctions(pseudo_atom.grid, psi, int(pseudo_atom.upf.lmax), eigenvalues)
 
         scf_done = True
 
@@ -132,9 +134,9 @@ def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...], plot
             sys.exit(2)
 
         tic = perf_counter()
-        Q_opt = pseudo_atom.OptimizeSoftCoul(inp.confinement)
+        Q_opt = pseudo_atom.optimize_soft_coul(inp.confinement)
         toc = perf_counter()
-        PrintTime(tic, toc, "Optimizing Soft Coulomb Confinement")
+        print_time(tic, toc, "Optimizing Soft Coulomb Confinement")
         print("")
         print(f"Optimized soft Coulomb confinement parameter Q: {Q_opt:.4f}\n")
         inp.confinement.softcoul_charge = Q_opt
@@ -145,16 +147,20 @@ def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...], plot
             sys.exit(2)
 
         tic = perf_counter()
-        energy_shifts, eigenvalues, psi = pseudo_atom.GetStatesEnergyShift(inp.sysparams.lmax, inp.sysparams.nmax, confinement=inp.confinement)
+        energy_shifts, eigenvalues, psi = pseudo_atom.get_states_energy_shift(
+            inp.sysparams.lmax, 
+            inp.sysparams.nmax, 
+            confinement=inp.confinement)
+        
         toc = perf_counter()
-        PrintTime(tic, toc, "Non-SCF Calculation")
+        print_time(tic, toc, "Non-SCF Calculation")
         print("")
 
-        PrintEigenvalues(inp.sysparams.lmax, eigenvalues, energy_shifts=energy_shifts)
+        print_eigenvalues(inp.sysparams.lmax, eigenvalues, energy_shifts=energy_shifts)
         all_eigenvalues['nscf'] = eigenvalues
 
         if plot:
-            PlotWavefunctions(pseudo_atom.grid, psi, inp.sysparams.lmax, eigenvalues)
+            plot_wavefunctions(pseudo_atom.grid, psi, inp.sysparams.lmax, eigenvalues)
 
         nscf_done = True
 
@@ -164,12 +170,13 @@ def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...], plot
             sys.exit(2)
 
         tic = perf_counter()
-        pseudo_atom.ExportProjector(inp.sysparams.lmax, inp.sysparams.nmax, psi, inp.confinement, export_dir, nr=inp.projector.nr, rmin=inp.projector.rmin)
+        pseudo_atom.export_projector(inp.sysparams.lmax, inp.sysparams.nmax, psi, inp.confinement, 
+                                    export_dir, nr=inp.projector.nr, rmin=inp.projector.rmin)
         toc = perf_counter()
-        PrintTime(tic, toc, "Exporting Projectors")
+        print_time(tic, toc, "Exporting Projectors")
 
     toc = perf_counter()
-    PrintTime(tic, toc, "Total")
+    print_time(tic, toc, "Total")
     print(60 * '*')
 
     return all_eigenvalues

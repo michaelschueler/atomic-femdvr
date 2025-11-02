@@ -4,7 +4,7 @@ from typing import TYPE_CHECKING
 import numpy as np
 from scipy.interpolate import UnivariateSpline
 
-from atomic_femdvr.adaptive_elements import OptimizeElements
+from atomic_femdvr.adaptive_elements import optimize_elements
 from atomic_femdvr.input import (
     BaseModel,
     EnergyUnit,
@@ -13,7 +13,7 @@ from atomic_femdvr.input import (
     solver_input_factory,
 )
 from atomic_femdvr.SchrodingerSolver import SolveNR, SolveSR, SolveZORA
-from atomic_femdvr.utils import PrintTime
+from atomic_femdvr.utils import print_time
 
 if TYPE_CHECKING:
     # Stub for type checking
@@ -60,9 +60,9 @@ def solve_atomic(inp: AtomicInput):
     solver.Rmax = solver.Rmax or Rmax_
 
     tic = perf_counter()
-    r_elements = OptimizeElements(Zc, solver.h_min, solver.h_max, solver.Rmax, solver.tol)
+    r_elements = optimize_elements(Zc, solver.h_min, solver.h_max, solver.Rmax, solver.tol)
     toc = perf_counter()
-    PrintTime(tic, toc, "Optimize radial elements")
+    print_time(tic, toc, "Optimize radial elements")
     print("\n")
 
     ne = len(r_elements) - 1  # Number of elements
@@ -89,7 +89,7 @@ def solve_atomic(inp: AtomicInput):
             eps[l, :nmax], r_grid, psi[l, :nmax, :] = SolveSR(r_elements, Vpot_fnc, gradVpot_fnc, l,
                                                               eps_guess, solver.ng)
     toc = perf_counter()
-    PrintTime(tic, toc, "Schrödinger equation")
+    print_time(tic, toc, "Schrödinger equation")
     print("\n")
 
     eigenvalues: dict[str, list] = {}

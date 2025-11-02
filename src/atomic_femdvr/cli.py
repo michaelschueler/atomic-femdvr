@@ -20,12 +20,14 @@ import click
 
 from atomic_femdvr.atomic import AtomicInput, solve_atomic
 from atomic_femdvr.pseudo_atomic import PseudoAtomicInput, solve_pseudo_atomic
-from atomic_femdvr.utils import PlotWavefunctions, PrintEigenvalues, PrintTime
+from atomic_femdvr.utils import plot_wavefunctions, print_eigenvalues, print_time
+from atomic_femdvr.solver_test import solver_suite
 from atomic_femdvr.version import get_version
 
 __all__ = [
     "atomic",
-    "pseudoatomic"
+    "pseudoatomic",
+    "iterative"
 ]
 
 @click.group()
@@ -70,6 +72,15 @@ def pseudoatomic(input_file: str, task: tuple[str, ...], plot: bool, export_dir:
     inp = PseudoAtomicInput(**data)
 
     solve_pseudo_atomic(inp, task, plot, export_dir)
+
+
+@main.command()
+@click.option("--plot", is_flag=True, help="Plot the results")
+def iterative(plot: bool) -> None:
+
+
+    solver_suite(plot)
+
 
 if __name__ == "__main__":
     main()

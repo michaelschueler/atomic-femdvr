@@ -6,7 +6,7 @@ from atomic_femdvr.legendre import Legendre
 
 
 #===================================================================
-def gen_btensor_ode(N):
+def gen_btensor_ode(N:int) -> np.ndarray:
 
     B_inn = np.zeros([N, N, N])
 
@@ -26,7 +26,7 @@ def gen_btensor_ode(N):
     y = sol.y.T
     return y.reshape([N, N, N])
 #===================================================================
-def gen_bvector_ode(N):
+def gen_bvector_ode(N:int) -> np.ndarray:
 
     B_in = np.zeros([N, N])
 
@@ -46,7 +46,7 @@ def gen_bvector_ode(N):
     y = sol.y.T
     return y
 #===================================================================
-def GetLegendreIntegrals(leg:Legendre, xp:np.ndarray):
+def get_legendre_integrals(leg:Legendre, xp:np.ndarray) -> np.ndarray:
 
     B_in = gen_bvector_ode(leg.N)
 

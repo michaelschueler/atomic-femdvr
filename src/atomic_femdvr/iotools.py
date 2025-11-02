@@ -4,7 +4,7 @@ import numpy as np
 
 
 #==================================================================
-def ReadPotential(sysparams):
+def read_potential(sysparams):
 
     # Read the potential. If file_pot is specified, read in the total potential,
     # otherwise read the exchange-correlation potential from file_vhx
