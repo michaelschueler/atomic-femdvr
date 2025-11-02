@@ -29,6 +29,8 @@ def charge_density(basis:FEDVR_Basis, nnodes_chi:np.ndarray, lchi:np.ndarray,
 
     return rho
 #===================================================================
+
+#===================================================================
 def hartree_potential(basis:FEDVR_Basis, rho:np.ndarray) -> np.ndarray:
 
     ne = basis.ne

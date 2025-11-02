@@ -23,6 +23,7 @@ class SysParamsInput(BaseModel):
     file_pot: FilePath | None = None
     file_upf: FilePath | None = None
     file_vhx: FilePath | None = None
+    file_rho: FilePath | None = None
     pot_columns: tuple[int, int] = Field(default=(0, 4))
     pot_energy_unit: EnergyUnit = Field(default=EnergyUnit.RYDBERG)
     lmax: int = Field(default=0, ge=0)
@@ -42,10 +43,15 @@ class SysParamsInput(BaseModel):
         else:
             raise ValueError(f"Invalid value for pot_energy_unit: {v}")
 
+class ElectronsInput(BaseModel):
+    Z: float = Field(default=1.0, gt=0)
+    elect_config: dict
+
 class SolverInput(BaseModel):
     method: Literal["non-relativistic", "zora", "scalar-relativistic"] = Field(default="non-relativistic")
-    h_min: float
-    h_max: float
+    eigensolver: Literal["full", "banded"] = Field(default="full")
+    h_min: float = Field(default=0.5, gt=0)
+    h_max: float = Field(default=4.0, gt=0)
     Rmax: float | None = Field(default=None, gt=0)
     tol: float = Field(default=1.0e-3, gt=0)
     ng: int = Field(default=8, ge=1)
@@ -66,6 +72,8 @@ class DFTInput(BaseModel):
     xc_functional: str = "PBE"
     x_functional: str | None = "gga_x_pbe"
     c_functional: str | None = "gga_c_pbe"
+    mixing_scheme: Literal["linear", "diis"] = Field(default="linear")
+    diis_history: int = Field(default=5, ge=2)
     alpha_mix: float = 0.6
     alpha_x: float = 1.0
     max_iter: int = 100
