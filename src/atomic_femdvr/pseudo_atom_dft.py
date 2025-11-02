@@ -44,7 +44,8 @@ class PseudoAtomDFT:
 
         # set up the basis
         ne = len(self.r_elements) - 1
-        self.basis = FEDVR_Basis(ne, solver.ng, self.r_elements, build_integrals=True)
+        self.basis = FEDVR_Basis(ne, solver.ng, self.r_elements, 
+                                build_derivatives=True, build_integrals=True)
 
         self.grid = self.basis.GetGridpoints()
 
