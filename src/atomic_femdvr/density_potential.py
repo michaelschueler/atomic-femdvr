@@ -1,4 +1,5 @@
 import numpy as np
+from scipy.integrate import simpson
 
 from atomic_femdvr.femdvr import FEDVR_Basis
 from atomic_femdvr.xc_functionals import gga_functional
@@ -75,9 +76,11 @@ def exchange_correlation_potential(basis:FEDVR_Basis, rho:np.ndarray,
     ng = basis.ng
 
     if len(rho_nlcc) == len(rho):
-        rho_ = rho + rho_nlcc
+        rho_ = rho.copy() + rho_nlcc.copy()
     else:
-        rho_ = rho
+        rho_ = rho.copy()
+
+    rho_ /= 4.0 * np.pi
 
     drho_dr = np.zeros_like(rho_)
     for i in range(ne):
@@ -106,24 +109,30 @@ def exchange_correlation_potential(basis:FEDVR_Basis, rho:np.ndarray,
         except ImportError:
             raise ImportError("pylibxc is not installed. Please install it to use the libxc driver.")
 
-        input_data = {"rho": rho_, "sigma": sigma}
+        rho_libxc = np.reshape(rho_, [len(rho_), 1])
+        sigma_libxc = np.reshape(sigma, [len(sigma), 1])
+        input_data = {"rho": rho_libxc, "sigma": sigma_libxc}
+
+        
 
         if len(xc_functional) > 0:
             xc_func = pylibxc.LibXCFunctional(xc_functional.lower(), "unpolarized")
             output = xc_func.compute(input_data)
-            V_xc_grid = np.array(output["vrho"]).flatten()
+            V_xc_grid = output["vrho"].reshape(-1)
         else:
             x_func = pylibxc.LibXCFunctional(x_functional.lower(), "unpolarized")
-            output = x_func.compute(input_data)
-            V_x = np.array(output["vrho"]).flatten()
+            output_x = x_func.compute(input_data)
+            V_x = output_x["vrho"].reshape(-1)
 
             c_func = pylibxc.LibXCFunctional(c_functional.lower(), "unpolarized")
-            output = c_func.compute(input_data)
-            V_c = np.array(output["vrho"]).flatten()
+            output_c = c_func.compute(input_data)
+            V_c = np.array(output_c["vrho"]).flatten()
 
             V_xc_grid = alpha_x * V_x + V_c
     else:
         raise ValueError(f"Unsupported driver: {driver}. Available drivers: 'internal', 'pylibxc'.")
+
+    V_xc_grid *= 2.0
 
     return V_xc_grid
 #===================================================================

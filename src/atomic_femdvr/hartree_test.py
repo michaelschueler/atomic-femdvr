@@ -148,6 +148,58 @@ def hartree_test(plot: bool) -> None:
         plt.show()
 
 #==================================================================
+def hartree_benchmark(file_rho:str, file_vh: str) -> None:
+
+    rho_data = np.loadtxt(file_rho)
+    vh_data = np.loadtxt(file_vh)
+
+    rs_rho = rho_data[:, 0]
+    rho = rho_data[:, 1]
+    rho_spl = UnivariateSpline(rs_rho, rho / rs_rho**2, s=0, k=3, ext=0)
+
+    rs_vh = vh_data[:, 0]
+    V_Ha_ref = vh_data[:, 1]
+    V_Ha_ref *= 0.5  # Convert from Ry to Hartree
+
+    Zc = simpson(rho, x=rs_rho)
+    print(f"Total charge from rho: {Zc:.6f} a.u.")
+
+    Z = 1.0
+    ng = 16  # Number of grid points per element
+
+    elem_method = 'exponential'
+    elem_tol = 1e-1
+
+    Rmax = 80.0 / Z**(1/3)
+    h_min = 0.25 / Z**(1/3)
+    h_max = 20.0 / Z**(1/3)
+    r_elements = optimize_elements(Z, h_min, h_max, Rmax, tol=elem_tol, Za=1.0,
+                                  method=elem_method)
+
+    ne = len(r_elements) - 1
+    basis = FEDVR_Basis(ne, ng, r_elements, build_derivatives=True,
+                        build_integrals=True)
+    grid = basis.get_gridpoints()
+
+    rho_grid = rho_spl(grid)
+
+    V_Ha_femdvr = hartree_potential(basis, rho_grid)
+
+    error = np.max(np.abs(V_Ha_femdvr - np.interp(grid, rs_vh, V_Ha_ref)))
+    print(f"Maximum error in Hartree potential: {error:.6e} a.u.")
+
+    fig, ax = plt.subplots(2, 1, sharex=True)
+    ax[0].plot(rs_rho, rho, label='Charge Density')
+    ax[1].plot(rs_vh, V_Ha_ref, label='Reference Hartree Potential', color='black')
+    ax[1].scatter(grid, V_Ha_femdvr, edgecolor='crimson', facecolor='none', label='FEMDVR Hartree Potential')
+
+    for i in range(len(r_elements)):
+        ax[1].axvline(x=r_elements[i], c='k', ls='--')
+    ax[-1].set_xlabel('r (a.u.)')
+    ax[0].set_ylabel(r"$\rho$")
+    ax[1].set_ylabel(r"$V_H $ (a.u.)")
+    ax[1].legend()
+    plt.show()
 
 
 

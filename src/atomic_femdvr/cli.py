@@ -24,7 +24,8 @@ from atomic_femdvr.version import get_version
 
 from atomic_femdvr.solver_test import solver_test
 from atomic_femdvr.wavefunction_test import wfc_test
-from atomic_femdvr.hartree_test import hartree_test
+from atomic_femdvr.hartree_test import hartree_test, hartree_benchmark
+from atomic_femdvr.vxc_test import vxc_benchmark
 
 __all__ = [
     "atomic",
@@ -70,12 +71,16 @@ def pseudoatomic(input_file: str, task: tuple[str, ...], plot: bool, export_dir:
 
 
 @main.command()
+@click.argument("file_rho", type=click.Path(exists=True))
+@click.argument("file_vh", type=click.Path(exists=True))
 @click.option("--plot", is_flag=True, help="Plot the results")
-def debug(plot: bool) -> None:
+def debug(file_rho: str, file_vh: str, plot: bool) -> None:
 
 
     # wfc_test(plot)
-    hartree_test(plot)
+    # hartree_test(plot)
+    hartree_benchmark(file_rho, file_vh)
+    # vxc_benchmark(file_rho, file_vh)
 
 
 if __name__ == "__main__":
