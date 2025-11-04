@@ -44,7 +44,7 @@ class PseudoAtomDFT:
 
         # set up the basis
         ne = len(self.r_elements) - 1
-        self.basis = FEDVR_Basis(ne, solver.ng, self.r_elements, 
+        self.basis = FEDVR_Basis(ne, solver.ng, self.r_elements,
                                 build_derivatives=True, build_integrals=True)
 
         self.grid = self.basis.GetGridpoints()
@@ -98,7 +98,7 @@ class PseudoAtomDFT:
         self.beta_grid = interp(self.grid)
 
     #.......................................................
-    def get_effective_potential(self, rho_grid:np.ndarray | None=None, 
+    def get_effective_potential(self, rho_grid:np.ndarray | None=None,
                                 rho_nlcc:np.ndarray | None=None) -> np.ndarray:
         if rho_grid is None:
             rho_grid = self.rho_grid
@@ -119,7 +119,7 @@ class PseudoAtomDFT:
         V_eff = self.Vloc_grid + V_Ha + V_xc
         return V_eff
     #.......................................................
-    def solve_schrodinger(self, Veff: np.ndarray, lmax: int, nmax: int, 
+    def solve_schrodinger(self, Veff: np.ndarray, lmax: int, nmax: int,
                           Vconf: np.ndarray | None = None, lmin: int = 0):
 
         eps, psi = kohn_sham.solve_schrodinger_pseudo(self.basis, Veff, self.upf.lll, self.upf.dion,

@@ -1,11 +1,13 @@
 """Replacement for UPFInterface using the upf-tools python library."""
 
-from typing_extensions import Self
-from upf_tools import UPFDict
 from pathlib import Path
-from pydantic import BaseModel, model_validator, field_validator, ConfigDict
+
 import numpy as np
 import numpy.typing as npt
+from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+from typing_extensions import Self
+from upf_tools import UPFDict
+
 
 class UPFInterface(BaseModel):
     zp: float
@@ -52,13 +54,13 @@ class UPFInterface(BaseModel):
             if array_value.shape != desired_shape:
                 raise ValueError(f"Array '{array_name}' has incorrect shape: {array_value.shape}, expected {desired_shape}")
         return self
-    
+
     @field_validator("r", "oc", "chi", "dion", "vloc", "beta", mode="before")
     @classmethod
     def ensure_numpy_array_float64(cls, v) -> npt.NDArray[np.float64]:
         """Ensure that the input is a numpy array."""
         return np.array(v, dtype=np.float64)
-    
+
     @field_validator("nchi", "lchi", "lll", "kbeta", mode="before")
     @classmethod
     def ensure_numpy_array_int32(cls, v) -> npt.NDArray[np.int32]:
@@ -72,7 +74,7 @@ class UPFInterface(BaseModel):
 
         dij_1d = upf_dict['nonlocal']['dij']
         nbeta = upf_dict['header']['number_of_proj']
-        assert dij_1d.size == nbeta**2 
+        assert dij_1d.size == nbeta**2
         dij = dij_1d.reshape((nbeta, nbeta))
 
         return cls(
@@ -108,4 +110,4 @@ class UPFInterface(BaseModel):
         for iwf in range(self.nwfc):
             rho[1:] += self.oc[iwf] * np.abs(self.chi[1:, iwf])**2 / self.r[1:]**2
         rho[0] = rho[1]
-        return rho 
+        return rho

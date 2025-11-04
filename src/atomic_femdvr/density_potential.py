@@ -12,7 +12,7 @@ def charge_density(basis:FEDVR_Basis, nnodes_chi:np.ndarray, lchi:np.ndarray,
     nmax = np.amax(nnodes_chi)
     nwf = len(occ)
 
-    grid = basis.GetGridpoints()
+    grid = basis.get_gridpoints()
     rho = np.zeros_like(grid)
 
     # get derivative at r=0
@@ -35,7 +35,7 @@ def hartree_potential(basis:FEDVR_Basis, rho:np.ndarray) -> np.ndarray:
 
     ne = basis.ne
     ng = basis.ng
-    grid = basis.GetGridpoints()
+    grid = basis.get_gridpoints()
 
     A_integ = np.zeros_like(grid)
     B_integ = np.zeros_like(grid)
@@ -66,11 +66,11 @@ def hartree_potential(basis:FEDVR_Basis, rho:np.ndarray) -> np.ndarray:
 #===================================================================
 def exchange_correlation_potential(basis:FEDVR_Basis, rho:np.ndarray,
                                    rho_nlcc:np.ndarray=np.array([]),
-                                   xc_functional:str='', x_functional:str='gga_x_pbe', 
+                                   xc_functional:str='', x_functional:str='gga_x_pbe',
                                    c_functional:str='gga_c_pbe',
                                    alpha_x:float=1.0, driver='internal') -> np.ndarray:
     """Computes the exchange-correlation potential using libxc"""
-    grid = basis.GetGridpoints()
+    grid = basis.get_gridpoints()
     ne = basis.ne
     ng = basis.ng
 

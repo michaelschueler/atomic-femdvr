@@ -269,6 +269,15 @@ class FEDVR_Basis:
 		Vvec = np.zeros(nb)
 		V4 = np.zeros([ne, ng])
 
+		# for i1 in range(ne-1):
+		# 	w1 = 0.5*(xp[i1+1]-xp[i1]) * w_i[ng]
+		# 	w2 = 0.5*(xp[i1+2]-xp[i1+1]) * w_i[0]
+
+		# 	V4[i1,0] = (V_grid[i1*ng + ng -1] * w1 + V_grid[(i1+1)*ng] * w2) / (w1 + w2)
+
+		# for i1 in range(ne):
+		# 	V4[i1,1:] = V_grid[i1*ng + 1 : i1*ng + ng]
+
 		for i1 in range(1,ne):
 			V4[i1-1,0] = V_grid[i1*ng]
 
@@ -359,7 +368,7 @@ class FEDVR_Basis:
 		nb = ne * ng - 1
 
 		# Determine the bandwidth
-		upper_bw = ng 
+		upper_bw = ng
 
 		Tmat_banded = np.zeros([upper_bw + 1, nb])
 

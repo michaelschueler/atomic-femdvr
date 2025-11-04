@@ -1,21 +1,22 @@
 import json
-import sys
 from time import perf_counter
-from typing import TYPE_CHECKING
 
 from pydantic import Field
 
+from atomic_femdvr.full_atom_dft import FullAtomDFT
 from atomic_femdvr.input import (
     BaseModel,
+    ControlInput,
     DFTInput,
     ElectronsInput,
     SolverInput,
-    SysParamsInput
+    SysParamsInput,
 )
-from atomic_femdvr.full_atom_dft import FullAtomDFT
 from atomic_femdvr.utils import plot_wavefunctions, print_eigenvalues, print_time
 
+
 class FullAtomicInput(BaseModel):
+    control: ControlInput
     sysparams: SysParamsInput
     solver: SolverInput
     dft: DFTInput = Field(default_factory=lambda: DFTInput())
@@ -28,6 +29,8 @@ def read_input(fname: str):
     """
     with open(fname) as f:
         data = json.load(f)
+
+    control = data.get('control', {})
 
     electrons = data.get('electrons', {})
     if not electrons:
@@ -43,13 +46,13 @@ def read_input(fname: str):
     dft = data.get('dft', {})
 
 
-    return sysparams, electrons, solver, dft
+    return control, sysparams, electrons, solver, dft
 #==================================================================
 
 
 #==================================================================
-def solve_atomic(inp: FullAtomicInput, task_list: tuple[str, ...], 
-                        plot: bool = False, export_dir: str | None = None) -> dict[str, dict[str, list[float]]]:
+def solve_atomic(inp: FullAtomicInput, task_list: tuple[str, ...],
+                        plot: bool = False, export_dir: str | None = None) -> None:
     """Solve the all-electrons atomic problem."""
     print(60 * '*')
     print("All-electrons Schrödinger Equation Solver".center(60))
@@ -58,7 +61,7 @@ def solve_atomic(inp: FullAtomicInput, task_list: tuple[str, ...],
 
     # Initialize the FullAtomDFT class
     tic = perf_counter()
-    atom = FullAtomDFT(inp.sysparams, inp.solver, inp.dft, inp.electrons)
+    atom = FullAtomDFT(inp.control, inp.sysparams, inp.electrons, inp.solver, inp.dft)
     toc = perf_counter()
     print_time(tic, toc, "Initializing FullAtomDFT")
     print("")
@@ -69,17 +72,22 @@ def solve_atomic(inp: FullAtomicInput, task_list: tuple[str, ...],
     print(40 * '.')
     print("electronic configuration".center(40))
     print(40 * '.')
-    for shell, occ in inp.electrons.elect_config.items():
-        print(f"  {shell:>5} : {occ:.2f}")
+    for ishell in range(atom.nshells):
+        print(f"  l = {atom.ll[ishell]}, nr = {atom.nrad[ishell]} : occ = {atom.occ[ishell]:.2f}")
     print(40 * '.')
-    print(f"number of grid points: {atom.num_electrons}\n")
+    print(f"number of electrons: {atom.num_electrons}\n")
 
+    tic = perf_counter()
     restart_success = atom.read_density_potential()
     if restart_success:
         print("Restarting from saved density and potential.\n")
     else:
         print("No saved density and potential found. Starting from scratch.\n")
 
+        atom.initialize_density()
+
+    toc = perf_counter()
+    print_time(tic, toc, "Initializing density")
 
     scf_done = False
     nscf_done = False
@@ -116,6 +124,4 @@ def solve_atomic(inp: FullAtomicInput, task_list: tuple[str, ...],
     toc = perf_counter()
     print_time(tic, toc, "Total")
     print(60 * '*')
-
-    return all_eigenvalues
 #==================================================================

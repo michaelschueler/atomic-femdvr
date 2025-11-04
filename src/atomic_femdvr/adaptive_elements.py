@@ -54,7 +54,7 @@ def adaptive_runge_kutta_23(f, y0, t0, t1, h_min, h_max, tol, arg=None):
 
     return np.array(t_values), np.array(y_values)
 #=================================================================
-def optimize_elements(Zc: float, h_min: float, h_max: float, Rmax: float, 
+def optimize_elements(Zc: float, h_min: float, h_max: float, Rmax: float,
                       tol: float = 1.0e-2, Za: float = 1.0,
                       method: str = 'exponential') -> np.ndarray:
 

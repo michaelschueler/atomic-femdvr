@@ -1,27 +1,26 @@
 import os
-import pickle
 
+import h5py
 import numpy as np
-from scipy.interpolate import interp1d
-
 
 import atomic_femdvr.density_potential as density_potential
 import atomic_femdvr.kohn_sham as kohn_sham
 from atomic_femdvr.adaptive_elements import optimize_elements
-from atomic_femdvr.femdvr import FEDVR_Basis
-from atomic_femdvr.input import (
-    DFTInput,
-    SolverInput,
-    SysParamsInput,
-    ElectronsInput
-)
-from atomic_femdvr.interp_tools import interpolate_density, interpolate_potential
+from atomic_femdvr.anderson import AndersonMixing
 from atomic_femdvr.diis import DIIS
+from atomic_femdvr.femdvr import FEDVR_Basis
+from atomic_femdvr.initial_density import get_slater_density
+from atomic_femdvr.input import ControlInput, DFTInput, ElectronsInput, SolverInput, SysParamsInput
+from atomic_femdvr.periodic_table import PeriodicTable
+
 
 #==========================================================================
 class FullAtomDFT:
     #.......................................................
-    def __init__(self, sysparams: SysParamsInput, electrons: ElectronsInput, solver: SolverInput, dft: DFTInput):
+    def __init__(self, control: ControlInput, sysparams: SysParamsInput,
+                 electrons: ElectronsInput, solver: SolverInput, dft: DFTInput):
+
+        self.control = control
         self.electrons = electrons
         self.sysparams = sysparams
         self.solver = solver
@@ -31,7 +30,18 @@ class FullAtomDFT:
 
         self.rho_grid = None
 
-        self.Z = self.electrons.Z
+
+        self.element = self.sysparams.element
+
+        periodic_table = PeriodicTable()
+        Z_ = float(periodic_table.get_atomic_number(self.element))
+        if self.electrons.Z == 0.0:
+            self.Z = Z_
+        else:
+            self.Z = self.electrons.Z
+
+        if np.abs(self.Z - Z_) / Z_ > 1.0e-5:
+            print(f"Warning: Specified Z = {self.electrons.Z} differs from atomic number of element {self.element} (Z = {Z_}). Using Z = {self.Z}.")
 
         # optimize elements
         solver.Rmax = solver.Rmax or 50 * (self.lmax + 1)
@@ -44,10 +54,10 @@ class FullAtomDFT:
 
         # set up the basis
         ne = len(self.r_elements) - 1
-        self.basis = FEDVR_Basis(ne, solver.ng, self.r_elements, 
+        self.basis = FEDVR_Basis(ne, solver.ng, self.r_elements,
                                 build_derivatives=True, build_integrals=True)
 
-        self.grid = self.basis.GetGridpoints()
+        self.grid = self.basis.get_gridpoints()
         self.num_grid = len(self.grid)
 
         self.V0_grid = np.zeros(self.num_grid, dtype=np.float64)
@@ -61,39 +71,58 @@ class FullAtomDFT:
         self.lmax = 0
 
         # check shell labels
-        shells = self.electrons.elect_config.keys()
-        for shell in shells:
-            l_char = shell[0].upper()
-            if l_char not in shell_labels:
-                raise ValueError(f"Invalid shell label: {shell}")
-
-        # check the occupation of each shell
         self.ll = []
-        self.nn = []
+        self.nrad = []
+        self.nprin = []
         self.occ = []
-        for shell in shells:
-            l_char = shell[0].upper()
+        for shell in self.electrons.configuration:
+            # split into principal quantum number and angular momentum
+            n_char = shell[0]
+            l_char = shell[1].upper()
+            occ_str = shell[2]
+
+            if l_char not in shell_labels:
+                raise ValueError(f"Invalid shell label {l_char} in configuration {shell}.")
+
+            try:
+                n = int(n_char)
+            except ValueError:
+                raise ValueError(f"Invalid principal quantum number {n_char} in configuration {shell}.")
+
+            try:
+                occ = float(occ_str)
+            except ValueError:
+                raise ValueError(f"Invalid occupation number {occ_str} in configuration {shell}.")
+
             l = shell_labels.index(l_char)
-        
             self.ll.append(l)
-            n_list = np.arange(0, len(self.electrons.elect_config[shell]), dtype=int)
-            self.nn.extend(n_list.tolist())
+
+            nrad = n - l - 1
+            if nrad < 0:
+                raise ValueError(f"Invalid shell {shell}: n must be greater than l.")
+            self.nrad.append(nrad)
+            self.nprin.append(n)
 
             max_occ = 2 * (2 * l + 1)
-            occ_list = self.electrons.elect_config[shell]
-            self.nrad_vals[l] = len(occ_list)
-
-            for occ in occ_list:
-                if occ < 0.0 or occ > max_occ:
-                    raise ValueError(f"Invalid occupation {occ} for shell {shell}. Max occupation is {max_occ}.")
+            if occ < 0.0 or occ > max_occ:
+                raise ValueError(f"Invalid occupation {occ} for shell {shell}. Max occupation is {max_occ}.")
+            self.occ.append(occ)
 
         self.ll = np.array(self.ll, dtype=int)
-        self.nn = np.array(self.nn, dtype=int)
+        self.nrad = np.array(self.nrad, dtype=int)
+        self.nprin = np.array(self.nprin, dtype=int)
         self.occ = np.array(self.occ, dtype=float)
+        self.nshells = len(self.occ)
 
-        self.nmax = np.amax(self.nn)
+        self.nmax = np.amax(self.nrad)
         self.lmax = np.amax(self.ll)
         self.num_electrons = np.sum(self.occ)
+    #.......................................................
+    def initialize_density(self) -> None:
+
+        self.rho_grid = get_slater_density(self.grid, self.Z, self.nprin, self.ll,
+                                           self.occ)
+
     #.......................................................
     def get_effective_potential(self, rho_grid:np.ndarray | None=None) -> np.ndarray:
         if rho_grid is None:
@@ -114,7 +143,7 @@ class FullAtomDFT:
         V_eff = self.V0_grid + V_Ha + V_xc
         return V_eff
     #.......................................................
-    def solve_schrodinger(self, Veff: np.ndarray, lmax: int, nmax: int, 
+    def solve_schrodinger(self, Veff: np.ndarray, lmax: int, nmax: int,
                           Vconf: np.ndarray | None = None, lmin: int = 0):
 
         eps, psi = kohn_sham.solve_schrodinger_local(self.basis, Veff, lmax, nmax,
@@ -151,8 +180,11 @@ class FullAtomDFT:
         if mixing_scheme.lower() == 'diis':
             diis_history = self.dft.diis_history
             diis = DIIS(max_history=diis_history)
+        elif mixing_scheme.lower() == 'anderson':
+            diis_history = self.dft.diis_history
+            anderson = AndersonMixing(max_history=diis_history)
 
-        V_eff = self.effective_potential()
+        V_eff = self.get_effective_potential()
 
         # Initial guess for the wavefunctions
         eps, psi = self.solve_schrodinger(V_eff, self.lmax, self.nmax)
@@ -165,25 +197,46 @@ class FullAtomDFT:
             iter_count += 1
 
             # Compute charge density
-            rho_out = density_potential.charge_density(self.basis, self.nn, self.ll, self.occ, psi)
+            rho_out = density_potential.charge_density(self.basis, self.nrad, self.ll, self.occ, psi)
 
             if mixing_scheme.lower() == 'diis':
                 r = rho_out - rho
                 diis.update(rho, r)
 
                 if iter_count > 1:
-                    rho = diis.extrapolate(dot_product=lambda a, b: np.dot(a, b))
+                    rho = diis.extrapolate(dot_product=lambda a, b: np.dot(a, b),
+                                           beta=alpha_mix)
                 else:
-                    rho = rho_out.copy()
+                    rho = rho_out
 
                 err = np.linalg.norm(r)
+
+            elif mixing_scheme.lower() == 'anderson':
+                r = rho_out - rho
+                anderson.update(rho, rho_out, r)
+
+                if iter_count > 1:
+                    rho = anderson.extrapolate(dot_product=lambda a, b: np.dot(a, b),
+                                              beta=alpha_mix)
+                else:
+                    rho = rho_out
+
+                err = np.linalg.norm(r)
+
             else:
                 # linear mixing of the density
                 rho = alpha_mix * rho_out + (1 - alpha_mix) * rho
                 err = np.linalg.norm(rho - rho_out)
 
+            # regularize density to be non-negative
+            rho[rho < 0.0] = 0.0
+
+            # print("max(rho) = {:.3e}".format(np.amax(rho)), "min(rho) = {:.3e}".format(np.amin(rho)))
+
+            # print(f"iter = {iter_count}, err = {err:.3e}")
+
             # Update effective potential
-            V_eff = self.effective_potential(rho_grid=rho)
+            V_eff = self.get_effective_potential(rho_grid=rho)
 
             # Solve Schrödinger equation with new potential
             eps, psi = self.solve_schrodinger(V_eff, self.lmax, self.nmax)
@@ -198,40 +251,33 @@ class FullAtomDFT:
         """
         Saves the charge density and potential to a file.
         """
-        V_eff = self.effective_potential()
+        V_eff = self.get_effective_potential()
 
-        data = {
-            'grid': self.grid,
-            'rho': self.rho_grid,
-            'Veff': V_eff
-        }
+        if not os.path.exists(self.control.storage_dir):
+            os.makedirs(self.control.storage_dir)
 
-        if not os.path.exists(self.pseudo_config.storage_dir):
-            os.makedirs(self.pseudo_config.storage_dir)
-
-        filename = 'density_potential.pkl'
-        with open(self.pseudo_config.storage_dir / filename, 'wb') as f:
-            pickle.dump(data, f)
+        filename = f'{self.element}_density_potential.h5'
+        with h5py.File(self.control.storage_dir / filename, 'w') as f:
+            f.create_dataset('grid', data=self.grid)
+            f.create_dataset('rho', data=self.rho_grid)
+            f.create_dataset('Veff', data=V_eff)
     #.......................................................
     def read_density_potential(self):
         """
         Reads the charge density and potential from a file.
         """
-        storage_dir = self.pseudo_config.storage_dir
-        filename = 'density_potential.pkl'
+        storage_dir = self.control.storage_dir
+        filename = f'{self.element}_density_potential.h5'
         filepath = os.path.join(storage_dir, filename)
 
         if not os.path.isfile(filepath):
             return False
 
-        with open(filepath, 'rb') as f:
-            data = pickle.load(f)
+        with h5py.File(filepath, 'r') as f:
+            grid = f['grid'][:]
+            rho_grid = f['rho'][:]
+            Veff_grid = f['Veff'][:]
 
-        grid = data['grid']
-        rho_grid = data['rho']
-        Veff_grid = data['Veff']
-
-        # check if grid matches
         if len(grid) != self.num_grid:
             restart_success = False
         else:

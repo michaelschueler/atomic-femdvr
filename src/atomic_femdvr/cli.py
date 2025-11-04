@@ -20,14 +20,16 @@ import click
 
 from atomic_femdvr.full_atomic import FullAtomicInput, solve_atomic
 from atomic_femdvr.pseudo_atomic import PseudoAtomicInput, solve_pseudo_atomic
-from atomic_femdvr.utils import plot_wavefunctions, print_eigenvalues, print_time
-from atomic_femdvr.solver_test import solver_test
 from atomic_femdvr.version import get_version
+
+from atomic_femdvr.solver_test import solver_test
+from atomic_femdvr.wavefunction_test import wfc_test
+from atomic_femdvr.hartree_test import hartree_test
 
 __all__ = [
     "atomic",
-    "pseudoatomic",
-    "iterative"
+    "debug",
+    "pseudoatomic"
 ]
 
 @click.group()
@@ -50,7 +52,7 @@ def atomic(input_file: str, task: tuple[str, ...], plot: bool) -> None:
         data = json.load(f)
     inp = FullAtomicInput(**data)
 
-    eigenvalues, r_grid, psi = solve_atomic(inp, task, plot)
+    solve_atomic(inp, task, plot)
 
 @main.command()
 @click.argument("input_file", type=click.Path(exists=True))
@@ -69,10 +71,11 @@ def pseudoatomic(input_file: str, task: tuple[str, ...], plot: bool, export_dir:
 
 @main.command()
 @click.option("--plot", is_flag=True, help="Plot the results")
-def iterative(plot: bool) -> None:
+def debug(plot: bool) -> None:
 
 
-    solver_test(plot)
+    # wfc_test(plot)
+    hartree_test(plot)
 
 
 if __name__ == "__main__":

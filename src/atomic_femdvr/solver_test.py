@@ -1,12 +1,14 @@
-import numpy as np
-import matplotlib.pyplot as plt
 from time import perf_counter
+
+import matplotlib.pyplot as plt
+import numpy as np
 
 from atomic_femdvr.adaptive_elements import optimize_elements
 from atomic_femdvr.femdvr import FEDVR_Basis
-from atomic_femdvr.utils import plot_wavefunctions, print_eigenvalues, print_time
-
 from atomic_femdvr.softcoul_solvers import solve_direct
+from atomic_femdvr.utils import print_time
+
+
 #==================================================================
 def solver_test(plot: bool) -> None:
 
@@ -78,7 +80,6 @@ def solve_with_error(Z, a0, ng, elem_method, elem_tol, lmax, num_states):
 def solver_suite(plot: bool) -> None:
     """Run a suite of solvers on the soft-Coulomb potential and compare results.
     """
-
     Z = 100.0  # Nuclear charge
     a0 = 1.0e-14  # Softening parameter
 

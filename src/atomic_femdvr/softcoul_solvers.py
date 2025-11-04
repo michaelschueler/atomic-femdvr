@@ -1,19 +1,19 @@
 
 import numpy as np
-import scipy.linalg as la
-from scipy.sparse.linalg import LinearOperator, lobpcg
-from scipy.interpolate import interp1d
-
 import primme
+import scipy.linalg as la
+from scipy.interpolate import interp1d
+from scipy.sparse.linalg import LinearOperator, lobpcg
 
 from atomic_femdvr.femdvr import FEDVR_Basis
 from atomic_femdvr.kohn_sham import solve_schrodinger_local
+
+
 #========================================================================================================
 def solve_direct(basis:FEDVR_Basis, Z:float, lmax:int, num_states:int, a0:float=1.0e-2, solver:str = 'full'):
     """
     Solve the radial Schrödinger equation for a soft-Coulomb potential using direct diagonalization.
     """
-
     # construct soft-Coulomb potential
     r_grid = basis.get_gridpoints()
     Vsc_grid = -Z / np.sqrt(r_grid**2 + a0**2)
@@ -24,9 +24,8 @@ def solve_direct(basis:FEDVR_Basis, Z:float, lmax:int, num_states:int, a0:float=
 #========================================================================================================
 def get_derivative_matrix(rs: np.ndarray) -> np.ndarray:
     """
-    returns the second-order derivative matrix for given grid
+    Returns the second-order derivative matrix for given grid
     """
-    
     # compute diagonal and off-diagonal elements of the derivative matrix
     n = len(rs)
     D_diag = np.zeros(n)
@@ -52,7 +51,7 @@ def get_guess(rgrid: np.ndarray, Z: float, l: int, num_states: int, a0: float) -
     H_diag += 1.0 / h**2
     H_offdiag = -0.5 / h**2 * np.ones(nr - 1)
 
-    lam, phi0 = la.eigh_tridiagonal(H_diag, H_offdiag, select='i', select_range=(0, num_states - 1)) 
+    lam, phi0 = la.eigh_tridiagonal(H_diag, H_offdiag, select='i', select_range=(0, num_states - 1))
 
     intp = interp1d(rs, phi0, kind='cubic', axis=0, fill_value=0.0, bounds_error=False)
     phi0 = intp(rgrid[1:-1])

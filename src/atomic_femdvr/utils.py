@@ -1,5 +1,5 @@
-import numpy as np
 import matplotlib.pyplot as plt
+import numpy as np
 
 
 #==================================================================
@@ -48,7 +48,8 @@ def print_eigenvalues(lmax: int, eigenvalues: dict, energy_shifts: list = None) 
         else:
             for n in range(n_bound):
                 orb = get_orbital_label(n, l)
-                print(f"  E({orb}) = {Hr_to_eV * eps_bound[n]:.6f} eV")
+                # print(f"  E({orb}) = {Hr_to_eV * eps_bound[n]:.6f} eV")
+                print(f"  E({orb}) = { eps_bound[n]:.6f} eV")
 
         if energy_shifts is not None:
             if l < len(energy_shifts):

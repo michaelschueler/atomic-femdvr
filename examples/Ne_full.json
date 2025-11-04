@@ -1,0 +1,38 @@
+{
+
+    "control": {
+        "storage_dir": "./results"
+    },
+
+    "sysparams": {
+        "element": "Ne"
+    },
+
+    "solver": {
+        "h_min": 0.25,
+        "h_max": 10.0,
+        "Rmax": 100.0,
+        "elem_tol": 1.0e-2,
+        "ng": 12,
+        "eigensolver": "banded"
+    },
+
+    "dft": {
+        "driver": "pylibxc",
+        "xc_functional": "",
+        "x_functional": "LDA_X",
+        "c_functional": "LDA_C_VWN_4",
+        "mixing_scheme": "anderson",
+        "alpha_mix": 0.8,
+        "alpha_x": 1.0,
+        "max_iter": 100,
+        "conv_tol": 1.0e-8,
+        "diis_history": 3
+    },
+
+    "electrons": {
+        "Z": 10,
+        "configuration": ["1s2", "2s2", "2p6"]
+    }
+
+}

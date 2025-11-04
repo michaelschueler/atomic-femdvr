@@ -59,6 +59,8 @@ dependencies = [
     "matplotlib",
     "pydantic",
     "upf_tools",
+    "h5py",
+    "primme"
 ]
 
 # see https://peps.python.org/pep-0735/ and https://docs.astral.sh/uv/concepts/dependencies/#dependency-groups
@@ -238,6 +240,7 @@ ignore = [
 "notebooks/**/*.ipynb" = ["T201"]
 # Asserts are okay in tests
 "tests/**/*.py" = ["S101"]
+"tests/conftest.py" = ["F401"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "pep257"

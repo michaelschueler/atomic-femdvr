@@ -1,12 +1,11 @@
 
 
-
 from enum import Enum
 from pathlib import Path
 from typing import Literal
 
 from pydantic import BaseModel as PydanticBaseModel
-from pydantic import ConfigDict, DirectoryPath, Field, FilePath, create_model, field_validator
+from pydantic import ConfigDict, Field, FilePath, create_model, field_validator
 
 
 class EnergyUnit(str, Enum):
@@ -43,9 +42,13 @@ class SysParamsInput(BaseModel):
         else:
             raise ValueError(f"Invalid value for pot_energy_unit: {v}")
 
+class ControlInput(BaseModel):
+    storage_dir: Path = Field(default=Path())
+    restart: bool = Field(default=False)
+
 class ElectronsInput(BaseModel):
-    Z: float = Field(default=1.0, gt=0)
-    elect_config: dict
+    Z: float = Field(default=0.0, ge=0)
+    configuration: list[str] = Field(default_factory=lambda: ["1s1"])
 
 class SolverInput(BaseModel):
     method: Literal["non-relativistic", "zora", "scalar-relativistic"] = Field(default="non-relativistic")
@@ -72,7 +75,7 @@ class DFTInput(BaseModel):
     xc_functional: str = "PBE"
     x_functional: str | None = "gga_x_pbe"
     c_functional: str | None = "gga_c_pbe"
-    mixing_scheme: Literal["linear", "diis"] = Field(default="linear")
+    mixing_scheme: Literal["linear", "diis", "anderson"] = Field(default="linear")
     diis_history: int = Field(default=5, ge=2)
     alpha_mix: float = 0.6
     alpha_x: float = 1.0

@@ -1,7 +1,6 @@
 
 import numpy as np
 import scipy.linalg as la
-from scipy.sparse.linalg import LinearOperator, lobpcg
 
 from atomic_femdvr.femdvr import FEDVR_Basis
 
@@ -43,7 +42,7 @@ def solve_schrodinger_pseudo(basis:FEDVR_Basis, Veff_grid:np.ndarray, lll:np.nda
     for il, l in enumerate(lchannels):
 
         # construct potential including centrifugal term
-        Vl_grid = get_centrifugal_potential
+        Vl_grid = get_centrifugal_potential(r_grid, l)
 
         # construct Hamiltonian matrix
         Vl_mat = np.diag(basis.get_potential_from_grid(Vl_grid))
@@ -80,8 +79,8 @@ def solve_schrodinger_pseudo(basis:FEDVR_Basis, Veff_grid:np.ndarray, lll:np.nda
 
     return eps, psi
 #========================================================================================================
-def solve_schrodinger_local(basis:FEDVR_Basis, Veff_grid:np.ndarray, lmax:int, nmax:int, 
-                           Vconf: np.ndarray | None = None, lmin:int=0, 
+def solve_schrodinger_local(basis:FEDVR_Basis, Veff_grid:np.ndarray, lmax:int, nmax:int,
+                           Vconf: np.ndarray | None = None, lmin:int=0,
                            solver: str = 'full') -> tuple[np.ndarray, np.ndarray]:
     """
     Solve the radial Schrödinger equation using finite element method
@@ -155,7 +154,7 @@ def solve_schrodinger_local(basis:FEDVR_Basis, Veff_grid:np.ndarray, lmax:int, n
 
 #     r_fnc = lambda r: 1. / r
 #     r_vec = basis.get_potential_from_grid(r_fnc)
-    
+
 #     Dmat = basis.get_derivative_matrix()
 
 #     for il, l in enumerate(lchannels):

@@ -61,7 +61,7 @@ def read_input(fname: str):
 
 
 #==================================================================
-def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...], 
+def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...],
                         plot: bool = False, export_dir: str | None = None) -> dict[str, dict[str, list[float]]]:
     """Solve the pseudo-atomic problem."""
     print(60 * '*')
@@ -148,10 +148,10 @@ def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...],
 
         tic = perf_counter()
         energy_shifts, eigenvalues, psi = pseudo_atom.get_states_energy_shift(
-            inp.sysparams.lmax, 
-            inp.sysparams.nmax, 
+            inp.sysparams.lmax,
+            inp.sysparams.nmax,
             confinement=inp.confinement)
-        
+
         toc = perf_counter()
         print_time(tic, toc, "Non-SCF Calculation")
         print("")
@@ -170,7 +170,7 @@ def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...],
             sys.exit(2)
 
         tic = perf_counter()
-        pseudo_atom.export_projector(inp.sysparams.lmax, inp.sysparams.nmax, psi, inp.confinement, 
+        pseudo_atom.export_projector(inp.sysparams.lmax, inp.sysparams.nmax, psi, inp.confinement,
                                     export_dir, nr=inp.projector.nr, rmin=inp.projector.rmin)
         toc = perf_counter()
         print_time(tic, toc, "Exporting Projectors")
