@@ -1,7 +1,8 @@
 {
 
     "control": {
-        "storage_dir": "./results"
+        "storage_dir": "./atomic_data",
+        "store_density": true
     },
 
     "sysparams": {
@@ -20,8 +21,8 @@
     "dft": {
         "driver": "pylibxc",
         "xc_functional": "",
-        "x_functional": "LDA_X",
-        "c_functional": "LDA_C_VWN_4",
+        "x_functional": "GGA_X_PBE",
+        "c_functional": "GGA_C_PBE",
         "mixing_scheme": "anderson",
         "alpha_mix": 0.8,
         "alpha_x": 1.0,
