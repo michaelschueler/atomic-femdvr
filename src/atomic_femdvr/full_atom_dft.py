@@ -138,8 +138,6 @@ class FullAtomDFT:
                                                    alpha_x=self.dft.alpha_x,
                                                    driver=self.dft.driver)
 
-        V_xc *= 0.5 # Convert to Hartree units
-
         V_eff = self.V0_grid + V_Ha + V_xc
         return V_eff
     #.......................................................
