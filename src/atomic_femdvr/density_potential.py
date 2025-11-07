@@ -75,7 +75,7 @@ def exchange_correlation_potential(basis:FEDVR_Basis, rho:np.ndarray,
     ne = basis.ne
     ng = basis.ng
 
-    if len(rho_nlcc) == len(rho):
+    if rho_nlcc is not None and len(rho_nlcc) == len(rho):
         rho_ = rho.copy() + rho_nlcc.copy()
     else:
         rho_ = rho.copy()
@@ -100,14 +100,19 @@ def exchange_correlation_potential(basis:FEDVR_Basis, rho:np.ndarray,
                              f"Available functionals: {available_functionals}")
 
         # Use internal GGA functional implementation
+
         exc, xc_data = gga_functional(xc_functional, rho_, drho_dr, alpha_x)
         V_xc_grid = xc_data[0]
+        # V_xc_grid *= 0.5  # Convert to Hartree units
+
     elif driver == 'pylibxc':
         # try importing libxc
         try:
             import pylibxc
         except ImportError:
             raise ImportError("pylibxc is not installed. Please install it to use the libxc driver.")
+
+        # rho_ /= 4.0 * np.pi
 
         rho_libxc = np.reshape(rho_, [len(rho_), 1])
         sigma_libxc = np.reshape(sigma, [len(sigma), 1])
@@ -131,8 +136,6 @@ def exchange_correlation_potential(basis:FEDVR_Basis, rho:np.ndarray,
             V_xc_grid = alpha_x * V_x + V_c
     else:
         raise ValueError(f"Unsupported driver: {driver}. Available drivers: 'internal', 'pylibxc'.")
-
-    V_xc_grid *= 2.0
 
     return V_xc_grid
 #===================================================================

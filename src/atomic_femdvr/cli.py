@@ -24,7 +24,6 @@ from atomic_femdvr.version import get_version
 
 from atomic_femdvr.solver_test import solver_test
 from atomic_femdvr.wavefunction_test import wfc_test
-from atomic_femdvr.hartree_test import hartree_test, hartree_benchmark
 from atomic_femdvr.vxc_test import vxc_benchmark
 
 __all__ = [
@@ -79,8 +78,8 @@ def debug(file_rho: str, file_vh: str, plot: bool) -> None:
 
     # wfc_test(plot)
     # hartree_test(plot)
-    hartree_benchmark(file_rho, file_vh)
-    # vxc_benchmark(file_rho, file_vh)
+    # hartree_benchmark(file_rho, file_vh)
+    vxc_benchmark(file_rho, file_vh)
 
 
 if __name__ == "__main__":
