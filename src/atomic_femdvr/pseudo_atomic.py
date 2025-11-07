@@ -7,10 +7,10 @@ from pydantic import Field
 
 from atomic_femdvr.input import (
     BaseModel,
+    ControlInput,
+    OutputInput,
     ConfinementInput,
     DFTInput,
-    ProjectorInput,
-    PseudoConfigInput,
     SolverInput,
     SysParamsInput,
     solver_input_factory,
@@ -26,12 +26,12 @@ else:
     PseudoAtomicSolverInput = solver_input_factory(default_hmin=0.5, default_hmax=4.0)
 
 class PseudoAtomicInput(BaseModel):
+    control: ControlInput = Field(default_factory=lambda: ControlInput())
     sysparams: SysParamsInput
     solver: PseudoAtomicSolverInput
-    pseudo_config: PseudoConfigInput = Field(default_factory=lambda: PseudoConfigInput())
     dft: DFTInput = Field(default_factory=lambda: DFTInput())
     confinement: ConfinementInput = Field(default_factory=lambda: ConfinementInput())
-    projector: ProjectorInput = Field(default_factory=lambda: ProjectorInput())
+    output: OutputInput = Field(default_factory=lambda: OutputInput())
 
 #==================================================================
 def read_input(fname: str):
@@ -41,9 +41,9 @@ def read_input(fname: str):
     with open(fname) as f:
         data = json.load(f)
 
-    pseudo_config = data.get('pseudo_config', {})
-    if not pseudo_config:
-        raise ValueError("No 'pseudo_config' found in the input file.")
+    control = data.get('control', {})
+    if not control:
+        raise ValueError("No 'control' found in the input file.")
 
     sysparams = data.get('sysparams', {})
     if not sysparams:
@@ -54,9 +54,9 @@ def read_input(fname: str):
 
     dft = data.get('dft', {})
     confinement = data.get('confinement', {})
-    proj = data.get('projector', {})
+    output = data.get('output', {})
 
-    return pseudo_config, sysparams, solver, dft, confinement, proj
+    return control, sysparams, solver, dft, confinement, output
 #==================================================================
 
 
@@ -71,7 +71,7 @@ def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...],
 
     # Initialize the PseudoAtomDFT class
     tic = perf_counter()
-    pseudo_atom = PseudoAtomDFT(inp.pseudo_config, inp.sysparams, inp.solver, inp.dft)
+    pseudo_atom = PseudoAtomDFT(inp.control, inp.sysparams, inp.solver, inp.dft)
     toc = perf_counter()
     print_time(tic, toc, "Initializing PseudoAtomDFT")
     print("")
@@ -95,6 +95,13 @@ def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...],
 
     scf_done = False
     nscf_done = False
+
+    # split comma-separated tasks
+    task_string = task_list[0]
+    if ',' in task_string:
+        task_list = []
+        for t in task_string.split(','):
+            task_list.append(t.strip())
 
     all_eigenvalues = {}
     if 'scf' in task_list:
@@ -124,7 +131,8 @@ def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...],
         pseudo_atom.save_density_potential()
 
         if plot:
-            plot_wavefunctions(pseudo_atom.grid, psi, int(pseudo_atom.upf.lmax), eigenvalues)
+            lmax = int(pseudo_atom.upf.lmax)
+            plot_wavefunctions(pseudo_atom.grid, psi, lmax, eigenvalues)
 
         scf_done = True
 
@@ -166,14 +174,14 @@ def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...],
 
     if export_dir is not None:
         if not nscf_done:
-            print("Error: Exporting projectors requires non-SCF task to be completed first.")
+            print("Error: Exporting wave-functions requires non-SCF task to be completed first.")
             sys.exit(2)
 
         tic = perf_counter()
-        pseudo_atom.export_projector(inp.sysparams.lmax, inp.sysparams.nmax, psi, inp.confinement,
-                                    export_dir, nr=inp.projector.nr, rmin=inp.projector.rmin)
+        pseudo_atom.export_projectors(inp.sysparams.lmax, inp.sysparams.nmax, psi, inp.confinement,
+                                          inp.output, out_dir=export_dir)
         toc = perf_counter()
-        print_time(tic, toc, "Exporting Projectors")
+        print_time(tic, toc, "Exporting Wave-Functions")
 
     toc = perf_counter()
     print_time(tic, toc, "Total")

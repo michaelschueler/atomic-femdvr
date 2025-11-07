@@ -32,7 +32,7 @@ def solve_schrodinger_pseudo(basis:FEDVR_Basis, Veff_grid:np.ndarray, lll:np.nda
     psi = np.zeros([num_channels, nmax+1, len(r_grid)], dtype=np.float64)
     eps = np.zeros([num_channels, nmax+1], dtype=np.float64)
 
-    Tmat = basis.get_kinetic_matrix()
+    Tmat = basis.get_kinetic_energy_matrix()
     Veff_mat = np.diag(basis.get_potential_from_grid(Veff_grid))
 
     if Vconf is not None:
