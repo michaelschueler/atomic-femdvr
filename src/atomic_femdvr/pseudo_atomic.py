@@ -25,40 +25,22 @@ else:
     # Runtime type
     PseudoAtomicSolverInput = solver_input_factory(default_hmin=0.5, default_hmax=4.0)
 
+
+class ConvergenceError(Exception):
+    """Custom exception for convergence errors in the SCF process."""
+    pass
+
+class MissingSCFError(Exception):
+    """Custom exception for missing SCF when required."""
+    pass
+
 class PseudoAtomicInput(BaseModel):
     control: ControlInput = Field(default_factory=lambda: ControlInput())
-    sysparams: SysParamsInput
-    solver: PseudoAtomicSolverInput
+    sysparams: SysParamsInput = Field(default_factory=lambda: SysParamsInput())
+    solver: PseudoAtomicSolverInput = Field(default_factory=lambda: PseudoAtomicSolverInput())
     dft: DFTInput = Field(default_factory=lambda: DFTInput())
     confinement: ConfinementInput = Field(default_factory=lambda: ConfinementInput())
     output: OutputInput = Field(default_factory=lambda: OutputInput())
-
-#==================================================================
-def read_input(fname: str):
-    """
-    Read input parameters from a JSON file.
-    """
-    with open(fname) as f:
-        data = json.load(f)
-
-    control = data.get('control', {})
-    if not control:
-        raise ValueError("No 'control' found in the input file.")
-
-    sysparams = data.get('sysparams', {})
-    if not sysparams:
-        raise ValueError("No 'sysparams' found in the input file.")
-    solver = data.get('solver', {})
-    if not solver:
-        raise ValueError("No 'solver' parameters found in the input file.")
-
-    dft = data.get('dft', {})
-    confinement = data.get('confinement', {})
-    output = data.get('output', {})
-
-    return control, sysparams, solver, dft, confinement, output
-#==================================================================
-
 
 #==================================================================
 def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...],
@@ -96,13 +78,6 @@ def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...],
     scf_done = False
     nscf_done = False
 
-    # split comma-separated tasks
-    task_string = task_list[0]
-    if ',' in task_string:
-        task_list = []
-        for t in task_string.split(','):
-            task_list.append(t.strip())
-
     all_eigenvalues = {}
     if 'scf' in task_list:
 
@@ -114,7 +89,7 @@ def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...],
             if err < inp.dft.conv_tol:
                 print(f"Self-consistency converged in {num_iter} iterations with error: {err:.2e}")
             else:
-                print(f"Self-consistency did not converge within {inp.dft.max_iter} iterations. Final error: {err:.2e}")
+                raise ConvergenceError(f"Self-consistency did not converge within {inp.dft.max_iter} iterations. Final error: {err:.2e}")
         else:
             print("Skipping self-consistency loop as max_iter is set to 0.")
 
@@ -138,8 +113,7 @@ def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...],
 
     if 'optimize' in task_list:
         if not scf_done and not restart_success:
-            print("Error: Non-SCF task requires SCF to be completed first or a valid restart file.")
-            sys.exit(2)
+            raise MissingSCFError("Optimize task requires SCF to be completed first or a valid restart file.")
 
         tic = perf_counter()
         Q_opt = pseudo_atom.optimize_soft_coul(inp.confinement)
@@ -151,8 +125,7 @@ def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...],
 
     if 'nscf' in task_list:
         if not scf_done and not restart_success:
-            print("Error: Non-SCF task requires SCF to be completed first or a valid restart file.")
-            sys.exit(2)
+            raise MissingSCFError("Non-SCF task requires SCF to be completed first or a valid restart file.")
 
         tic = perf_counter()
         energy_shifts, eigenvalues, psi = pseudo_atom.get_states_energy_shift(
@@ -174,8 +147,7 @@ def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...],
 
     if export_dir is not None:
         if not nscf_done:
-            print("Error: Exporting wave-functions requires non-SCF task to be completed first.")
-            sys.exit(2)
+            raise ValueError("Exporting wave-functions requires non-SCF task to be completed first.")
 
         tic = perf_counter()
         pseudo_atom.export_projectors(inp.sysparams.lmax, inp.sysparams.nmax, psi, inp.confinement,
