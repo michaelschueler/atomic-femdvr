@@ -142,17 +142,33 @@ class FullAtomDFT:
         return V_eff
     #.......................................................
     def solve_schrodinger(self, Veff: np.ndarray, lmax: int, nmax: int,
-                          Vconf: np.ndarray | None = None, lmin: int = 0):
+                          Vconf: np.ndarray | None = None, lmin: int = 0,
+                          theory_level: str | None = None) -> tuple[np.ndarray, np.ndarray]:
 
-        eps, psi = kohn_sham.solve_schrodinger_local(self.basis, Veff, lmax, nmax,
-                                                     lmin=lmin, solver=self.solver.eigensolver)
+        if theory_level is None:
+            theory_flag = 'non-relativistic'
+        else:
+            theory_flag = theory_level.lower()
+
+        if theory_flag == 'non-relativistic':
+
+            eps, psi = kohn_sham.solve_schrodinger_local(self.basis, Veff, lmax, nmax,
+                                                         Vconf=Vconf, lmin=lmin,
+                                                         solver=self.solver.eigensolver)
+
+            return eps, psi
+
+        elif theory_flag == 'scalar-relativistic':
+
+            eps, psi = kohn_sham.solve_scalar_relativistic(self.basis, Veff, lmax, nmax,
+                                                           Vconf=Vconf, lmin=lmin)
 
         return eps, psi
     #.......................................................
-    def get_bound_states(self):
+    def get_bound_states(self, theory_level: str | None = None) -> tuple[dict[str, list[float]], np.ndarray]:
 
         V_eff = self.get_effective_potential()
-        eps, psi = self.solve_schrodinger(V_eff, self.lmax, self.nmax)
+        eps, psi = self.solve_schrodinger(V_eff, self.lmax, self.nmax, theory_level=theory_level)
 
         eigenvalues = {}
         for l in range(self.lmax + 1):
@@ -166,7 +182,7 @@ class FullAtomDFT:
 
 
     #.......................................................
-    def ks_self_consistency(self):
+    def ks_self_consistency(self, theory_level: str | None = None) -> tuple[int, float]:
         """
         Performs Kohn-Sham self-consistency to find the ground state density.
         """
@@ -237,7 +253,7 @@ class FullAtomDFT:
             V_eff = self.get_effective_potential(rho_grid=rho)
 
             # Solve Schrödinger equation with new potential
-            eps, psi = self.solve_schrodinger(V_eff, self.lmax, self.nmax)
+            eps, psi = self.solve_schrodinger(V_eff, self.lmax, self.nmax, theory_level=theory_level)
 
         self.rho_grid = rho.copy()
 
