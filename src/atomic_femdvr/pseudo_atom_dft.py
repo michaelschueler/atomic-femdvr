@@ -92,6 +92,9 @@ class PseudoAtomDFT:
             self.Vloc_grid = interpolate_potential(self.upf.r, Vloc_upf, self.grid)
             self.Vloc_grid *= 0.5 # Convert to Hartree units
 
+        if read_density and self.upf.rho_nlcc is not None:
+            self.rho_nlcc = interpolate_density(self.upf.r, self.upf.rho_nlcc, self.grid)
+
         # interpolate beta projectors to new grid
         self.nbeta = self.upf.nbeta
         beta = np.ascontiguousarray(self.upf.beta.T)
@@ -101,16 +104,14 @@ class PseudoAtomDFT:
         self.beta_grid = interp(self.grid)
 
     #.......................................................
-    def get_effective_potential(self, rho_grid:np.ndarray | None=None,
-                                rho_nlcc:np.ndarray | None=None) -> np.ndarray:
+    def get_effective_potential(self, rho_grid:np.ndarray | None=None) -> np.ndarray:
         if rho_grid is None:
             rho_grid = self.rho_grid
-
 
         V_Ha = density_potential.hartree_potential(self.basis, rho_grid)
 
         V_xc = density_potential.exchange_correlation_potential(self.basis, rho_grid,
-                                                    rho_nlcc=rho_nlcc,
+                                                    rho_nlcc=self.rho_nlcc,
                                                    xc_functional=self.dft.xc_functional,
                                                    x_functional=self.dft.x_functional,
                                                    c_functional=self.dft.c_functional,
@@ -125,7 +126,7 @@ class PseudoAtomDFT:
                           non_local: bool = True) -> tuple[np.ndarray, np.ndarray]:
 
         if non_local:
-            eps, psi = kohn_sham.solve_schrodinger_pseudo(self.basis, Veff, self.upf.lchi, self.upf.dion,
+            eps, psi = kohn_sham.solve_schrodinger_pseudo(self.basis, Veff, self.upf.lll, self.upf.dion,
                                            self.beta_grid, lmax, nmax, Vconf=Vconf, lmin=lmin)
         else:
             eps, psi = kohn_sham.solve_schrodinger_local(self.basis, Veff, lmax, nmax, Vconf=Vconf, lmin=lmin)
@@ -287,7 +288,9 @@ class PseudoAtomDFT:
         if output.output_wfc_qe:
             nr = output.qe_num_points
             rmin = output.qe_rmin
+            rmesh_type = output.rmesh_type
             write_projector_file(self.basis, psi, elem, tag, nr=nr, rmin=rmin,
+                                 rmesh_type=rmesh_type,
                                  out_dir=out_dir, output_format='qe')
 
         if output.output_wfc_hdf5:
