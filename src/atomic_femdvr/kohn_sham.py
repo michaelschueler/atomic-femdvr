@@ -10,10 +10,10 @@ def set_phase(psi):
     """
     Set the phase of the wavefunction to ensure it is positive at the maximum point.
     """
-    for i in range(psi.shape[1]):
-        idx_max = np.argmax(np.abs(psi[:, i]))
-        if psi[idx_max, i] < 0.0:
-            psi[:, i] *= -1.0
+    for i in range(psi.shape[0]):
+        idx_max = np.argmax(np.abs(psi[i, :]))
+        if psi[i, idx_max] < 0.0:
+            psi[i, :] *= -1.0
     return psi
 #========================================================================================================
 def solve_schrodinger_pseudo(basis:FEDVR_Basis, Veff_grid:np.ndarray, lll:np.ndarray, Dion:np.ndarray,
@@ -71,10 +71,11 @@ def solve_schrodinger_pseudo(basis:FEDVR_Basis, Veff_grid:np.ndarray, lll:np.nda
                 H_mat[:, :] += Dion_Hr[ibeta, jbeta] * ket_bra
 
         eps_l, vect = la.eigh(H_mat, subset_by_index=[0, nmax])
-        psi_l = basis.get_psi_all(vect, cplx=False)
+        vect_T = np.ascontiguousarray(vect.T)
+        psi_l = basis.get_psi(vect_T, cplx=False)
         psi_l = set_phase(psi_l)
 
-        psi[il, :nmax+1, :] = psi_l.T
+        psi[il, :nmax+1, :] = psi_l
         eps[il, :nmax+1] = eps_l[:nmax+1]
 
     return eps, psi
@@ -122,15 +123,153 @@ def solve_schrodinger_local(basis:FEDVR_Basis, Veff_grid:np.ndarray, lmax:int, n
             H_mat_banded[-1, :] += Veff_diag + Vl_diag
             eps_l, vect = la.eig_banded(H_mat_banded, lower=False, select='i',
                                          select_range=[0, nmax])
+            
 
-
-        psi_l = basis.get_psi_all(vect, cplx=False)
+        vect_T = np.ascontiguousarray(vect.T)
+        psi_l = basis.get_psi(vect_T, cplx=False)
         psi_l = set_phase(psi_l)
 
-        psi[il, :nmax+1, :] = psi_l.T
+        psi[il, :nmax+1, :] = psi_l
         eps[il, :nmax+1] = eps_l[:nmax+1]
 
     return eps, psi
+#========================================================================================================
+def solve_scalar_relativistic(basis:FEDVR_Basis, Veff_grid:np.ndarray, lmax:int, nmax:int,
+                              Vconf: np.ndarray | None = None, lmin:int=0, 
+                              maxiter:int=100, tol:float=1.0e-6) -> tuple[np.ndarray, np.ndarray]:
+
+    c = 137.035999074  # Fine structure constant
+    alpha = 1. / c  # Fine structure constant
+    kappa = -1. # Kappa value for the radial equation
+
+    ne = basis.ne  # Number of elements
+    ng = basis.ng  # Number of grid points per element
+    nb = ne * ng - 1  # Total number of grid points
+    r_grid = basis.get_gridpoints()
+    r_grid[0] = 1.0e-10  # avoid division by zero
+
+    lchannels = np.arange(lmin, lmax + 1, step=1, dtype=int)
+    num_channels = len(lchannels)
+
+    Veff_diag = basis.get_potential_from_grid(Veff_grid)
+
+    if Vconf is not None:
+        Vconf_diag = basis.get_potential_from_grid(Vconf)
+        Veff_diag += Vconf_diag
+
+    # derivative of potential
+    dVeff_dr = basis.get_grid_derivative(Veff_grid)
+
+    Tmat = basis.get_kinetic_energy_matrix()
+    Dmat = basis.get_deriv_matrix()
+
+    one_over_r = 1. / r_grid
+    one_over_r_mat = np.diag(basis.get_potential_from_grid(one_over_r))
+    Dterm_mat = Dmat + kappa * one_over_r_mat
+
+    psi = np.zeros([num_channels, nmax+1, len(r_grid)], dtype=np.float64)
+    eps = np.zeros([num_channels, nmax+1], dtype=np.float64)
+
+    for il, l in enumerate(lchannels):
+
+        # non-relativistic Hamiltonian matrix
+        Vl_grid = get_centrifugal_potential(r_grid, l)
+        Vl_diag = basis.get_potential_from_grid(Vl_grid)
+        H0_mat = Tmat + np.diag(Veff_diag + Vl_diag)
+
+        eps_l, vect = la.eigh(H0_mat, subset_by_index=[0, nmax])
+        vect_T = np.ascontiguousarray(vect.T)
+
+        for istate in range(nmax+1):
+            eps_curr = eps_l[istate]
+            y0 = vect_T[istate, :].copy()
+            y = y0.copy()
+            dlt = np.zeros(nb)
+
+            err = 1.0
+            it = 0
+
+            # while err > tol and it < maxiter:
+            #     it += 1
+
+            #     eps_old = eps_curr
+
+            #     M_inv_grid = 1./(1. - 0.5 * alpha**2 * (Veff_grid - eps_curr))
+            #     Bterm_grid = 0.5 * alpha**2 * M_inv_grid**2 * dVeff_dr
+            #     lM_grid = l * (l + 1) / (2. * r_grid**2) * M_inv_grid
+
+            #     M_inv_diag = basis.get_potential_from_grid(M_inv_grid)
+            #     lM_diag = basis.get_potential_from_grid(lM_grid)
+            #     Bterm_diag = basis.get_potential_from_grid(Bterm_grid)
+
+            #     H_mat = np.einsum('i, ij -> ij', M_inv_diag, Tmat)
+            #     H_mat += np.diag(Veff_diag + lM_diag)
+            #     H_mat -= 0.5 * np.einsum('i, ij -> ij', Bterm_diag, Dterm_mat)
+
+            #     deltaH = H_mat - H0_mat
+            #     deltaH *= 0.
+
+            #     # right-hand side
+            #     rhs = np.dot(deltaH, y) + (eps_l[istate] - eps_curr) * y0
+
+            #     # coefficient matrix
+            #     coeff_mat = eps_curr * np.eye(nb) - H0_mat
+            #     # G = np.linalg.inv(coeff_mat)
+
+            #     # solve for the correction to the wavefunction
+            #     # dlt = np.dot(G, rhs)
+            #     dlt = la.solve(coeff_mat, rhs)
+            #     y = y0 + dlt
+            #     norm = np.sqrt( np.dot(y, y) )
+            #     y /= norm
+            #     # vect_new = la.solve(coeff_mat, rhs)
+            #     # vect_new = np.dot(G, rhs)
+            #     # norm = np.sqrt( np.dot(vect_new, vect_new) )
+            #     # vect_new /= norm
+
+            #     # eps_curr = np.dot(vect_new, np.dot(H_mat, vect_new))
+            #     eps_curr = np.dot(y, np.dot(H_mat, y))
+            #     err = np.abs(eps_curr - eps_old)
+
+            #     print(f"l={l} state={istate} iter={it} eps={eps_curr:.8f} err={err:.2e}")
+
+            #     vect_T[istate, :] = y
+
+            eps[il, istate] = eps_curr
+
+        psi_l = basis.get_psi(vect_T, cplx=False)
+        psi[il, :, :] = set_phase(psi_l)
+
+        exit()
+
+    return eps, psi
+
+#========================================================================================================
+def get_green_function(basis:FEDVR_Basis, Tmat:np.ndarray, Dmat:np.ndarray, Veff_grid:np.ndarray,
+                       l:int, eps:float) -> np.ndarray:
+    
+        c = 137.035999074  # Fine structure constant
+        alpha = 1. / c  # Fine structure constant
+        kappa = -1. # Kappa value for the radial equation
+
+
+        M_inv_grid = 1./(1. - 0.5 * alpha**2 * (Veff_grid - eps))
+        Bterm_grid = 0.5 * alpha**2 * M_inv_grid**2 * dVeff_dr
+        lM_grid = l * (l + 1) / (2. * r_grid**2) * M_inv_grid
+
+        M_inv_diag = basis.get_potential_from_grid(M_inv_grid)
+        lM_diag = basis.get_potential_from_grid(lM_grid)
+        Bterm_diag = basis.get_potential_from_grid(Bterm_grid)
+
+        H_mat = np.einsum('i, ij -> ij', M_inv_diag, Tmat)
+        H_mat += np.diag(Veff_diag + lM_diag)
+        H_mat -= 0.5 * np.einsum('i, ij -> ij', Bterm_diag, Dterm_mat)
+
+
+#========================================================================================================
+
+
+
 #========================================================================================================
 # def solve_scalar_relativistic(basis:FEDVR_Basis, Vpot_fnc:callable, gradVpot_fnc:callable, lmax:int, nmax:int,
 #                               eps_guess:np.ndarray, lmin:int=0, maxiter:int=100, tol:float=1.0e-6) -> tuple[np.ndarray, np.ndarray]:
