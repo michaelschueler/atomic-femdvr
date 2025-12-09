@@ -41,21 +41,29 @@ class FEDVR_Basis:
 
 		return xg
 	#------------------------------------------------------------
-	def get_psi_all(self, cff: np.ndarray, cplx: bool = False) -> np.ndarray:
+	def get_psi(self, cff: np.ndarray, cplx: bool = False) -> np.ndarray:
+		
+		if cff.ndim == 1:
+			return self.__get_psi_single(cff, cplx=cplx)
+		else:
+			return self.__get_psi_all(cff, cplx=cplx)
+	#------------------------------------------------------------
+	def __get_psi_all(self, cff: np.ndarray, cplx: bool = False) -> np.ndarray:
 		ne = self.ne
 		ng = self.ng
-		nvec = cff.shape[1]
+		nvec = cff.shape[0]
 
 		if cplx:
-			psi = np.zeros([ne*ng+1, nvec], dtype=np.complex128)
+			psi = np.zeros([nvec, ne*ng+1], dtype=np.complex128)
 		else:
-			psi = np.zeros([ne*ng+1, nvec])
+			psi = np.zeros([nvec, ne*ng+1])
 
 		for i in range(nvec):
-			psi[:,i] = self.get_psi(cff[:,i], cplx=cplx)
+			psi[i, :] = self.get_psi(cff[i, :], cplx=cplx)
+
 		return psi
 	#------------------------------------------------------------
-	def get_psi(self, cff: np.ndarray, cplx: bool = False) -> np.ndarray:
+	def __get_psi_single(self, cff: np.ndarray, cplx: bool = False) -> np.ndarray:
 		ne = self.ne
 		ng = self.ng
 		xp = self.xp
@@ -74,15 +82,9 @@ class FEDVR_Basis:
 			w2 = 0.5 * (xp[i+1] - xp[i]) * self.leg.w_i[0]
 			psi[i*ng] = v[i-1,0] / np.sqrt(w1 + w2)
 
-		# for i in range(ne-1):
-		# 	w1 = 0.5 * (xp[i+1] - xp[i]) * self.leg.w_i[ng]
-		# 	w2 = 0.5 * (xp[i+2] - xp[i+1]) * self.leg.w_i[0]
-		# 	psi[i*ng] = v[i + 1,0] / np.sqrt(w1 + w2)
-
 		for i in range(ne):
-			for m in range(1,ng):
-				w = 0.5 * (xp[i+1] - xp[i]) * self.leg.w_i[m]
-				psi[i*ng+m] = v[i,m] / np.sqrt(w)
+			w = 0.5 * (xp[i+1] - xp[i]) * self.leg.w_i[1:ng]
+			psi[i*ng+1: (i+1)*ng] = v[i,1:ng] / np.sqrt(w)
 
 		return psi
 	#------------------------------------------------------------
@@ -290,6 +292,21 @@ class FEDVR_Basis:
 
 		return Vvec
 	#------------------------------------------------------------
+	def get_grid_derivative(self, f_grid: np.ndarray) -> np.ndarray:
+		ne = self.ne
+		ng = self.ng
+		xp = self.xp
+
+		df_grid = np.zeros_like(f_grid)
+
+		for i in range(ne):
+			h = 0.5 * (self.xp[i+1] - self.xp[i])
+			f_elem = f_grid[i*ng : i*ng + ng + 1]
+			df_grid_elem = np.dot(self.leg.D_ii, f_elem) / h
+			df_grid[i*ng : i*ng + ng + 1] = df_grid_elem
+	
+		return df_grid
+	#------------------------------------------------------------
 	def get_coeffs_from_func(self, f_fnc: callable) -> np.ndarray:
 		ne = self.ne
 		ng = self.ng
@@ -385,6 +402,23 @@ class FEDVR_Basis:
 	def get_deriv_matrix(self) -> np.ndarray:
 		Dmat = self.__get_deriv_matrix_zerobound()
 		return Dmat
+	#------------------------------------------------------------
+	def get_deriv_matrix_banded(self) -> np.ndarray:
+		Dmat = self.__get_deriv_matrix_zerobound()
+		ne = self.ne
+		ng = self.ng
+		nb = ne * ng - 1
+
+		# Determine the bandwidth
+		upper_bw = ng
+
+		Dmat_banded = np.zeros([upper_bw + 1, nb])
+
+		for k in range(upper_bw + 1):
+			j_range = np.arange(k, nb)
+			Dmat_banded[upper_bw - k, j_range] = np.diagonal(Dmat, offset=-k)
+
+		return Dmat_banded
 	#------------------------------------------------------------
 	def __get_kinetic_energy_matrix_zerobound(self):
 		ne = self.ne
