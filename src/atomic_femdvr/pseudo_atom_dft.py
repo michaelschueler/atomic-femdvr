@@ -288,9 +288,7 @@ class PseudoAtomDFT:
         if output.output_wfc_qe:
             nr = output.qe_num_points
             rmin = output.qe_rmin
-            rmesh_type = output.rmesh_type
             write_projector_file(self.basis, psi, elem, tag, nr=nr, rmin=rmin,
-                                 rmesh_type=rmesh_type,
                                  out_dir=out_dir, output_format='qe')
 
         if output.output_wfc_hdf5:
