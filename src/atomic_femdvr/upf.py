@@ -30,6 +30,8 @@ class UPFInterface(BaseModel):
     vloc: npt.NDArray[np.float64]
     kbeta: npt.NDArray[np.int32]
     beta: npt.NDArray[np.float64]
+    rho_nlcc: npt.NDArray[np.float64] | None = None
+    rho_atom: npt.NDArray[np.float64] | None = None
 
     model_config = ConfigDict(extra="forbid", frozen=True, arbitrary_types_allowed=True)
 
@@ -47,6 +49,8 @@ class UPFInterface(BaseModel):
             "vloc": (self.mesh,),
             "kbeta": (self.nbeta,),
             "beta": (self.mesh, self.nbeta),
+            "rho_nlcc": (self.mesh,) if self.rho_nlcc is not None else None,
+            "rho_atom": (self.mesh,) if self.rho_atom is not None else None
         }
 
         for array_name, desired_shape in desired_shapes.items():
@@ -98,6 +102,8 @@ class UPFInterface(BaseModel):
             vloc = upf_dict['local'],
             kbeta = [beta['cutoff_radius_index'] for beta in upf_dict['nonlocal']['beta']],
             beta = np.transpose([beta['content'] for beta in upf_dict['nonlocal']['beta']]),
+            rho_nlcc = upf_dict.get('nlcc', None),
+            rho_atom = upf_dict.get('rhoatom', None)
         )
 
     @property
@@ -106,8 +112,12 @@ class UPFInterface(BaseModel):
 
     def get_charge_density(self) -> npt.NDArray[np.float64]:
         """Compute the charge density from the wavefunctions."""
-        rho = np.zeros(self.mesh, dtype=np.float64)
-        for iwf in range(self.nwfc):
-            rho[1:] += self.oc[iwf] * np.abs(self.chi[1:, iwf])**2 / self.r[1:]**2
-        rho[0] = rho[1]
-        return rho
+
+        if self.rho_atom is not None:
+            return self.rho_atom
+        else:
+            rho = np.zeros(self.mesh, dtype=np.float64)
+            for iwf in range(self.nwfc):
+                rho[1:] += self.oc[iwf] * np.abs(self.chi[1:, iwf])**2 / self.r[1:]**2
+            rho[0] = rho[1]
+            return rho
