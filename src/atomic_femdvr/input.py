@@ -16,7 +16,7 @@ class EnergyUnit(str, Enum):
 
 class BaseModel(PydanticBaseModel):
 
-    model_config = ConfigDict(extra="forbid")
+    model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
 class SysParamsInput(BaseModel):
     file_pot: FilePath | None = None
@@ -135,9 +135,9 @@ class ConfinementType(str, Enum):
 
 class ConfinementInput(BaseModel):
     type: ConfinementType = ConfinementType.NONE
-    rc: float = 20.0
-    ri_factor: float = 0.9
-    Vbarrier: float = 1.0
+    rc: float = Field(default=20.0, gt=0)
+    ri_factor: float = Field(default=0.9, ge=0.0, le=1.0)
+    Vbarrier: float = Field(default=1.0, gt=0.0)
     polarization_mode: Literal[None, "softcoul"] = None
     softcoul_delta: float = 0.1
     softcoul_charge: float = 1.0
