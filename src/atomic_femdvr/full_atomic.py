@@ -102,9 +102,11 @@ def solve_atomic(inp: FullAtomicInput, task_list: tuple[str, ...],
     all_eigenvalues = {}
     if 'scf' in task_list:
 
+        print("Starting Kohn-Sham self-consistency: non-relativistic ...\n")
+
         tic = perf_counter()
         if inp.dft.max_iter > 0:
-            num_iter, err = atom.ks_self_consistency()
+            num_iter, err = atom.ks_self_consistency(theory_level='non-relativistic')
 
             if err < inp.dft.conv_tol:
                 print(f"Self-consistency converged in {num_iter} iterations with error: {err:.2e}")
@@ -116,10 +118,26 @@ def solve_atomic(inp: FullAtomicInput, task_list: tuple[str, ...],
         toc = perf_counter()
         print_time(tic, toc, "SCF")
 
-        eigenvalues, psi = atom.get_bound_states()
+        eigenvalues, psi = atom.get_bound_states(theory_level='non-relativistic')
         all_eigenvalues['scf'] = eigenvalues
 
         print_eigenvalues(atom.lmax, eigenvalues)
+
+        if inp.solver.theory_level.lower() == 'scalar-relativistic':
+
+            print("Starting Kohn-Sham self-consistency: scalar-relativistic ...\n")
+
+            tic = perf_counter()
+            num_iter, err = atom.ks_self_consistency(theory_level='scalar-relativistic')
+
+            toc = perf_counter()
+            print_time(tic, toc, "SCF")
+
+            eigenvalues, psi = atom.get_bound_states(theory_level='scalar-relativistic')
+            all_eigenvalues['scf'] = eigenvalues
+
+            print_eigenvalues(atom.lmax, eigenvalues)
+
 
         atom.save_density_potential()
 
