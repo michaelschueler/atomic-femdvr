@@ -32,12 +32,12 @@ def solve_schrodinger_pseudo(basis:FEDVR_Basis, Veff_grid:np.ndarray, lll:np.nda
     psi = np.zeros([num_channels, nmax+1, len(r_grid)], dtype=np.float64)
     eps = np.zeros([num_channels, nmax+1], dtype=np.float64)
 
-    Tmat = basis.get_kinetic_energy_matrix()
-    Veff_mat = np.diag(basis.get_potential_from_grid(Veff_grid))
+    T_mat = basis.get_kinetic_energy_matrix()
+    Veff_diag = basis.get_potential_from_grid(Veff_grid)
 
     if Vconf is not None:
-        Vconf_mat = np.diag(basis.get_potential_from_grid(Vconf))
-        Veff_mat += Vconf_mat
+        Vconf_diag = basis.get_potential_from_grid(Vconf)
+        Veff_diag += Vconf_diag
 
     for il, l in enumerate(lchannels):
 
@@ -45,8 +45,10 @@ def solve_schrodinger_pseudo(basis:FEDVR_Basis, Veff_grid:np.ndarray, lll:np.nda
         Vl_grid = get_centrifugal_potential(r_grid, l)
 
         # construct Hamiltonian matrix
-        Vl_mat = np.diag(basis.get_potential_from_grid(Vl_grid))
-        H_mat = Tmat + Veff_mat + Vl_mat
+        Vl_diag = basis.get_potential_from_grid(Vl_grid)
+
+        V_mat = np.diag(Veff_diag + Vl_diag)
+        H_mat = T_mat + V_mat
 
         # now add the non-local part
         Ib, = np.where(lll == l)
