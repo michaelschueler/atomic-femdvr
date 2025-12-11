@@ -62,6 +62,7 @@ class OutputInput(BaseModel):
     output_wfc_qe : bool = Field(default=False)
     output_wfc_hdf5 : bool = Field(default=False)
     output_wfc_bessel : bool = Field(default=False)
+    output_dipole_moments : bool = Field(default=False)
     bessel_quad_npoints : int = Field(default=41, ge=3)
     bessel_quad_method : Literal['simpson', 'lobatto'] = Field(default='simpson')
     bessel_qmax : float = Field(default=50.0, gt=0.0)

@@ -22,6 +22,7 @@ from atomic_femdvr.input import (
 from atomic_femdvr.interp_tools import interpolate_density, interpolate_potential
 from atomic_femdvr.projector_output import write_projector_file
 from atomic_femdvr.upf import UPFInterface
+from atomic_femdvr.dipoles import dipole_moments, save_dipole_moments
 
 
 #==========================================================================
@@ -308,6 +309,15 @@ class PseudoAtomDFT:
                                  bessel_method=method, bessel_npoints=npoints,
                                  qgrid=qgrid, rpow=rpow,
                                  out_dir=out_dir, output_format='bessel')
+    #.......................................................
+    def export_dipole_moments(self, lmax:int, nmax:int, psi:np.ndarray, output: OutputInput, out_dir:str):
+        orb_indx, D_matrix = dipole_moments(self.basis, psi)
+
+        elem = self.element
+        file_dipoles = os.path.join(out_dir, f"{elem}_dipole_moments.h5")
+
+        save_dipole_moments(file_dipoles, orb_indx, D_matrix)
+
     #.......................................................
     def ks_self_consistency(self, max_iter:int=100, tol:float=1.0e-6, alpha_mix:float=0.6):
         """
