@@ -185,8 +185,11 @@ class PseudoAtomDFT:
                 Vsoftcoul = soft_coulomb_potential(self.grid, confinement.softcoul_charge,
                                                   confinement.softcoul_delta)
 
+                eps_unbound, psi_unbound = self.solve_schrodinger(V_eff, lmax, nmax,
+                                                                 Vconf=Vconf, lmin=self.lmax_pseudo + 1)
+
                 print("Solving for unbound states with soft Coulomb potential...")
-                eps_unbound, psi_unbound = self.solve_schrodinger(Vsoftcoul, lmax, nmax,
+                eps_softcoul, psi_softcoul = self.solve_schrodinger(Vsoftcoul, lmax, nmax,
                                                                  Vconf=Vconf, lmin=self.lmax_pseudo + 1)
 
                 # combine bound and unbound states
@@ -195,7 +198,7 @@ class PseudoAtomDFT:
                 eps[:self.lmax_pseudo+1, :] = eps_bound
                 psi[:self.lmax_pseudo+1, :, :] = psi_bound
                 eps[self.lmax_pseudo+1:lmax+1, :] = eps_unbound
-                psi[self.lmax_pseudo+1:lmax+1, :, :] = psi_unbound
+                psi[self.lmax_pseudo+1:lmax+1, :, :] = psi_softcoul
             else:
                 raise ValueError(f"Unknown polarization mode: {confinement.polarization_mode}")
 
@@ -261,6 +264,17 @@ class PseudoAtomDFT:
             energy_shifts[l] = epsl_all[n] - epsl_bound[n]
 
         return energy_shifts, eigenvalues_all, psi_all
+    #.......................................................
+    def export_eigenvalues(self, eigenvalues: dict[str, list[float]], out_dir:str):
+        elem = self.element
+        file_eigenvalues = os.path.join(out_dir, f"{elem}_eigenvalues.dat")
+
+        with open(file_eigenvalues, 'w') as f:
+            f.write("# l  n  eigenvalue (Hartree)\n")
+            for l_str, eps_list in eigenvalues.items():
+                l = int(l_str)
+                for n, eps in enumerate(eps_list):
+                    f.write(f"{l:2d} {n:2d} {eps:16.8f}\n")
     #.......................................................
     def export_projectors(self, lmax:int, nmax:int, psi:np.ndarray, confinement: ConfinementInput,
                           output: OutputInput, out_dir:str):
