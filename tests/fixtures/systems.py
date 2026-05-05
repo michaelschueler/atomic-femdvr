@@ -7,10 +7,10 @@ import pytest
 
 
 @pytest.fixture
-def molybdenum_input_dict(data_directory: Path) -> dict[str, dict[str, Any]]:
+def molybdenum_input_dict(data_directory: Path, tmp_path) -> dict[str, dict[str, Any]]:
     """Fixture providing input parameters for a calculation on molybdenum."""
     return {
-        "pseudo_config": {"storage_dir": "./Mo_Pseudo"},
+        "control": {"storage_dir": str(tmp_path / "Mo_Pseudo")},
         "sysparams": {
             "file_upf": data_directory / "Mo/Mo.upf",
             "element": "Mo",
@@ -34,7 +34,7 @@ def molybdenum_input_dict(data_directory: Path) -> dict[str, dict[str, Any]]:
             "polarization_mode": "SoftCoul",
             "softcoul_delta": 0.1,
         },
-        "projector": {"nr": 1001, "rmin": 1.0e-8},
+        "output": {"qe_num_points": 1001, "qe_rmin": 1.0e-8},
     }
 
 

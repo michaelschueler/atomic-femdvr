@@ -76,6 +76,7 @@ tests = [
     { include-group = "pylibxc" },
     "pytest",
     "pytest-console-scripts",
+    "pytest-regressions[num]",
     "coverage[toml]",
 ]
 docs = [
@@ -139,6 +140,7 @@ pylibxc = [
 tests = [
     "pytest",
     "pytest-console-scripts",
+    "pytest-regressions[num]",
     "coverage[toml]",
 ]
 
