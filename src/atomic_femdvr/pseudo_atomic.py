@@ -57,27 +57,27 @@ class PseudoAtomicInput(BaseModel):
     """
 
     control: ControlInput = Field(
-        default_factory=lambda: ControlInput(),
+        default_factory=ControlInput,
         description="Run-control flags (storage, restart).",
     )
     sysparams: SysParamsInput = Field(
-        default_factory=lambda: SysParamsInput(),
+        default_factory=SysParamsInput,
         description="System parameters (element, UPF file, lmax / nmax).",
     )
     solver: PseudoAtomicSolverInput = Field(
-        default_factory=lambda: PseudoAtomicSolverInput(),
+        default_factory=PseudoAtomicSolverInput,
         description="Discretisation and eigensolver parameters.",
     )
     dft: DFTInput = Field(
-        default_factory=lambda: DFTInput(),
+        default_factory=DFTInput,
         description="DFT driver, functional, and SCF mixing parameters.",
     )
     confinement: ConfinementInput = Field(
-        default_factory=lambda: ConfinementInput(),
+        default_factory=ConfinementInput,
         description="Confining potential applied to virtual orbitals during the nscf task.",
     )
     output: OutputInput = Field(
-        default_factory=lambda: OutputInput(),
+        default_factory=OutputInput,
         description="Output toggles (wavefunction format, dipole moments, ...).",
     )
 

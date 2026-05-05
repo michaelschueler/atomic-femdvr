@@ -41,11 +41,11 @@ class FullAtomicInput(BaseModel):
         description="Discretisation and eigensolver parameters.",
     )
     dft: DFTInput = Field(
-        default_factory=lambda: DFTInput(),
+        default_factory=DFTInput,
         description="DFT driver, functional, and SCF mixing parameters.",
     )
     electrons: ElectronsInput = Field(
-        default_factory=lambda: ElectronsInput(),
+        default_factory=ElectronsInput,
         description="Nuclear charge and electron configuration.",
     )
 
