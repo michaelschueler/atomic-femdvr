@@ -242,19 +242,16 @@ ignore = [
     "N803", # invalid argument name (e.g. Vbarrier, Z)
     "N806", # non-lowercase variable in function (e.g. V_eff, Vpot)
     "E741", # ambiguous variable name (l = angular momentum)
-    # Docstring rules deferred until the docstring sweep lands.
+    # "Undocumented X" rules deferred until the internal docstring sweep
+    # lands. Public-surface docstrings are in place; D200/D400/D401 are
+    # enforced (no remaining exceptions).
     "D100", # undocumented public module
     "D101", # undocumented public class
     "D102", # undocumented public method
     "D103", # undocumented public function
     "D107", # undocumented public __init__
-    "D200", # unnecessary multiline docstring
     "D205", # missing blank line after summary
-    "D400", # missing trailing period
-    "D401", # non-imperative mood
     "DOC",  # pydoclint (preview-only; emits warning)
-    # Print → logging migration tracked in dedicated todo.
-    "T201",
     # Commented-out-code cleanup tracked in dedicated todo.
     "ERA001",
 ]
@@ -262,7 +259,7 @@ ignore = [
 # See https://docs.astral.sh/ruff/settings/#per-file-ignores
 [tool.ruff.lint.per-file-ignores]
 # Ignore security issues in the version.py, which are inconsistent
-"src/atomic_femdvr/version.py" = ["S603", "S607"]
+"src/atomic_femdvr/version.py" = ["S603", "S607", "T201"]
 # Sphinx conf.py is cookiecutter boilerplate; ignore commented-out code,
 # the templated assert, and a long Texinfo metadata line.
 "docs/source/conf.py" = ["E501", "ERA001", "S101"]

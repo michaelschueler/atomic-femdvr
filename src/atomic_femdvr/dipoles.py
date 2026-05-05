@@ -9,7 +9,7 @@ from atomic_femdvr.femdvr import FEDVR_Basis
 def radial_integrals(basis: FEDVR_Basis, psi: np.ndarray, r_pow: int) -> np.ndarray:
     """
     Compute radial integrals of the form:
-        I(ln, l'n') = ∫ r^r_pow * psi_{n, l}(r) psi_{n', l'}(r) dr
+        I(ln, l'n') = ∫ r^r_pow * psi_{n, l}(r) psi_{n', l'}(r) dr.
     """
     lmax = psi.shape[0] - 1
     nmax = psi.shape[1] - 1
@@ -42,7 +42,7 @@ def radial_integrals(basis: FEDVR_Basis, psi: np.ndarray, r_pow: int) -> np.ndar
 
 # =================================================================
 def minus_one_pow(n: int) -> int:
-    """Returns (-1)^n"""
+    """Return (-1)^n."""
     if n % 2 == 0:
         return 1
     else:
@@ -53,7 +53,7 @@ def minus_one_pow(n: int) -> int:
 def dipole_moments(basis: FEDVR_Basis, psi: np.ndarray) -> np.ndarray:
     """
     Compute dipole moments between all states:
-        D(l n, l' n') = ∫ r * psi_{n, l}(r) * psi_{n', l'}(r) dr
+        D(l n, l' n') = ∫ r * psi_{n, l}(r) * psi_{n', l'}(r) dr.
     """
     lmax = psi.shape[0] - 1
     nmax = psi.shape[1] - 1
@@ -93,9 +93,7 @@ def dipole_moments(basis: FEDVR_Basis, psi: np.ndarray) -> np.ndarray:
 
 # =================================================================
 def save_dipole_moments(filename: str, Indices: np.ndarray, D_matrix: np.ndarray) -> None:
-    """
-    Save dipole moment matrix to an HDF5 file.
-    """
+    """Save dipole moment matrix to an HDF5 file."""
     with h5py.File(filename, "w") as f:
         f.create_dataset("Indices", data=Indices)
         f.create_dataset("real_part", data=D_matrix.real)

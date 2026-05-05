@@ -9,7 +9,7 @@ logger = logging.getLogger(__name__)
 # ==========================================================================
 def hydrogenic_orbital(r: np.ndarray, Z: float, n: int, l: int) -> np.ndarray:
     """
-    Computes the hydrogenic orbital for given quantum numbers n and l.
+    Compute the hydrogenic orbital for given quantum numbers n and l.
 
     Parameters:
     r : np.ndarray

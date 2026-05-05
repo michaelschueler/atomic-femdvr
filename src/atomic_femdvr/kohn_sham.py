@@ -6,9 +6,7 @@ from atomic_femdvr.femdvr import FEDVR_Basis
 
 # ========================================================================================================
 def set_phase(psi):
-    """
-    Set the phase of the wavefunction to ensure it is positive at the maximum point.
-    """
+    """Set the phase of the wavefunction to ensure it is positive at the maximum point."""
     for i in range(psi.shape[0]):
         idx_max = np.argmax(np.abs(psi[i, :]))
         if psi[i, idx_max] < 0.0:
@@ -28,9 +26,7 @@ def solve_schrodinger_pseudo(
     Vconf: np.ndarray | None = None,
     lmin: int = 0,
 ):
-    """
-    Solve the radial Schrödinger equation using finite element method
-    """
+    """Solve the radial Schrödinger equation using finite element method."""
     ne = basis.ne  # Number of elements
     ng = basis.ng  # Number of grid points per element
     nb = ne * ng - 1  # Total number of grid points
@@ -101,9 +97,7 @@ def solve_schrodinger_local(
     lmin: int = 0,
     solver: str = "full",
 ) -> tuple[np.ndarray, np.ndarray]:
-    """
-    Solve the radial Schrödinger equation using finite element method
-    """
+    """Solve the radial Schrödinger equation using finite element method."""
     ne = basis.ne  # Number of elements
     ng = basis.ng  # Number of grid points per element
     ne * ng - 1  # Total number of grid points
@@ -343,9 +337,7 @@ def get_green_function(
 
 # ========================================================================================================\
 def get_centrifugal_potential(r_grid: np.ndarray, l: int) -> np.ndarray:
-    """
-    Get the centrifugal potential for a given angular momentum quantum number l.
-    """
+    """Get the centrifugal potential for a given angular momentum quantum number l."""
     Vl_grid = np.zeros_like(r_grid)
     if l > 0:
         Vl_grid[1:] = l * (l + 1) / (2.0 * r_grid[1:] ** 2)

@@ -1,4 +1,4 @@
-"""Author: H. U.R. Strand, 2020"""
+"""Author: H. U.R. Strand, 2020."""
 
 import logging
 

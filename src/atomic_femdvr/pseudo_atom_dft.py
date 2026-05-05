@@ -190,9 +190,7 @@ class PseudoAtomDFT:
 
     # .......................................................
     def get_confinement(self, confinement: ConfinementInput):
-        """
-        Returns the confinement potential based on the specified type.
-        """
+        """Return the confinement potential based on the specified type."""
         ri = confinement.ri_factor * confinement.rc
 
         if confinement.type == ConfinementType.SOFTSTEP:
@@ -204,9 +202,7 @@ class PseudoAtomDFT:
 
     # .......................................................
     def get_all_states(self, lmax: int, nmax: int, confinement: ConfinementInput | None = None):
-        """
-        Returns all bound states including unbound states.
-        """
+        """Return all bound states including unbound states."""
         V_eff = self.get_effective_potential()
 
         if confinement:
@@ -259,9 +255,7 @@ class PseudoAtomDFT:
 
     # .......................................................
     def optimize_soft_coul(self, confinement: ConfinementInput):
-        """
-        Optimize the soft Coulomb potential parameters for a given lmax and nmax.
-        """
+        """Optimize the soft Coulomb potential parameters for a given lmax and nmax."""
         if confinement.polarization_mode != "softcoul":
             raise ValueError("Polarization mode must be 'softcoul' for this method.")
 
@@ -422,9 +416,7 @@ class PseudoAtomDFT:
 
     # .......................................................
     def ks_self_consistency(self, max_iter: int = 100, tol: float = 1.0e-6, alpha_mix: float = 0.6):
-        """
-        Performs Kohn-Sham self-consistency to find the ground state density.
-        """
+        """Perform Kohn-Sham self-consistency to find the ground state density."""
         V_eff = self.get_effective_potential()
         lmax = np.amax(self.upf.lchi)
         nmax = np.amax(self.upf.nnodes_chi)
@@ -464,9 +456,7 @@ class PseudoAtomDFT:
 
     # .......................................................
     def save_density_potential(self) -> None:
-        """
-        Saves the charge density and potential to a file.
-        """
+        """Save the charge density and potential to a file."""
         V_eff = self.get_effective_potential()
 
         if not os.path.exists(self.control.storage_dir):

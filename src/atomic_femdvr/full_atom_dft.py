@@ -212,9 +212,7 @@ class FullAtomDFT:
 
     # .......................................................
     def ks_self_consistency(self, theory_level: str | None = None) -> tuple[int, float]:
-        """
-        Performs Kohn-Sham self-consistency to find the ground state density.
-        """
+        """Perform Kohn-Sham self-consistency to find the ground state density."""
         max_iter = self.dft.max_iter
         tol = self.dft.conv_tol
         alpha_mix = self.dft.alpha_mix
@@ -299,9 +297,7 @@ class FullAtomDFT:
 
     # .......................................................
     def save_density_potential(self) -> None:
-        """
-        Saves the charge density and potential to a file.
-        """
+        """Save the charge density and potential to a file."""
         V_eff = self.get_effective_potential()
 
         if not os.path.exists(self.control.storage_dir):

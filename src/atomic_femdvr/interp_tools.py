@@ -4,9 +4,7 @@ from scipy.interpolate import UnivariateSpline, interp1d
 
 # ===================================================================
 def fit_inverse_power_potential(r_vals: np.ndarray, V_vals: np.ndarray, N: int) -> np.ndarray:
-    """
-    Fits V(r) ≈ sum_{n=1}^N A_n / r^n
-    """
+    """Fits V(r) ≈ sum_{n=1}^N A_n / r^n."""
     r_vals = np.array(r_vals)
     V_vals = np.array(V_vals)
 

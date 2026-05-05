@@ -8,7 +8,7 @@ from atomic_femdvr.xc_functionals import gga_functional
 def charge_density(
     basis: FEDVR_Basis, nnodes_chi: np.ndarray, lchi: np.ndarray, occ: np.ndarray, psi: np.ndarray
 ) -> np.ndarray:
-    """Computes the charge density from given wave-functions"""
+    """Compute the charge density from given wave-functions."""
     np.amax(lchi)
     np.amax(nnodes_chi)
     nwf = len(occ)
@@ -78,7 +78,7 @@ def exchange_correlation_potential(
     alpha_x: float = 1.0,
     driver="internal",
 ) -> np.ndarray:
-    """Computes the exchange-correlation potential using libxc"""
+    """Compute the exchange-correlation potential using libxc."""
     basis.get_gridpoints()
     ne = basis.ne
     ng = basis.ng

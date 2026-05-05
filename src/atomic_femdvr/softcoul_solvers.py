@@ -17,9 +17,7 @@ def solve_direct(
     a0: float = 1.0e-2,
     solver: str = "full",
 ):
-    """
-    Solve the radial Schrödinger equation for a soft-Coulomb potential using direct diagonalization.
-    """
+    """Solve the radial Schrödinger equation for a soft-Coulomb potential by direct diag."""
     # construct soft-Coulomb potential
     r_grid = basis.get_gridpoints()
     Vsc_grid = -Z / np.sqrt(r_grid**2 + a0**2)
@@ -31,9 +29,7 @@ def solve_direct(
 
 # ====================================================================
 def get_derivative_matrix(rs: np.ndarray) -> np.ndarray:
-    """
-    Returns the second-order derivative matrix for given grid
-    """
+    """Return the second-order derivative matrix for given grid."""
     # compute diagonal and off-diagonal elements of the derivative matrix
     n = len(rs)
     D_diag = np.zeros(n)
@@ -79,9 +75,7 @@ def solve_iterative(
     maxiter: int = 5000,
     tol: float = 1e-8,
 ):
-    """
-    Solve the radial Schrödinger equation for a soft-Coulomb potential using LOBPCG method.
-    """
+    """Solve the radial Schrödinger equation for a soft-Coulomb potential using LOBPCG method."""
     ne = basis.ne  # Number of elements
     ng = basis.ng  # Number of grid points per element
     nb = ne * ng - 1  # Total number of grid points

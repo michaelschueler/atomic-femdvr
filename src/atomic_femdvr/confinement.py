@@ -3,9 +3,7 @@ import numpy as np
 
 # ===================================================================
 def soft_confinement(r: np.ndarray, ri: float, rc: float, bignumber: float = 1.0e10) -> np.ndarray:
-    """
-    Soft confinement potential for a given radius r, inner radius ri, and outer radius rc.
-    """
+    """Soft confinement potential for a given radius r, inner radius ri, and outer radius rc."""
     Vc = np.zeros_like(r)
 
     (Ir,) = np.where(r < ri)
@@ -29,9 +27,7 @@ def parabolic_confinement(
     rc: float,
     bignumber: float = 1.0e3,
 ) -> np.ndarray:
-    """
-    Parabolic confinement potential for a given radius r, inner radius ri, and outer radius rc.
-    """
+    """Parabolic confinement for a given radius r, inner radius ri, and outer radius rc."""
     Vc = np.zeros_like(r)
 
     (Ir,) = np.where(r < ri)
@@ -50,9 +46,7 @@ def parabolic_confinement(
 
 # ===================================================================
 def soft_step(r: np.ndarray, ri: float, rc: float, Vbarrier: float = 1.0e1) -> np.ndarray:
-    """
-    Soft step potential for a given radius r, inner radius ri, and outer radius rc.
-    """
+    """Soft step potential for a given radius r, inner radius ri, and outer radius rc."""
     Vc = np.zeros_like(r)
 
     (Ir,) = np.where(r < ri)
