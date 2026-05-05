@@ -8,22 +8,23 @@ version = "0.0.1-dev"
 description = "Solver for the atomic Kohn-Sham equation, including all-electron and pseudo-potential calculation"
 readme = "README.md"
 authors = [
-    { name = "Michael Schüler", email = "" }
+    { name = "Michael Schüler", email = "michael.schueler@psi.ch" },
+    { name = "Edward Linscott", email = "edwardlinscott@gmail.com" },
 ]
 maintainers = [
-    { name = "Michael Schüler", email = "" }
+    { name = "Michael Schüler", email = "michael.schueler@psi.ch" },
+    { name = "Edward Linscott", email = "edwardlinscott@gmail.com" },
 ]
 
 # See https://packaging.python.org/en/latest/guides/writing-pyproject-toml/#classifiers
 # Search tags using the controlled vocabulary at https://pypi.org/classifiers
 classifiers = [
-    "Development Status :: 1 - Planning",
+    "Development Status :: 3 - Alpha",
     "Environment :: Console",
-    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
     "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Framework :: Pytest",
-    "Framework :: tox",
     "Framework :: Sphinx",
     "Natural Language :: English",
     "Programming Language :: Python",
@@ -32,13 +33,18 @@ classifiers = [
     "Programming Language :: Python :: 3.12",
     "Programming Language :: Python :: 3.13",
     "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Scientific/Engineering :: Physics",
+    "Topic :: Scientific/Engineering :: Chemistry",
     "Typing :: Typed",
-    # TODO add your topics from the Trove controlled vocabulary (see https://pypi.org/classifiers)
 ]
 keywords = [
     "snekpack", # please keep this keyword to credit the cookiecutter-snekpack template
-    "cookiecutter",
-    # TODO add your own free-text keywords
+    "density functional theory",
+    "dft",
+    "kohn-sham",
+    "pseudopotential",
+    "atomic physics",
+    "fem-dvr",
 ]
 
 # License Information.
@@ -144,7 +150,6 @@ tests = [
 Homepage = "https://github.com/michaelschueler/atomic-femdvr"
 Repository = "https://github.com/michaelschueler/atomic-femdvr.git"
 Documentation = "https://atomic_femdvr.readthedocs.io"
-Funding = "https://github.com/sponsors/michaelschueler"
 
 [project.scripts]
 atomic_femdvr = "atomic_femdvr.cli:main"
