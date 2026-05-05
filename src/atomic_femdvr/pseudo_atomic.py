@@ -42,9 +42,13 @@ class PseudoAtomicInput(BaseModel):
     confinement: ConfinementInput = Field(default_factory=lambda: ConfinementInput())
     output: OutputInput = Field(default_factory=lambda: OutputInput())
 
+class PseudoAtomicResult(BaseModel):
+    eigenvalues: dict[str, dict[str, list[float]]]
+    energy_shifts: dict[str, list[float]] | None = None
+
 #==================================================================
 def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...],
-                        plot: bool = False, export_dir: str | None = None) -> dict[str, dict[str, list[float]]]:
+                        plot: bool = False, export_dir: str | None = None) -> PseudoAtomicResult:
     """Solve the pseudo-atomic problem."""
     print(60 * '*')
     print("Pseudo-atomic Schrödinger Equation Solver".center(60))
@@ -86,6 +90,7 @@ def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...],
             task_list.append(t.strip())
 
     all_eigenvalues = {}
+    energy_shifts = None
     if 'scf' in task_list:
 
         tic = perf_counter()
@@ -135,7 +140,7 @@ def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...],
             raise MissingSCFError("Non-SCF task requires SCF to be completed first or a valid restart file.")
 
         tic = perf_counter()
-        energy_shifts, eigenvalues, psi = pseudo_atom.get_states_energy_shift(
+        energy_shifts, eigenvalues, psi = pseudo_atom.get_all_states_energy_shifts(
             inp.sysparams.lmax,
             inp.sysparams.nmax,
             confinement=inp.confinement)
@@ -144,7 +149,8 @@ def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...],
         print_time(tic, toc, "Non-SCF Calculation")
         print("")
 
-        print_eigenvalues(inp.sysparams.lmax, eigenvalues, energy_shifts=energy_shifts)
+        outermost_shifts = [energy_shifts[f'{l}'][-1] for l in range(inp.sysparams.lmax + 1) if f'{l}' in energy_shifts]
+        print_eigenvalues(inp.sysparams.lmax, eigenvalues, energy_shifts=outermost_shifts)
         all_eigenvalues['nscf'] = eigenvalues
 
         if plot:
@@ -175,4 +181,4 @@ def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...],
     print_time(tic, toc, "Total")
     print(60 * '*')
 
-    return all_eigenvalues
+    return PseudoAtomicResult(eigenvalues=all_eigenvalues, energy_shifts=energy_shifts)

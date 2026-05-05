@@ -23,12 +23,12 @@ def write_projector_file(basis: FEDVR_Basis, phi: np.ndarray,
         Rmax = basis.xp[-1]
         rs = np.logspace(np.log10(rmin), np.log10(Rmax), nr)
 
-        # interpolate wavefunctions onto rs grid
+        # interpolate wavefunctions onto rs grid and convert from u(r) to R(r) = u(r)/r
         larr = []
         psi_interp = np.zeros([lmax + 1, nmax + 1, nr])
         for l in range(lmax + 1):
             for n in range(nmax + 1):
-                psi_interp[l, n, :] = basis.interpolate(phi[l, n, :], rs)
+                psi_interp[l, n, :] = basis.interpolate(phi[l, n, :], rs) / rs
                 larr.append(l)
 
         nproj = len(larr)

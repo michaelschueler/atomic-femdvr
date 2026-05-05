@@ -54,6 +54,8 @@ class UPFInterface(BaseModel):
         }
 
         for array_name, desired_shape in desired_shapes.items():
+            if desired_shape is None:
+                continue
             array_value = getattr(self, array_name)
             if array_value.shape != desired_shape:
                 raise ValueError(f"Array '{array_name}' has incorrect shape: {array_value.shape}, expected {desired_shape}")
