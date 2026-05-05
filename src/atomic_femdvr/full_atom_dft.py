@@ -1,3 +1,4 @@
+import logging
 import os
 
 import h5py
@@ -12,6 +13,8 @@ from atomic_femdvr.femdvr import FEDVR_Basis
 from atomic_femdvr.initial_density import get_slater_density
 from atomic_femdvr.input import ControlInput, DFTInput, ElectronsInput, SolverInput, SysParamsInput
 from atomic_femdvr.periodic_table import PeriodicTable
+
+logger = logging.getLogger(__name__)
 
 
 # ==========================================================================
@@ -45,9 +48,12 @@ class FullAtomDFT:
             self.Z = self.electrons.Z
 
         if np.abs(self.Z - Z_) / Z_ > 1.0e-5:
-            print(
-                f"Warning: Specified Z = {self.electrons.Z} differs from atomic number of "
-                f"element {self.element} (Z = {Z_}). Using Z = {self.Z}."
+            logger.warning(
+                "Specified Z = %s differs from atomic number of element %s (Z = %s). Using Z = %s.",
+                self.electrons.Z,
+                self.element,
+                Z_,
+                self.Z,
             )
 
         # optimize elements

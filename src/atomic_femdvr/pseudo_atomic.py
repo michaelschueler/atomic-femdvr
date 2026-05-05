@@ -5,6 +5,7 @@ Defines :class:`PseudoAtomicInput`, :class:`PseudoAtomicResult`, and the
 and non-SCF tasks in sequence.
 """
 
+import logging
 from time import perf_counter
 from typing import TYPE_CHECKING
 
@@ -22,6 +23,8 @@ from atomic_femdvr.input import (
 )
 from atomic_femdvr.pseudo_atom_dft import PseudoAtomDFT
 from atomic_femdvr.utils import plot_wavefunctions, print_eigenvalues, print_time
+
+logger = logging.getLogger(__name__)
 
 if TYPE_CHECKING:
     # Stub for type checking
@@ -133,9 +136,9 @@ def solve_pseudo_atomic(
     ValueError
         If ``export_dir`` is set but ``"nscf"`` did not run.
     """
-    print(60 * "*")
-    print("Pseudo-atomic Schrödinger Equation Solver".center(60))
-    print(60 * "*")
+    logger.info(60 * "*")
+    logger.info("Pseudo-atomic Schrödinger Equation Solver".center(60))
+    logger.info(60 * "*")
     tic = perf_counter()
 
     # Initialize the PseudoAtomDFT class
@@ -143,23 +146,23 @@ def solve_pseudo_atomic(
     pseudo_atom = PseudoAtomDFT(inp.control, inp.sysparams, inp.solver, inp.dft)
     toc = perf_counter()
     print_time(tic, toc, "Initializing PseudoAtomDFT")
-    print("")
+    logger.info("")
 
-    print(f"number of elements: {len(pseudo_atom.r_elements) - 1}")
-    print(f"number of grid points: {pseudo_atom.num_grid}\n")
+    logger.info(f"number of elements: {len(pseudo_atom.r_elements) - 1}")
+    logger.info(f"number of grid points: {pseudo_atom.num_grid}\n")
 
     # Read UPF file
     tic = perf_counter()
     pseudo_atom.read_upf(read_density=True, read_potential=True)
     toc = perf_counter()
     print_time(tic, toc, "Reading UPF file")
-    print("")
+    logger.info("")
 
     restart_success = pseudo_atom.read_density_potential()
     if restart_success:
-        print("Restarting from saved density and potential.\n")
+        logger.info("Restarting from saved density and potential.\n")
     else:
-        print("No saved density and potential found. Starting from scratch.\n")
+        logger.info("No saved density and potential found. Starting from scratch.\n")
 
     scf_done = False
     nscf_done = False
@@ -181,14 +184,16 @@ def solve_pseudo_atomic(
             )
 
             if err < inp.dft.conv_tol:
-                print(f"Self-consistency converged in {num_iter} iterations with error: {err:.2e}")
+                logger.info(
+                    f"Self-consistency converged in {num_iter} iterations with error: {err:.2e}"
+                )
             else:
                 raise ConvergenceError(
                     f"Self-consistency did not converge within {inp.dft.max_iter} "
                     f"iterations. Final error: {err:.2e}"
                 )
         else:
-            print("Skipping self-consistency loop as max_iter is set to 0.")
+            logger.info("Skipping self-consistency loop as max_iter is set to 0.")
 
         toc = perf_counter()
         print_time(tic, toc, "SCF")
@@ -219,8 +224,8 @@ def solve_pseudo_atomic(
         Q_opt = pseudo_atom.optimize_soft_coul(inp.confinement)
         toc = perf_counter()
         print_time(tic, toc, "Optimizing Soft Coulomb Confinement")
-        print("")
-        print(f"Optimized soft Coulomb confinement parameter Q: {Q_opt:.4f}\n")
+        logger.info("")
+        logger.info(f"Optimized soft Coulomb confinement parameter Q: {Q_opt:.4f}\n")
         inp.confinement.softcoul_charge = Q_opt
 
     if "nscf" in task_list:
@@ -236,7 +241,7 @@ def solve_pseudo_atomic(
 
         toc = perf_counter()
         print_time(tic, toc, "Non-SCF Calculation")
-        print("")
+        logger.info("")
 
         outermost_shifts = [
             energy_shifts[f"{l}"][-1]
@@ -286,6 +291,6 @@ def solve_pseudo_atomic(
 
     toc = perf_counter()
     print_time(tic, toc, "Total")
-    print(60 * "*")
+    logger.info(60 * "*")
 
     return PseudoAtomicResult(eigenvalues=all_eigenvalues, energy_shifts=energy_shifts)

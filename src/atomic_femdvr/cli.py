@@ -14,6 +14,7 @@ later, but that will cause problems--the code will get executed twice:
 """
 
 import json
+import logging
 from time import perf_counter
 
 import click
@@ -28,10 +29,22 @@ __all__ = [
 ]
 
 
+def _setup_logging(verbose: bool) -> None:
+    """Configure the root atomic_femdvr logger so the CLI prints progress.
+
+    The package modules log their progress via ``logger.info`` / ``warning``;
+    library callers can configure their own handlers, but the CLI installs a
+    minimal stdout handler so the user sees output by default.
+    """
+    level = logging.DEBUG if verbose else logging.INFO
+    logging.basicConfig(level=level, format="%(message)s")
+
+
 @click.group()
+@click.option("-v", "--verbose", is_flag=True, help="Enable DEBUG-level logging.")
 @click.version_option(version=get_version(), message="atomic_femdvr %(version)s")
-def main() -> None:
-    pass
+def main(verbose: bool) -> None:
+    _setup_logging(verbose)
 
 
 # If you want to have a multi-command CLI, see https://click.palletsprojects.com/en/latest/commands/

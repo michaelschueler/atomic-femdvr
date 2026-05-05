@@ -1,7 +1,11 @@
 """Author: H. U.R. Strand, 2020"""
 
+import logging
+
 import numpy as np
 import numpy.polynomial.legendre as leg
+
+logger = logging.getLogger(__name__)
 
 
 def legendre_spectral_derivative_matrix(N):
@@ -132,8 +136,10 @@ class Legendre:
                     break
 
             if not converged:
-                print("WARNING: Legendre-Gauss-Lobatto Newton iteration not converged")
-                print("WARNING: Relative error is:", np.abs(ratio))
+                logger.warning(
+                    "Legendre-Gauss-Lobatto Newton iteration not converged (relative error: %.3e)",
+                    np.abs(ratio),
+                )
 
             rerr[i] = np.abs(ratio)
             x_i[i] = x

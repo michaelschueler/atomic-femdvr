@@ -5,6 +5,7 @@ that runs all-electron Kohn-Sham SCF for a single atom.
 """
 
 import json
+import logging
 from time import perf_counter
 
 from pydantic import Field
@@ -19,6 +20,8 @@ from atomic_femdvr.input import (
     SysParamsInput,
 )
 from atomic_femdvr.utils import plot_wavefunctions, print_eigenvalues, print_time
+
+logger = logging.getLogger(__name__)
 
 
 class FullAtomicInput(BaseModel):
@@ -117,9 +120,9 @@ def solve_atomic(
         Currently unused; reserved for parity with
         :func:`atomic_femdvr.solve_pseudo_atomic`.
     """
-    print(60 * "*")
-    print("All-electrons Schrödinger Equation Solver".center(60))
-    print(60 * "*")
+    logger.info(60 * "*")
+    logger.info("All-electrons Schrödinger Equation Solver".center(60))
+    logger.info(60 * "*")
     tic = perf_counter()
 
     # Initialize the FullAtomDFT class
@@ -127,25 +130,27 @@ def solve_atomic(
     atom = FullAtomDFT(inp.control, inp.sysparams, inp.electrons, inp.solver, inp.dft)
     toc = perf_counter()
     print_time(tic, toc, "Initializing FullAtomDFT")
-    print("")
+    logger.info("")
 
-    print(f"number of elements: {len(atom.r_elements) - 1}")
-    print(f"number of grid points: {atom.num_grid}\n")
+    logger.info(f"number of elements: {len(atom.r_elements) - 1}")
+    logger.info(f"number of grid points: {atom.num_grid}\n")
 
-    print(40 * ".")
-    print("electronic configuration".center(40))
-    print(40 * ".")
+    logger.info(40 * ".")
+    logger.info("electronic configuration".center(40))
+    logger.info(40 * ".")
     for ishell in range(atom.nshells):
-        print(f"  l = {atom.ll[ishell]}, nr = {atom.nrad[ishell]} : occ = {atom.occ[ishell]:.2f}")
-    print(40 * ".")
-    print(f"number of electrons: {atom.num_electrons}\n")
+        logger.info(
+            f"  l = {atom.ll[ishell]}, nr = {atom.nrad[ishell]} : occ = {atom.occ[ishell]:.2f}"
+        )
+    logger.info(40 * ".")
+    logger.info(f"number of electrons: {atom.num_electrons}\n")
 
     tic = perf_counter()
     restart_success = atom.read_density_potential()
     if restart_success:
-        print("Restarting from saved density and potential.\n")
+        logger.info("Restarting from saved density and potential.\n")
     else:
-        print("No saved density and potential found. Starting from scratch.\n")
+        logger.info("No saved density and potential found. Starting from scratch.\n")
 
         atom.initialize_density()
 
@@ -161,21 +166,23 @@ def solve_atomic(
 
     all_eigenvalues = {}
     if "scf" in task_list:
-        print("Starting Kohn-Sham self-consistency: non-relativistic ...\n")
+        logger.info("Starting Kohn-Sham self-consistency: non-relativistic ...\n")
 
         tic = perf_counter()
         if inp.dft.max_iter > 0:
             num_iter, err = atom.ks_self_consistency(theory_level="non-relativistic")
 
             if err < inp.dft.conv_tol:
-                print(f"Self-consistency converged in {num_iter} iterations with error: {err:.2e}")
+                logger.info(
+                    f"Self-consistency converged in {num_iter} iterations with error: {err:.2e}"
+                )
             else:
-                print(
+                logger.info(
                     f"Self-consistency did not converge within {inp.dft.max_iter} "
                     f"iterations. Final error: {err:.2e}"
                 )
         else:
-            print("Skipping self-consistency loop as max_iter is set to 0.")
+            logger.info("Skipping self-consistency loop as max_iter is set to 0.")
 
         toc = perf_counter()
         print_time(tic, toc, "SCF")
@@ -186,7 +193,7 @@ def solve_atomic(
         print_eigenvalues(atom.lmax, eigenvalues)
 
         if inp.solver.theory_level.lower() == "scalar-relativistic":
-            print("Starting Kohn-Sham self-consistency: scalar-relativistic ...\n")
+            logger.info("Starting Kohn-Sham self-consistency: scalar-relativistic ...\n")
 
             tic = perf_counter()
             num_iter, err = atom.ks_self_consistency(theory_level="scalar-relativistic")
@@ -206,7 +213,7 @@ def solve_atomic(
 
     toc = perf_counter()
     print_time(tic, toc, "Total")
-    print(60 * "*")
+    logger.info(60 * "*")
 
 
 # ==================================================================

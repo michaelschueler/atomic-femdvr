@@ -1,3 +1,4 @@
+import logging
 import os
 from typing import cast
 
@@ -24,6 +25,8 @@ from atomic_femdvr.input import (
 from atomic_femdvr.interp_tools import interpolate_density, interpolate_potential
 from atomic_femdvr.projector_output import write_projector_file
 from atomic_femdvr.upf import UPFInterface
+
+logger = logging.getLogger(__name__)
 
 
 # ==========================================================================
@@ -229,7 +232,7 @@ class PseudoAtomDFT:
                     V_eff, lmax, nmax, Vconf=Vconf, lmin=self.lmax_pseudo + 1
                 )
 
-                print("Solving for unbound states with soft Coulomb potential...")
+                logger.info("Solving for unbound states with soft Coulomb potential...")
                 _eps_softcoul, psi_softcoul = self.solve_schrodinger(
                     Vsoftcoul, lmax, nmax, Vconf=Vconf, lmin=self.lmax_pseudo + 1
                 )

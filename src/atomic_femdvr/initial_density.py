@@ -1,5 +1,9 @@
+import logging
+
 import numpy as np
 from scipy.special import factorial, genlaguerre
+
+logger = logging.getLogger(__name__)
 
 
 # ==========================================================================
@@ -75,7 +79,7 @@ def get_slater_density(
         S = slater_shielding(n_vals, l_vals, occ_vals, n, l)
         Z_eff = Z - S
 
-        print(f"n = {n}, l = {l}, occ = {occ}, Zeff = {Z_eff}")
+        logger.debug("n = %d, l = %d, occ = %s, Zeff = %s", n, l, occ, Z_eff)
 
         radial_wavefunction = hydrogenic_orbital(r, Z_eff, n, l)
         density += occ * radial_wavefunction**2

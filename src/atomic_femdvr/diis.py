@@ -1,4 +1,8 @@
+import logging
+
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 
 class DIIS:
@@ -21,7 +25,7 @@ class DIIS:
         """Return the DIIS-extrapolated x."""
         m = len(self.e_list)
 
-        print("DIIS: m = ", m)
+        logger.debug("DIIS: m = %d", m)
         if m < 2:
             # Not enough history — just return the last x
             return beta * self.x_list[-1] + (1.0 - beta) * self.x_list[-2]
@@ -42,7 +46,7 @@ class DIIS:
         # Solve for coefficients
         coeff = np.linalg.solve(B, rhs)[:-1]
 
-        print("DIIS: coeff = ", coeff, "sum = ", np.sum(coeff))
+        logger.debug("DIIS: coeff = %s, sum = %.6f", coeff, np.sum(coeff))
 
         # Extrapolate new x
         x_new = np.zeros_like(self.x_list[0])
