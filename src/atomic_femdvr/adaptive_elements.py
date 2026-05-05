@@ -52,8 +52,6 @@ def adaptive_runge_kutta_23(f, y0, t0, t1, h_min, h_max, tol, arg=None):
             else:
                 h = max(h * 0.5, h_min)
 
-        # print(f"t: {t:.4f}, h: {h:.4f}, error: {error:.4e}")
-
     return np.array(t_values), np.array(y_values)
 
 

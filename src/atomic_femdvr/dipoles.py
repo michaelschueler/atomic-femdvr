@@ -14,8 +14,6 @@ def radial_integrals(basis: FEDVR_Basis, psi: np.ndarray, r_pow: int) -> np.ndar
     lmax = psi.shape[0] - 1
     nmax = psi.shape[1] - 1
 
-    # integrals = np.zeros([lmax+1, nmax+1, lmax+1, nmax+1], dtype=np.float64)
-
     nx = (lmax + 1) * (nmax + 1)
     integrals = np.zeros([nx, nx], dtype=np.float64)
 

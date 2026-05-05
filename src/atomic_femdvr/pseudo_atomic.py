@@ -26,6 +26,14 @@ from atomic_femdvr.utils import plot_wavefunctions, print_eigenvalues, print_tim
 
 logger = logging.getLogger(__name__)
 
+__all__ = [
+    "ConvergenceError",
+    "MissingSCFError",
+    "PseudoAtomicInput",
+    "PseudoAtomicResult",
+    "solve_pseudo_atomic",
+]
+
 if TYPE_CHECKING:
     # Stub for type checking
     PseudoAtomicSolverInput = SolverInput
@@ -75,22 +83,22 @@ class PseudoAtomicInput(BaseModel):
 
 
 class PseudoAtomicResult(BaseModel):
-    """Output of :func:`solve_pseudo_atomic`.
+    """Output of :func:`solve_pseudo_atomic`."""
 
-    Attributes
-    ----------
-    eigenvalues
-        Nested mapping ``{task_name: {l_str: [eps_0, eps_1, ...]}}``. The
-        outer keys are tasks that were actually run (``"scf"`` and / or
-        ``"nscf"``); the inner keys are angular-momentum quantum numbers
-        as strings.
-    energy_shifts
-        Per-:math:`\\ell` energy shifts (``"nscf"`` minus ``"scf"`` for each
-        bound state). ``None`` when ``"nscf"`` was not requested.
-    """
-
-    eigenvalues: dict[str, dict[str, list[float]]]
-    energy_shifts: dict[str, list[float]] | None = None
+    eigenvalues: dict[str, dict[str, list[float]]] = Field(
+        description=(
+            "Nested mapping ``{task_name: {l_str: [eps_0, eps_1, ...]}}``. "
+            "Outer keys are tasks that were actually run (``'scf'`` and / or "
+            "``'nscf'``); inner keys are angular-momentum quantum numbers as strings."
+        ),
+    )
+    energy_shifts: dict[str, list[float]] | None = Field(
+        default=None,
+        description=(
+            "Per-:math:`\\ell` energy shifts (``'nscf'`` minus ``'scf'`` for each "
+            "bound state). ``None`` when ``'nscf'`` was not requested."
+        ),
+    )
 
 
 # ==================================================================

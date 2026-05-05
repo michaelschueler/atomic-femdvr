@@ -14,6 +14,8 @@ from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 from typing_extensions import Self
 from upf_tools import UPFDict
 
+__all__ = ["UPFInterface"]
+
 
 class UPFInterface(BaseModel):
     """Norm-conserving UPF pseudopotential as a validated record.

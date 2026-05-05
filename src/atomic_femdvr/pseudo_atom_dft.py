@@ -275,8 +275,6 @@ class PseudoAtomDFT:
 
             ovlp = np.abs(self.basis.get_overlap(psi_ref, psi[0, 0, :])) ** 2
 
-            # print(f"Q: {Q:.4f}, Overlap: {ovlp:.4f}")
-
             return 1.0 - ovlp  # We want to maximize the overlap
 
         # Optimize the charge Q

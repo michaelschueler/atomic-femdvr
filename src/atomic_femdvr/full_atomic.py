@@ -4,7 +4,6 @@ Defines :class:`FullAtomicInput` and the :func:`solve_atomic` driver
 that runs all-electron Kohn-Sham SCF for a single atom.
 """
 
-import json
 import logging
 from time import perf_counter
 
@@ -22,6 +21,8 @@ from atomic_femdvr.input import (
 from atomic_femdvr.utils import plot_wavefunctions, print_eigenvalues, print_time
 
 logger = logging.getLogger(__name__)
+
+__all__ = ["FullAtomicInput", "solve_atomic"]
 
 
 class FullAtomicInput(BaseModel):
@@ -47,50 +48,6 @@ class FullAtomicInput(BaseModel):
         default_factory=lambda: ElectronsInput(),
         description="Nuclear charge and electron configuration.",
     )
-
-
-# ==================================================================
-def read_input(fname: str) -> tuple[dict, dict, dict, dict, dict]:
-    """Read input parameters from a JSON file.
-
-    Parameters
-    ----------
-    fname
-        Path to a JSON file containing ``control``, ``electrons``,
-        ``sysparams``, ``solver``, and (optionally) ``dft`` sections.
-
-    Returns
-    -------
-    tuple
-        ``(control, sysparams, electrons, solver, dft)`` as plain dicts.
-
-    Raises
-    ------
-    ValueError
-        If any of the required top-level sections is missing.
-    """
-    with open(fname) as f:
-        data = json.load(f)
-
-    control = data.get("control", {})
-
-    electrons = data.get("electrons", {})
-    if not electrons:
-        raise ValueError("No 'electrons' found in the input file.")
-
-    sysparams = data.get("sysparams", {})
-    if not sysparams:
-        raise ValueError("No 'sysparams' found in the input file.")
-    solver = data.get("solver", {})
-    if not solver:
-        raise ValueError("No 'solver' parameters found in the input file.")
-
-    dft = data.get("dft", {})
-
-    return control, sysparams, electrons, solver, dft
-
-
-# ==================================================================
 
 
 # ==================================================================

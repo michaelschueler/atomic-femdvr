@@ -12,6 +12,8 @@ import numpy as np
 from atomic_femdvr.legendre import Legendre
 from atomic_femdvr.legendre_integrals import get_legendre_integrals
 
+__all__ = ["FEDVR_Basis"]
+
 
 # =================================================================
 class FEDVR_Basis:

@@ -14,6 +14,20 @@ from typing import Literal, cast
 from pydantic import BaseModel as PydanticBaseModel
 from pydantic import ConfigDict, Field, FilePath, create_model, field_validator
 
+# Public surface (controls what `automodule:: atomic_femdvr.input` renders).
+# Internal helpers (BaseModel, EnergyUnit, ConfinementType, solver_input_factory)
+# are deliberately omitted -- users pass strings to enum-typed fields and never
+# instantiate the factory directly.
+__all__ = [
+    "ConfinementInput",
+    "ControlInput",
+    "DFTInput",
+    "ElectronsInput",
+    "OutputInput",
+    "SolverInput",
+    "SysParamsInput",
+]
+
 
 class EnergyUnit(str, Enum):
     """Energy unit used when reading external potential files."""
@@ -341,15 +355,6 @@ class DFTInput(BaseModel):
     def make_lower(cls, v: str) -> str:
         """Lower-case the mixing-scheme name so the input is case-insensitive."""
         return v.lower()
-
-
-class PseudoConfigInput(BaseModel):
-    """Pseudo-atomic-only configuration overrides."""
-
-    storage_dir: Path = Field(
-        default=Path(),
-        description="Output directory for pseudo-atomic-specific cache files.",
-    )
 
 
 class ConfinementType(str, Enum):

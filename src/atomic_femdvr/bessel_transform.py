@@ -19,6 +19,8 @@ from scipy.special import spherical_jn
 
 from atomic_femdvr.femdvr import FEDVR_Basis
 
+__all__ = ["bessel_integral"]
+
 
 # =================================================================
 def bessel_integral(

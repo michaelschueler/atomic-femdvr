@@ -7,7 +7,7 @@ Three output formats are supported:
 * ``"hdf5"`` -- raw FEM-DVR coefficients with the basis breakpoints, useful
   for re-loading into another atomic-femdvr run.
 * ``"bessel"`` -- HDF5 file of spherical-Bessel-transformed wavefunctions
-  on a momentum grid; used by kapaow for openmx-style projector setups.
+  on a momentum grid.
 """
 
 import os
@@ -17,6 +17,8 @@ import numpy as np
 
 from atomic_femdvr.bessel_transform import bessel_integral
 from atomic_femdvr.femdvr import FEDVR_Basis
+
+__all__ = ["write_bessel_hdf5", "write_projector_file"]
 
 
 # ----------------------------------------------------------
