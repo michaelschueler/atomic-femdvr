@@ -12,9 +12,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Top-level `atomic_femdvr` package now re-exports the public API
   (`FullAtomicInput`, `PseudoAtomicInput`, `PseudoAtomicResult`,
   `solve_atomic`, `solve_pseudo_atomic`).
-- `atomic_femdvr` CLI gains a ``-v / --verbose`` flag.
 - Sphinx + autodoc-pydantic API documentation.
-- Bundled S pseudopotential at `examples/data/S.upf`.
 
 ### Changed
 

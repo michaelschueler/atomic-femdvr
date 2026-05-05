@@ -16,15 +16,7 @@ $ atomic_femdvr pseudoatomic  examples/S_Pseudo.json -t scf -t nscf
 | `C_full.json`     | `atomic`       | C       | LDA (PZ)    | Open-shell; useful for SCF debugging.                                 |
 | `S_Pseudo.json`   | `pseudoatomic` | S       | GGA (PBE)   | Reads `data/S.upf` (PseudoDojo NC-SR 0.4 PBE standard, ONCVPSP, GPL). |
 
-## Output
-
-Solvers write a `density_potential.h5` restart file into
-`control.storage_dir`. The pseudo-atomic solver additionally writes
-projector / dipole files when invoked with an `export_dir` argument
-(`atomic_femdvr pseudoatomic input.json -t scf -t nscf out_dir/`).
-
 ## Bundled pseudopotentials
 
 `data/S.upf` is from the [PseudoDojo](http://www.pseudo-dojo.org)
-NC-SR 0.4 PBE *standard* set, generated with ONCVPSP and distributed
-under the GNU GPL.
+NC-SR 0.4 PBE *standard* set, generated with ONCVPSP and licensed under Creative Commons Attribution 4.0 International (CC BY 4.0).
