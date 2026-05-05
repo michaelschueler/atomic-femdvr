@@ -40,6 +40,7 @@
 
     "output": {
         "output_wfc_qe": true,
+        "qe_num_points": 2001,
         "output_wfc_bessel": true,
         "bessel_quad_npoints": 81,
         "bessel_quad_method": "Simpson",

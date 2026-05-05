@@ -21,8 +21,8 @@
     "dft": {
         "driver": "pylibxc",
         "xc_functional": "",
-        "x_functional": "GGA_X_PBE",
-        "c_functional": "GGA_C_PBE",
+        "x_functional": "lda_x",
+        "c_functional": "lda_c_pz",
         "mixing_scheme": "anderson",
         "alpha_mix": 0.8,
         "alpha_x": 1.0,

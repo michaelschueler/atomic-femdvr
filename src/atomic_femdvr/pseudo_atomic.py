@@ -168,7 +168,12 @@ def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...],
         toc = perf_counter()
         print_time(tic, toc, "Exporting Wave-Functions")
 
-        pseudo_atom.export_eigenvalues(eigenvalues, out_dir=export_dir)
+        pseudo_atom.export_eigenvalues(
+            eigenvalues,
+            out_dir=export_dir,
+            lmax=inp.sysparams.lmax,
+            nmax=inp.sysparams.nmax,
+        )
 
         if inp.output.output_dipole_moments:
             tic = perf_counter()
