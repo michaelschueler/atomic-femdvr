@@ -109,7 +109,8 @@ def solve_pseudo_atomic(
                 print(f"Self-consistency converged in {num_iter} iterations with error: {err:.2e}")
             else:
                 raise ConvergenceError(
-                    f"Self-consistency did not converge within {inp.dft.max_iter} iterations. Final error: {err:.2e}"
+                    f"Self-consistency did not converge within {inp.dft.max_iter} "
+                    f"iterations. Final error: {err:.2e}"
                 )
         else:
             print("Skipping self-consistency loop as max_iter is set to 0.")

@@ -1,13 +1,15 @@
 import numpy as np
 
 
-#=================================================================
+# =================================================================
 def adaptive_runge_kutta_23(f, y0, t0, t1, h_min, h_max, tol, arg=None):
     # Adaptive Runge-Kutta 2-3 method for solving ODEs
 
     def rk23_step(f, y, t, h, arg=None):
         if arg is not None:
-            fn = lambda t, y: f(t, y, arg)
+
+            def fn(t, y):
+                return f(t, y, arg)
         else:
             fn = f
         # Runge-Kutta 2-3 step
@@ -19,6 +21,7 @@ def adaptive_runge_kutta_23(f, y0, t0, t1, h_min, h_max, tol, arg=None):
         y3 = y + h * (k1 + 3 * k2) / 4
 
         return y2, y3
+
     t = t0
     y = y0
     h = h_max
@@ -49,28 +52,43 @@ def adaptive_runge_kutta_23(f, y0, t0, t1, h_min, h_max, tol, arg=None):
             else:
                 h = max(h * 0.5, h_min)
 
-
         # print(f"t: {t:.4f}, h: {h:.4f}, error: {error:.4e}")
 
     return np.array(t_values), np.array(y_values)
-#=================================================================
-def optimize_elements(Zc: float, h_min: float, h_max: float, Rmax: float,
-                      tol: float = 1.0e-2, Za: float = 1.0,
-                      method: str = 'exponential') -> np.ndarray:
 
-    if method.lower() == 'exponential':
-        wght_fnc = lambda r: np.exp(-Zc *r) + np.exp(-Za * r)
 
-    elif method.lower() == 'wkb':
-        Vc_fnc  = lambda r: -Zc / np.sqrt(r**2 + 1.0e-2)
-        wght_fnc = lambda r: np.sqrt(2.0 * np.abs(Vc_fnc(r)))
+# =================================================================
+def optimize_elements(
+    Zc: float,
+    h_min: float,
+    h_max: float,
+    Rmax: float,
+    tol: float = 1.0e-2,
+    Za: float = 1.0,
+    method: str = "exponential",
+) -> np.ndarray:
+    if method.lower() == "exponential":
+
+        def wght_fnc(r):
+            return np.exp(-Zc * r) + np.exp(-Za * r)
+
+    elif method.lower() == "wkb":
+
+        def Vc_fnc(r):
+            return -Zc / np.sqrt(r**2 + 1.0e-2)
+
+        def wght_fnc(r):
+            return np.sqrt(2.0 * np.abs(Vc_fnc(r)))
     else:
         raise ValueError(f"Unknown method '{method}' for optimizing elements.")
 
-    wght_fnc_r = lambda r, y, L: wght_fnc(Rmax - r)
-    xk, wk = adaptive_runge_kutta_23(wght_fnc_r, 0.0, 0.0, Rmax,
-                                    h_min, h_max, tol, arg=Rmax)
+    def wght_fnc_r(r, y, L):
+        return wght_fnc(Rmax - r)
+
+    xk, _wk = adaptive_runge_kutta_23(wght_fnc_r, 0.0, 0.0, Rmax, h_min, h_max, tol, arg=Rmax)
     grid = np.flip(Rmax - xk)
 
     return grid
-#=================================================================
+
+
+# =================================================================

@@ -59,7 +59,8 @@ class UPFInterface(BaseModel):
             array_value = getattr(self, array_name)
             if array_value.shape != desired_shape:
                 raise ValueError(
-                    f"Array '{array_name}' has incorrect shape: {array_value.shape}, expected {desired_shape}"
+                    f"Array '{array_name}' has incorrect shape: "
+                    f"{array_value.shape}, expected {desired_shape}"
                 )
         return self
 

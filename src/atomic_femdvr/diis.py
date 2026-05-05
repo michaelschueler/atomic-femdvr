@@ -2,7 +2,7 @@ import numpy as np
 
 
 class DIIS:
-    def __init__(self, max_history:int=6) -> None:
+    def __init__(self, max_history: int = 6) -> None:
         self.max_history = max_history
         self.x_list = []  # stored iterates
         self.e_list = []  # stored residuals
@@ -46,7 +46,7 @@ class DIIS:
 
         # Extrapolate new x
         x_new = np.zeros_like(self.x_list[0])
-        for c, x in zip(coeff, self.x_list):
+        for c, x in zip(coeff, self.x_list, strict=False):
             x_new += c * x
 
         x_new = (1.0 - beta) * self.x_list[-1] + beta * x_new

@@ -1,8 +1,8 @@
 import numpy as np
 
 
-#===================================================================
-def linear_mixing(rho_new:np.ndarray, rho_old:np.ndarray, alpha:float) -> np.ndarray:
+# ===================================================================
+def linear_mixing(rho_new: np.ndarray, rho_old: np.ndarray, alpha: float) -> np.ndarray:
     """
     Perform Anderson mixing of two density arrays.
     :param rho_new: New density array
@@ -12,4 +12,6 @@ def linear_mixing(rho_new:np.ndarray, rho_old:np.ndarray, alpha:float) -> np.nda
     """
     rho_mixed = (1 - alpha) * rho_old + alpha * rho_new
     return rho_mixed
-#===================================================================
+
+
+# ===================================================================

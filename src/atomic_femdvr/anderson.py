@@ -2,7 +2,7 @@ import numpy as np
 
 
 class AndersonMixing:
-    def __init__(self, max_history:int=5) -> None:
+    def __init__(self, max_history: int = 5) -> None:
         self.max_history = max_history
         self.x_list = []  # stored iterates
         self.y_list = []  # stored function values

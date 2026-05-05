@@ -22,7 +22,8 @@ class FullAtomicInput(BaseModel):
     dft: DFTInput = Field(default_factory=lambda: DFTInput())
     electrons: ElectronsInput = Field(default_factory=lambda: ElectronsInput())
 
-#==================================================================
+
+# ==================================================================
 def read_input(fname: str):
     """
     Read input parameters from a JSON file.
@@ -30,33 +31,38 @@ def read_input(fname: str):
     with open(fname) as f:
         data = json.load(f)
 
-    control = data.get('control', {})
+    control = data.get("control", {})
 
-    electrons = data.get('electrons', {})
+    electrons = data.get("electrons", {})
     if not electrons:
         raise ValueError("No 'electrons' found in the input file.")
 
-    sysparams = data.get('sysparams', {})
+    sysparams = data.get("sysparams", {})
     if not sysparams:
         raise ValueError("No 'sysparams' found in the input file.")
-    solver = data.get('solver', {})
+    solver = data.get("solver", {})
     if not solver:
         raise ValueError("No 'solver' parameters found in the input file.")
 
-    dft = data.get('dft', {})
-
+    dft = data.get("dft", {})
 
     return control, sysparams, electrons, solver, dft
-#==================================================================
 
 
-#==================================================================
-def solve_atomic(inp: FullAtomicInput, task_list: tuple[str, ...],
-                        plot: bool = False, export_dir: str | None = None) -> None:
+# ==================================================================
+
+
+# ==================================================================
+def solve_atomic(
+    inp: FullAtomicInput,
+    task_list: tuple[str, ...],
+    plot: bool = False,
+    export_dir: str | None = None,
+) -> None:
     """Solve the all-electrons atomic problem."""
-    print(60 * '*')
+    print(60 * "*")
     print("All-electrons Schrödinger Equation Solver".center(60))
-    print(60 * '*')
+    print(60 * "*")
     tic = perf_counter()
 
     # Initialize the FullAtomDFT class
@@ -69,12 +75,12 @@ def solve_atomic(inp: FullAtomicInput, task_list: tuple[str, ...],
     print(f"number of elements: {len(atom.r_elements) - 1}")
     print(f"number of grid points: {atom.num_grid}\n")
 
-    print(40 * '.')
+    print(40 * ".")
     print("electronic configuration".center(40))
-    print(40 * '.')
+    print(40 * ".")
     for ishell in range(atom.nshells):
         print(f"  l = {atom.ll[ishell]}, nr = {atom.nrad[ishell]} : occ = {atom.occ[ishell]:.2f}")
-    print(40 * '.')
+    print(40 * ".")
     print(f"number of electrons: {atom.num_electrons}\n")
 
     tic = perf_counter()
@@ -89,64 +95,61 @@ def solve_atomic(inp: FullAtomicInput, task_list: tuple[str, ...],
     toc = perf_counter()
     print_time(tic, toc, "Initializing density")
 
-    scf_done = False
-    nscf_done = False
-
     # split comma-separated tasks
     task_string = task_list[0]
-    if ',' in task_string:
+    if "," in task_string:
         task_list = []
-        for t in task_string.split(','):
+        for t in task_string.split(","):
             task_list.append(t.strip())
 
     all_eigenvalues = {}
-    if 'scf' in task_list:
-
+    if "scf" in task_list:
         print("Starting Kohn-Sham self-consistency: non-relativistic ...\n")
 
         tic = perf_counter()
         if inp.dft.max_iter > 0:
-            num_iter, err = atom.ks_self_consistency(theory_level='non-relativistic')
+            num_iter, err = atom.ks_self_consistency(theory_level="non-relativistic")
 
             if err < inp.dft.conv_tol:
                 print(f"Self-consistency converged in {num_iter} iterations with error: {err:.2e}")
             else:
-                print(f"Self-consistency did not converge within {inp.dft.max_iter} iterations. Final error: {err:.2e}")
+                print(
+                    f"Self-consistency did not converge within {inp.dft.max_iter} "
+                    f"iterations. Final error: {err:.2e}"
+                )
         else:
             print("Skipping self-consistency loop as max_iter is set to 0.")
 
         toc = perf_counter()
         print_time(tic, toc, "SCF")
 
-        eigenvalues, psi = atom.get_bound_states(theory_level='non-relativistic')
-        all_eigenvalues['scf'] = eigenvalues
+        eigenvalues, psi = atom.get_bound_states(theory_level="non-relativistic")
+        all_eigenvalues["scf"] = eigenvalues
 
         print_eigenvalues(atom.lmax, eigenvalues)
 
-        if inp.solver.theory_level.lower() == 'scalar-relativistic':
-
+        if inp.solver.theory_level.lower() == "scalar-relativistic":
             print("Starting Kohn-Sham self-consistency: scalar-relativistic ...\n")
 
             tic = perf_counter()
-            num_iter, err = atom.ks_self_consistency(theory_level='scalar-relativistic')
+            num_iter, err = atom.ks_self_consistency(theory_level="scalar-relativistic")
 
             toc = perf_counter()
             print_time(tic, toc, "SCF")
 
-            eigenvalues, psi = atom.get_bound_states(theory_level='scalar-relativistic')
-            all_eigenvalues['scf'] = eigenvalues
+            eigenvalues, psi = atom.get_bound_states(theory_level="scalar-relativistic")
+            all_eigenvalues["scf"] = eigenvalues
 
             print_eigenvalues(atom.lmax, eigenvalues)
-
 
         atom.save_density_potential()
 
         if plot:
             plot_wavefunctions(atom.grid, psi, atom.lmax, eigenvalues)
 
-        scf_done = True
-
     toc = perf_counter()
     print_time(tic, toc, "Total")
-    print(60 * '*')
-#==================================================================
+    print(60 * "*")
+
+
+# ==================================================================

@@ -30,7 +30,7 @@ class SysParamsInput(BaseModel):
     @field_validator("pot_energy_unit", mode="before")
     @classmethod
     def map_assume_isolated(cls, v: str) -> str:
-        """Map equivalent values for assume_isolated to the same string so that comparisons work as expected."""
+        """Map equivalent values for assume_isolated to a canonical string for comparison."""
         if v.lower() in ["ry", "rydberg"]:
             return "Ry"
         elif v.lower() in ["ev"]:

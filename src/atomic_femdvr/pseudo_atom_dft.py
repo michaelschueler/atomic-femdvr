@@ -207,7 +207,7 @@ class PseudoAtomDFT:
         V_eff = self.get_effective_potential()
 
         if confinement:
-            ri = confinement.ri_factor * confinement.rc
+            confinement.ri_factor * confinement.rc
             # Vconf = SoftConfinement(self.grid, ri, rc)
 
             Vconf = self.get_confinement(confinement)
@@ -225,12 +225,12 @@ class PseudoAtomDFT:
                     self.grid, confinement.softcoul_charge, confinement.softcoul_delta
                 )
 
-                eps_unbound, psi_unbound = self.solve_schrodinger(
+                eps_unbound, _psi_unbound = self.solve_schrodinger(
                     V_eff, lmax, nmax, Vconf=Vconf, lmin=self.lmax_pseudo + 1
                 )
 
                 print("Solving for unbound states with soft Coulomb potential...")
-                eps_softcoul, psi_softcoul = self.solve_schrodinger(
+                _eps_softcoul, psi_softcoul = self.solve_schrodinger(
                     Vsoftcoul, lmax, nmax, Vconf=Vconf, lmin=self.lmax_pseudo + 1
                 )
 
@@ -299,7 +299,7 @@ class PseudoAtomDFT:
     def get_states_energy_shift(
         self, lmax: int, nmax: int, confinement: ConfinementInput
     ) -> tuple[np.ndarray, dict[str, list[float]], np.ndarray]:
-        eigenvalues_bounds, psi_bound = self.get_bound_states()
+        eigenvalues_bounds, _psi_bound = self.get_bound_states()
         eigenvalues_all, psi_all = self.get_all_states(lmax, nmax, confinement=confinement)
 
         energy_shifts = np.zeros(self.lmax_pseudo + 1, dtype=np.float64)
@@ -316,7 +316,7 @@ class PseudoAtomDFT:
     def get_all_states_energy_shifts(
         self, lmax: int, nmax: int, confinement: ConfinementInput
     ) -> tuple[dict[str, list[float]], dict[str, list[float]], np.ndarray]:
-        eigenvalues_bounds, psi_bound = self.get_bound_states()
+        eigenvalues_bounds, _psi_bound = self.get_bound_states()
         eigenvalues_all, psi_all = self.get_all_states(lmax, nmax, confinement=confinement)
 
         energy_shifts = {}
@@ -427,7 +427,7 @@ class PseudoAtomDFT:
         nmax = np.amax(self.upf.nnodes_chi)
 
         # Initial guess for the wavefunctions
-        eps, psi = self.solve_schrodinger(V_eff, lmax, nmax)
+        _eps, psi = self.solve_schrodinger(V_eff, lmax, nmax)
 
         rho_old = self.rho_grid.copy()
 
@@ -451,7 +451,7 @@ class PseudoAtomDFT:
             err = np.linalg.norm(rho_new - rho_old)
 
             # Solve Schrödinger equation with new potential
-            eps, psi = self.solve_schrodinger(V_eff, lmax, nmax)
+            _eps, psi = self.solve_schrodinger(V_eff, lmax, nmax)
 
             rho_old = rho_new.copy()
 
@@ -490,7 +490,7 @@ class PseudoAtomDFT:
         with h5py.File(filepath, "r") as f:
             grid = f["grid"][:]
             rho_grid = f["rho"][:]
-            Veff_grid = f["Veff"][:]
+            f["Veff"][:]
 
         if len(grid) != self.num_grid:
             restart_success = False

@@ -80,7 +80,7 @@ tests = [
 ]
 docs = [
     "sphinx>=8",
-    "sphinx-rtd-theme>=3.0","sphinx-click", 
+    "sphinx-rtd-theme>=3.0","sphinx-click",
     "sphinx_automodapi",
     # Include if your project uses Pydantic:
     # "autodoc_pydantic",
@@ -234,6 +234,27 @@ extend-select = [
 ignore = [
     "D105", # Missing docstring in magic method
     "E203", # Black conflicts with the following
+    # Physics / math naming conventions: l (angular momentum), V_eff, Q, etc.
+    # are correct domain notation; PEP 8 renaming would harm readability.
+    "N802", # invalid function name (e.g. SolveNR)
+    "N803", # invalid argument name (e.g. Vbarrier, Z)
+    "N806", # non-lowercase variable in function (e.g. V_eff, Vpot)
+    "E741", # ambiguous variable name (l = angular momentum)
+    # Docstring rules deferred until the docstring sweep lands.
+    "D100", # undocumented public module
+    "D101", # undocumented public class
+    "D102", # undocumented public method
+    "D103", # undocumented public function
+    "D107", # undocumented public __init__
+    "D200", # unnecessary multiline docstring
+    "D205", # missing blank line after summary
+    "D400", # missing trailing period
+    "D401", # non-imperative mood
+    "DOC",  # pydoclint (preview-only; emits warning)
+    # Print → logging migration tracked in dedicated todo.
+    "T201",
+    # Commented-out-code cleanup tracked in dedicated todo.
+    "ERA001",
 ]
 
 # See https://docs.astral.sh/ruff/settings/#per-file-ignores
@@ -247,6 +268,19 @@ ignore = [
 # Asserts are okay in tests
 "tests/**/*.py" = ["S101"]
 "tests/conftest.py" = ["F401"]
+# kohn_sham.get_green_function is incomplete; references undefined names.
+# Remove F821 once the function is finished or removed.
+"src/atomic_femdvr/kohn_sham.py" = ["E501", "F821"]
+# DFT functionals: dense math; semicolon-separated parameter declarations
+# and long formulas mirror the source papers and are kept verbatim.
+"src/atomic_femdvr/xc_functionals.py" = ["C901", "E501", "E702"]
+# FEDVR_Basis: underscore in class name is the canonical spelling in the
+# FEM-DVR literature.
+"src/atomic_femdvr/femdvr.py" = ["C901", "E501", "N801"]
+# DFT solver loops are intrinsically multi-branch.
+"src/atomic_femdvr/full_atom_dft.py" = ["C901"]
+"src/atomic_femdvr/pseudo_atomic.py" = ["C901"]
+"src/atomic_femdvr/softcoul_solvers.py" = ["C901"]
 
 [tool.ruff.lint.pydocstyle]
 convention = "pep257"
