@@ -50,7 +50,7 @@ class UPFInterface(BaseModel):
             "kbeta": (self.nbeta,),
             "beta": (self.mesh, self.nbeta),
             "rho_nlcc": (self.mesh,) if self.rho_nlcc is not None else None,
-            "rho_atom": (self.mesh,) if self.rho_atom is not None else None
+            "rho_atom": (self.mesh,) if self.rho_atom is not None else None,
         }
 
         for array_name, desired_shape in desired_shapes.items():
@@ -58,7 +58,9 @@ class UPFInterface(BaseModel):
                 continue
             array_value = getattr(self, array_name)
             if array_value.shape != desired_shape:
-                raise ValueError(f"Array '{array_name}' has incorrect shape: {array_value.shape}, expected {desired_shape}")
+                raise ValueError(
+                    f"Array '{array_name}' has incorrect shape: {array_value.shape}, expected {desired_shape}"
+                )
         return self
 
     @field_validator("r", "oc", "chi", "dion", "vloc", "beta", mode="before")
@@ -75,37 +77,40 @@ class UPFInterface(BaseModel):
 
     @classmethod
     def from_upf(cls, filename: Path) -> Self:
-
         upf_dict = UPFDict.from_upf(filename)
 
-        dij_1d = upf_dict['nonlocal']['dij']
-        nbeta = upf_dict['header']['number_of_proj']
-        assert dij_1d.size == nbeta**2
+        dij_1d = upf_dict["nonlocal"]["dij"]
+        nbeta = upf_dict["header"]["number_of_proj"]
+        if dij_1d.size != nbeta**2:
+            raise ValueError(
+                f"UPF file '{filename}': dij has size {dij_1d.size}, "
+                f"expected nbeta**2 = {nbeta**2}."
+            )
         dij = dij_1d.reshape((nbeta, nbeta))
 
         return cls(
-            zp = upf_dict['header']['z_valence'],
-            etotps = upf_dict['header']['total_psenergy'],
-            ecutrho = upf_dict['header']['rho_cutoff'],
-            lmax = upf_dict['header']['l_max'],
-            nwfc = upf_dict['header']['number_of_wfc'],
-            nbeta = nbeta,
-            mesh = upf_dict['header']['mesh_size'],
-            xmin = upf_dict['mesh'].get('xmin', None),
-            rmax = upf_dict['mesh'].get('rmax', None),
-            dx = upf_dict['mesh'].get('dx', None),
-            r = upf_dict['mesh']['r'],
-            nchi = [chi['n'] for chi in upf_dict['pswfc']['chi']],
-            lchi = [chi['l'] for chi in upf_dict['pswfc']['chi']],
-            oc = [chi['occupation'] for chi in upf_dict['pswfc']['chi']],
-            chi = np.transpose([chi['content'] for chi in upf_dict['pswfc']['chi']]),
-            lll = [beta['angular_momentum'] for beta in upf_dict['nonlocal']['beta']],
-            dion = dij,
-            vloc = upf_dict['local'],
-            kbeta = [beta['cutoff_radius_index'] for beta in upf_dict['nonlocal']['beta']],
-            beta = np.transpose([beta['content'] for beta in upf_dict['nonlocal']['beta']]),
-            rho_nlcc = upf_dict.get('nlcc', None),
-            rho_atom = upf_dict.get('rhoatom', None)
+            zp=upf_dict["header"]["z_valence"],
+            etotps=upf_dict["header"]["total_psenergy"],
+            ecutrho=upf_dict["header"]["rho_cutoff"],
+            lmax=upf_dict["header"]["l_max"],
+            nwfc=upf_dict["header"]["number_of_wfc"],
+            nbeta=nbeta,
+            mesh=upf_dict["header"]["mesh_size"],
+            xmin=upf_dict["mesh"].get("xmin", None),
+            rmax=upf_dict["mesh"].get("rmax", None),
+            dx=upf_dict["mesh"].get("dx", None),
+            r=upf_dict["mesh"]["r"],
+            nchi=[chi["n"] for chi in upf_dict["pswfc"]["chi"]],
+            lchi=[chi["l"] for chi in upf_dict["pswfc"]["chi"]],
+            oc=[chi["occupation"] for chi in upf_dict["pswfc"]["chi"]],
+            chi=np.transpose([chi["content"] for chi in upf_dict["pswfc"]["chi"]]),
+            lll=[beta["angular_momentum"] for beta in upf_dict["nonlocal"]["beta"]],
+            dion=dij,
+            vloc=upf_dict["local"],
+            kbeta=[beta["cutoff_radius_index"] for beta in upf_dict["nonlocal"]["beta"]],
+            beta=np.transpose([beta["content"] for beta in upf_dict["nonlocal"]["beta"]]),
+            rho_nlcc=upf_dict.get("nlcc", None),
+            rho_atom=upf_dict.get("rhoatom", None),
         )
 
     @property
@@ -114,12 +119,11 @@ class UPFInterface(BaseModel):
 
     def get_charge_density(self) -> npt.NDArray[np.float64]:
         """Compute the charge density from the wavefunctions."""
-
         if self.rho_atom is not None:
             return self.rho_atom
         else:
             rho = np.zeros(self.mesh, dtype=np.float64)
             for iwf in range(self.nwfc):
-                rho[1:] += self.oc[iwf] * np.abs(self.chi[1:, iwf])**2 / self.r[1:]**2
+                rho[1:] += self.oc[iwf] * np.abs(self.chi[1:, iwf]) ** 2 / self.r[1:] ** 2
             rho[0] = rho[1]
             return rho

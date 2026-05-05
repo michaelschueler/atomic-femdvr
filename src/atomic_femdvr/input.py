@@ -1,8 +1,6 @@
-
-
 from enum import Enum
 from pathlib import Path
-from typing import Literal
+from typing import Literal, cast
 
 from pydantic import BaseModel as PydanticBaseModel
 from pydantic import ConfigDict, Field, FilePath, create_model, field_validator
@@ -15,8 +13,8 @@ class EnergyUnit(str, Enum):
 
 
 class BaseModel(PydanticBaseModel):
-
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
+
 
 class SysParamsInput(BaseModel):
     file_pot: FilePath | None = None
@@ -41,7 +39,7 @@ class SysParamsInput(BaseModel):
             return "Ha"
         else:
             raise ValueError(f"Invalid value for pot_energy_unit: {v}")
-        
+
     @field_validator("element", mode="before")
     @classmethod
     def validate_element(cls, v: str | None) -> None:
@@ -53,23 +51,25 @@ class SysParamsInput(BaseModel):
             raise ValueError("Element symbol must be one or two characters.")
         return v.strip().capitalize()
 
+
 class ControlInput(BaseModel):
     storage_dir: Path = Field(default=Path())
     restart: bool = Field(default=False)
     store_density: bool = Field(default=True)
 
+
 class OutputInput(BaseModel):
-    output_wfc_qe : bool = Field(default=False)
-    output_wfc_hdf5 : bool = Field(default=False)
-    output_wfc_bessel : bool = Field(default=False)
-    output_dipole_moments : bool = Field(default=False)
-    bessel_quad_npoints : int = Field(default=41, ge=3)
-    bessel_quad_method : Literal['simpson', 'lobatto'] = Field(default='simpson')
-    bessel_qmax : float = Field(default=50.0, gt=0.0)
-    bessel_rpow : int = Field(default=1, ge=1)
+    output_wfc_qe: bool = Field(default=False)
+    output_wfc_hdf5: bool = Field(default=False)
+    output_wfc_bessel: bool = Field(default=False)
+    output_dipole_moments: bool = Field(default=False)
+    bessel_quad_npoints: int = Field(default=41, ge=3)
+    bessel_quad_method: Literal["simpson", "lobatto"] = Field(default="simpson")
+    bessel_qmax: float = Field(default=50.0, gt=0.0)
+    bessel_rpow: int = Field(default=1, ge=1)
     bessel_nq: int = Field(default=201, ge=3)
-    qe_num_points : int = Field(default=1001, ge=3)
-    qe_rmin : float = Field(default=1.0e-8, gt=0.0)
+    qe_num_points: int = Field(default=1001, ge=3)
+    qe_rmin: float = Field(default=1.0e-8, gt=0.0)
 
     @field_validator("bessel_quad_method", mode="before")
     @classmethod
@@ -77,12 +77,16 @@ class OutputInput(BaseModel):
         """Convert to lower case to make the input case-insensitive."""
         return v.lower()
 
+
 class ElectronsInput(BaseModel):
     Z: float = Field(default=0.0, ge=0)
     configuration: list[str] = Field(default_factory=lambda: ["1s1"])
 
+
 class SolverInput(BaseModel):
-    theory_level: Literal["non-relativistic", "zora", "scalar-relativistic"] = Field(default="non-relativistic")
+    theory_level: Literal["non-relativistic", "zora", "scalar-relativistic"] = Field(
+        default="non-relativistic"
+    )
     eigensolver: Literal["full", "banded"] = Field(default="full")
     h_min: float = Field(default=0.5, gt=0)
     h_max: float = Field(default=4.0, gt=0)
@@ -97,15 +101,16 @@ class SolverInput(BaseModel):
         """Convert to lower case to make the input case-insensitive."""
         return v.lower()
 
+
 def solver_input_factory(default_hmin: float, default_hmax: float) -> type[SolverInput]:
     model = create_model(
         "SolverInput",
-        __base__ = SolverInput,
-        h_min = (float, Field(default=default_hmin, gt=0)),
-        h_max = (float, Field(default=default_hmax, gt=0)),
+        __base__=SolverInput,
+        h_min=(float, Field(default=default_hmin, gt=0)),
+        h_max=(float, Field(default=default_hmax, gt=0)),
     )
-    assert issubclass(model, SolverInput)
-    return model
+    return cast(type[SolverInput], model)
+
 
 class DFTInput(BaseModel):
     driver: str = "internal"
@@ -125,6 +130,7 @@ class DFTInput(BaseModel):
         """Convert to lower case to make the input case-insensitive."""
         return v.lower()
 
+
 class PseudoConfigInput(BaseModel):
     storage_dir: Path = Field(default=Path())
 
@@ -133,6 +139,7 @@ class ConfinementType(str, Enum):
     SOFTSTEP = "softstep"
     HARMONIC = "harmonic"
     NONE = None
+
 
 class ConfinementInput(BaseModel):
     type: ConfinementType = ConfinementType.NONE

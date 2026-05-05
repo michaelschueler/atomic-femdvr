@@ -1,5 +1,3 @@
-import json
-import sys
 from time import perf_counter
 from typing import TYPE_CHECKING
 
@@ -7,10 +5,10 @@ from pydantic import Field
 
 from atomic_femdvr.input import (
     BaseModel,
-    ControlInput,
-    OutputInput,
     ConfinementInput,
+    ControlInput,
     DFTInput,
+    OutputInput,
     SolverInput,
     SysParamsInput,
     solver_input_factory,
@@ -28,11 +26,15 @@ else:
 
 class ConvergenceError(Exception):
     """Custom exception for convergence errors in the SCF process."""
+
     pass
+
 
 class MissingSCFError(Exception):
     """Custom exception for missing SCF when required."""
+
     pass
+
 
 class PseudoAtomicInput(BaseModel):
     control: ControlInput = Field(default_factory=lambda: ControlInput())
@@ -42,17 +44,23 @@ class PseudoAtomicInput(BaseModel):
     confinement: ConfinementInput = Field(default_factory=lambda: ConfinementInput())
     output: OutputInput = Field(default_factory=lambda: OutputInput())
 
+
 class PseudoAtomicResult(BaseModel):
     eigenvalues: dict[str, dict[str, list[float]]]
     energy_shifts: dict[str, list[float]] | None = None
 
-#==================================================================
-def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...],
-                        plot: bool = False, export_dir: str | None = None) -> PseudoAtomicResult:
+
+# ==================================================================
+def solve_pseudo_atomic(
+    inp: PseudoAtomicInput,
+    task_list: tuple[str, ...],
+    plot: bool = False,
+    export_dir: str | None = None,
+) -> PseudoAtomicResult:
     """Solve the pseudo-atomic problem."""
-    print(60 * '*')
+    print(60 * "*")
     print("Pseudo-atomic Schrödinger Equation Solver".center(60))
-    print(60 * '*')
+    print(60 * "*")
     tic = perf_counter()
 
     # Initialize the PseudoAtomDFT class
@@ -78,30 +86,31 @@ def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...],
     else:
         print("No saved density and potential found. Starting from scratch.\n")
 
-
     scf_done = False
     nscf_done = False
 
     # split comma-separated tasks
     task_string = task_list[0]
-    if ',' in task_string:
+    if "," in task_string:
         task_list = []
-        for t in task_string.split(','):
+        for t in task_string.split(","):
             task_list.append(t.strip())
 
     all_eigenvalues = {}
     energy_shifts = None
-    if 'scf' in task_list:
-
+    if "scf" in task_list:
         tic = perf_counter()
         if inp.dft.max_iter > 0:
-            num_iter, err = pseudo_atom.ks_self_consistency(max_iter=inp.dft.max_iter, tol=inp.dft.conv_tol,
-                                                             alpha_mix=inp.dft.alpha_mix)
+            num_iter, err = pseudo_atom.ks_self_consistency(
+                max_iter=inp.dft.max_iter, tol=inp.dft.conv_tol, alpha_mix=inp.dft.alpha_mix
+            )
 
             if err < inp.dft.conv_tol:
                 print(f"Self-consistency converged in {num_iter} iterations with error: {err:.2e}")
             else:
-                raise ConvergenceError(f"Self-consistency did not converge within {inp.dft.max_iter} iterations. Final error: {err:.2e}")
+                raise ConvergenceError(
+                    f"Self-consistency did not converge within {inp.dft.max_iter} iterations. Final error: {err:.2e}"
+                )
         else:
             print("Skipping self-consistency loop as max_iter is set to 0.")
 
@@ -109,9 +118,10 @@ def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...],
         print_time(tic, toc, "SCF")
 
         eigenvalues, psi = pseudo_atom.get_bound_states()
-        all_eigenvalues['scf'] = eigenvalues
+        all_eigenvalues["scf"] = eigenvalues
 
-        assert pseudo_atom.upf is not None
+        if pseudo_atom.upf is None:
+            raise RuntimeError("UPF file was not loaded; SCF cannot proceed.")
 
         print_eigenvalues(int(pseudo_atom.upf.lmax), eigenvalues)
 
@@ -123,9 +133,11 @@ def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...],
 
         scf_done = True
 
-    if 'optimize' in task_list:
+    if "optimize" in task_list:
         if not scf_done and not restart_success:
-            raise MissingSCFError("Optimize task requires SCF to be completed first or a valid restart file.")
+            raise MissingSCFError(
+                "Optimize task requires SCF to be completed first or a valid restart file."
+            )
 
         tic = perf_counter()
         Q_opt = pseudo_atom.optimize_soft_coul(inp.confinement)
@@ -135,23 +147,28 @@ def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...],
         print(f"Optimized soft Coulomb confinement parameter Q: {Q_opt:.4f}\n")
         inp.confinement.softcoul_charge = Q_opt
 
-    if 'nscf' in task_list:
+    if "nscf" in task_list:
         if not scf_done and not restart_success:
-            raise MissingSCFError("Non-SCF task requires SCF to be completed first or a valid restart file.")
+            raise MissingSCFError(
+                "Non-SCF task requires SCF to be completed first or a valid restart file."
+            )
 
         tic = perf_counter()
         energy_shifts, eigenvalues, psi = pseudo_atom.get_all_states_energy_shifts(
-            inp.sysparams.lmax,
-            inp.sysparams.nmax,
-            confinement=inp.confinement)
+            inp.sysparams.lmax, inp.sysparams.nmax, confinement=inp.confinement
+        )
 
         toc = perf_counter()
         print_time(tic, toc, "Non-SCF Calculation")
         print("")
 
-        outermost_shifts = [energy_shifts[f'{l}'][-1] for l in range(inp.sysparams.lmax + 1) if f'{l}' in energy_shifts]
+        outermost_shifts = [
+            energy_shifts[f"{l}"][-1]
+            for l in range(inp.sysparams.lmax + 1)
+            if f"{l}" in energy_shifts
+        ]
         print_eigenvalues(inp.sysparams.lmax, eigenvalues, energy_shifts=outermost_shifts)
-        all_eigenvalues['nscf'] = eigenvalues
+        all_eigenvalues["nscf"] = eigenvalues
 
         if plot:
             plot_wavefunctions(pseudo_atom.grid, psi, inp.sysparams.lmax, eigenvalues)
@@ -160,11 +177,19 @@ def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...],
 
     if export_dir is not None:
         if not nscf_done:
-            raise ValueError("Exporting wave-functions requires non-SCF task to be completed first.")
+            raise ValueError(
+                "Exporting wave-functions requires non-SCF task to be completed first."
+            )
 
         tic = perf_counter()
-        pseudo_atom.export_projectors(inp.sysparams.lmax, inp.sysparams.nmax, psi, inp.confinement,
-                                          inp.output, out_dir=export_dir)
+        pseudo_atom.export_projectors(
+            inp.sysparams.lmax,
+            inp.sysparams.nmax,
+            psi,
+            inp.confinement,
+            inp.output,
+            out_dir=export_dir,
+        )
         toc = perf_counter()
         print_time(tic, toc, "Exporting Wave-Functions")
 
@@ -177,13 +202,14 @@ def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...],
 
         if inp.output.output_dipole_moments:
             tic = perf_counter()
-            pseudo_atom.export_dipole_moments(inp.sysparams.lmax, inp.sysparams.nmax, psi,
-                                             inp.output, out_dir=export_dir)
+            pseudo_atom.export_dipole_moments(
+                inp.sysparams.lmax, inp.sysparams.nmax, psi, inp.output, out_dir=export_dir
+            )
             toc = perf_counter()
             print_time(tic, toc, "Exporting Dipole Moments")
 
     toc = perf_counter()
     print_time(tic, toc, "Total")
-    print(60 * '*')
+    print(60 * "*")
 
     return PseudoAtomicResult(eigenvalues=all_eigenvalues, energy_shifts=energy_shifts)
