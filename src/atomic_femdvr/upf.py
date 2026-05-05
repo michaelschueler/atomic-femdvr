@@ -1,4 +1,10 @@
-"""Replacement for UPFInterface using the upf-tools python library."""
+"""Pydantic-validated wrapper around a UPF (Unified Pseudopotential Format) file.
+
+Loads a norm-conserving UPF via the ``upf-tools`` library and exposes the
+quantities the solver needs (charge density, local potential, beta
+projectors, atomic wavefunctions, NLCC density) as fixed-shape numpy
+arrays. Use :meth:`UPFInterface.from_upf` to construct.
+"""
 
 from pathlib import Path
 
@@ -10,6 +16,16 @@ from upf_tools import UPFDict
 
 
 class UPFInterface(BaseModel):
+    """Norm-conserving UPF pseudopotential as a validated record.
+
+    All array fields are stored on the UPF file's native radial mesh of
+    length ``mesh``. Cross-field shape consistency is enforced at
+    construction time. Frozen after construction (any modification
+    raises).
+    """
+
+    model_config = ConfigDict(extra="forbid", frozen=True, arbitrary_types_allowed=True)
+
     zp: float
     etotps: float
     ecutrho: float
@@ -32,8 +48,6 @@ class UPFInterface(BaseModel):
     beta: npt.NDArray[np.float64]
     rho_nlcc: npt.NDArray[np.float64] | None = None
     rho_atom: npt.NDArray[np.float64] | None = None
-
-    model_config = ConfigDict(extra="forbid", frozen=True, arbitrary_types_allowed=True)
 
     @model_validator(mode="after")
     def check_array_dimensions(self) -> Self:
@@ -78,6 +92,24 @@ class UPFInterface(BaseModel):
 
     @classmethod
     def from_upf(cls, filename: Path) -> Self:
+        """Construct a :class:`UPFInterface` from a UPF file on disk.
+
+        Parameters
+        ----------
+        filename
+            Path to a UPF (`.upf`) file.
+
+        Returns
+        -------
+        UPFInterface
+            Validated record exposing the data the solver needs.
+
+        Raises
+        ------
+        ValueError
+            If the file's ``dij`` array does not have shape
+            ``(nbeta, nbeta)``, or if any other array shape is inconsistent.
+        """
         upf_dict = UPFDict.from_upf(filename)
 
         dij_1d = upf_dict["nonlocal"]["dij"]
@@ -116,10 +148,21 @@ class UPFInterface(BaseModel):
 
     @property
     def nnodes_chi(self) -> npt.NDArray[np.int32]:
+        """Per-wavefunction radial node counts ``n``, derived from ``lchi``."""
         return np.array([np.sum(self.lchi[:i] == l) for i, l in enumerate(self.lchi)])
 
     def get_charge_density(self) -> npt.NDArray[np.float64]:
-        """Compute the charge density from the wavefunctions."""
+        """Return the all-electron-like atomic charge density on the UPF radial mesh.
+
+        Returns ``rho_atom`` directly when present in the UPF file; otherwise
+        constructs it from the atomic wavefunctions ``chi`` weighted by the
+        UPF occupations ``oc``.
+
+        Returns
+        -------
+        np.ndarray
+            Charge density on the UPF radial grid, shape ``(mesh,)``.
+        """
         if self.rho_atom is not None:
             return self.rho_atom
         else:

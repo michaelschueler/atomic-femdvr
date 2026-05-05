@@ -1,3 +1,18 @@
+"""Spherical Bessel transform of wavefunctions on a FEM-DVR basis.
+
+The transform implemented here is
+
+.. math::
+
+    \\widetilde{\\phi}(q) = \\int_0^{R_{\\max}} r^{p}\\, \\phi(r)\\,
+    j_{\\ell}(q\\,r)\\, dr
+
+evaluated element-by-element using either Simpson's rule on a uniform
+sub-grid (the default) or Gauss-Lobatto quadrature on the basis grid.
+Used by the pseudo-atomic exporter to write reciprocal-space radial
+wavefunctions.
+"""
+
 import numpy as np
 from scipy.integrate import simpson
 from scipy.special import spherical_jn
@@ -15,17 +30,39 @@ def bessel_integral(
     npoints: int = 41,
     method: str = "simpson",
 ) -> np.ndarray:
-    """
-    Perform the spherical Bessel transform of the wavefunction.
+    """Spherical Bessel transform of a radial wavefunction.
 
-    Args:
-        basis (FEDVR_Basis): The finite element basis.
-        l (int): The angular momentum quantum number.
-        rpow (int): The power of the radial coordinate.
-        phi (np.ndarray): The wavefunction.
+    Computes :math:`\\int_0^{R_{\\max}} r^{p}\\, \\phi(r)\\, j_{\\ell}(q r)\\, dr`
+    on a momentum grid by element-wise quadrature.
 
-    Returns:
-        np.ndarray: The Bessel-transformed wavefunction.
+    Parameters
+    ----------
+    basis
+        FEM-DVR basis on which ``phi`` is represented.
+    l
+        Angular momentum quantum number :math:`\\ell` selecting
+        :math:`j_{\\ell}`.
+    rpow
+        Power :math:`p` of the radial coordinate in the integrand.
+    qgrid
+        Momentum grid on which the transform is evaluated, shape ``(nq,)``.
+    phi
+        Wavefunction on the FEM-DVR grid, shape ``(ne*ng + 1,)``.
+    npoints
+        Number of sub-grid points per element when ``method == "simpson"``.
+    method
+        Quadrature scheme: ``"simpson"`` (uniform sub-grid) or ``"lobatto"``
+        (the basis Gauss-Lobatto nodes).
+
+    Returns
+    -------
+    np.ndarray
+        Bessel-transformed wavefunction, shape ``(nq,)``.
+
+    Raises
+    ------
+    ValueError
+        If ``method`` is not one of the supported quadrature schemes.
     """
     ne = basis.ne
     ng = basis.ng

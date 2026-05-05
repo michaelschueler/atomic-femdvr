@@ -1,3 +1,10 @@
+"""Finite-element discrete-variable-representation (FEM-DVR) basis.
+
+Defines :class:`FEDVR_Basis`, the radial basis used by every solver in
+this package, plus a few low-level helpers used to build derivative and
+kinetic-energy matrices.
+"""
+
 import numpy as np
 
 from atomic_femdvr.legendre import Legendre
@@ -6,7 +13,34 @@ from atomic_femdvr.legendre_integrals import get_legendre_integrals
 
 # =================================================================
 class FEDVR_Basis:
-    """docstring for FEDVR_Basis"""
+    """Finite-element / discrete-variable-representation radial basis.
+
+    The radial axis :math:`[0, R_{\\max}]` is divided into ``ne`` elements
+    with breakpoints ``xp``. Within each element the wavefunction is
+    expanded on ``ng + 1`` Gauss-Lobatto nodes, enforcing
+    :math:`C^0` continuity at the element boundaries (the "bridge" basis
+    functions). The resulting representation is dense within an element
+    but local across elements, yielding banded operators.
+
+    Parameters
+    ----------
+    ne
+        Number of finite elements.
+    ng
+        Number of independent Lobatto nodes per element (the basis has
+        ``ng + 1`` Lobatto points per element with the rightmost shared
+        with the next element).
+    xp
+        Element breakpoints, length ``ne + 1``. Must be monotonically
+        increasing; the first entry is typically 0.
+    build_derivatives
+        If ``True`` (default), build the dense first- and second-derivative
+        matrices at construction time. Set to ``False`` to save memory
+        when only :meth:`interpolate` / :meth:`get_gridpoints` are needed.
+    build_integrals
+        If ``True``, precompute Legendre cumulative integrals used by the
+        Hartree-potential evaluator. Off by default.
+    """
 
     def __init__(
         self,
@@ -38,6 +72,14 @@ class FEDVR_Basis:
 
     # ------------------------------------------------------------
     def get_gridpoints(self) -> np.ndarray:
+        """Return the radial Lobatto grid as a 1D array.
+
+        Returns
+        -------
+        np.ndarray
+            Shape ``(ne * ng + 1,)``. The first entry is ``xp[0]``, the
+            last is ``xp[-1]``, and interior shared nodes appear once.
+        """
         ne = self.ne
         ng = self.ng
         xp = self.xp
@@ -50,6 +92,25 @@ class FEDVR_Basis:
 
     # ------------------------------------------------------------
     def get_psi(self, cff: np.ndarray, cplx: bool = False) -> np.ndarray:
+        """Convert basis coefficients to wavefunction values on the Lobatto grid.
+
+        Inverse of :meth:`get_coeffs`. Works on a single coefficient vector
+        (1D input) or a stack of vectors (2D input, leading axis is the
+        state index).
+
+        Parameters
+        ----------
+        cff
+            Basis coefficients, shape ``(ne*ng - 1,)`` or ``(nstates, ne*ng - 1)``.
+        cplx
+            If ``True``, return a complex array; default is real.
+
+        Returns
+        -------
+        np.ndarray
+            Wavefunction(s) on the Lobatto grid, shape ``(ne*ng + 1,)`` or
+            ``(nstates, ne*ng + 1)``.
+        """
         if cff.ndim == 1:
             return self.__get_psi_single(cff, cplx=cplx)
         else:
@@ -99,6 +160,18 @@ class FEDVR_Basis:
 
     # ------------------------------------------------------------
     def get_overlap(self, psi: np.ndarray, phi: np.ndarray) -> float:
+        """Compute :math:`\\langle \\psi | \\phi \\rangle` for two grid-represented functions.
+
+        Parameters
+        ----------
+        psi, phi
+            Real wavefunctions on the Lobatto grid, shape ``(ne*ng + 1,)``.
+
+        Returns
+        -------
+        float
+            Their inner product over :math:`[0, R_{\\max}]`.
+        """
         cff_psi = self.get_coeffs(psi, cplx=False)
         cff_phi = self.get_coeffs(phi, cplx=False)
 
@@ -108,6 +181,22 @@ class FEDVR_Basis:
 
     # ------------------------------------------------------------
     def get_coeffs(self, psi: np.ndarray, cplx: bool = False) -> np.ndarray:
+        """Convert wavefunction values on the Lobatto grid to basis coefficients.
+
+        Inverse of :meth:`get_psi`.
+
+        Parameters
+        ----------
+        psi
+            Wavefunction on the Lobatto grid, shape ``(ne*ng + 1,)``.
+        cplx
+            If ``True``, return a complex array.
+
+        Returns
+        -------
+        np.ndarray
+            Basis coefficients, shape ``(ne*ng - 1,)``.
+        """
         ne = self.ne
         ng = self.ng
         nb = ne * ng - 1
@@ -158,6 +247,24 @@ class FEDVR_Basis:
 
     # ------------------------------------------------------------
     def interpolate(self, psi: np.ndarray, x: np.ndarray) -> np.ndarray:
+        """Evaluate a basis-represented function at arbitrary radii.
+
+        Each element's coefficients are converted to spectral form (Legendre
+        expansion) once and then evaluated at the requested points. Points
+        outside ``[xp[0], xp[-1]]`` evaluate to zero.
+
+        Parameters
+        ----------
+        psi
+            Basis coefficients on the Lobatto grid, shape ``(ne * ng + 1,)``.
+        x
+            Radii at which to evaluate, any shape.
+
+        Returns
+        -------
+        np.ndarray
+            Same shape as ``x``, dtype matching ``psi``.
+        """
         ne = self.ne
         ng = self.ng
 

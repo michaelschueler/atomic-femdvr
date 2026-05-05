@@ -1,3 +1,10 @@
+"""High-level pseudo-atomic solver entry point.
+
+Defines :class:`PseudoAtomicInput`, :class:`PseudoAtomicResult`, and the
+:func:`solve_pseudo_atomic` driver that runs SCF, soft-Coulomb optimisation,
+and non-SCF tasks in sequence.
+"""
+
 from time import perf_counter
 from typing import TYPE_CHECKING
 
@@ -25,27 +32,60 @@ else:
 
 
 class ConvergenceError(Exception):
-    """Custom exception for convergence errors in the SCF process."""
-
-    pass
+    """Raised when the SCF loop fails to converge within ``max_iter`` iterations."""
 
 
 class MissingSCFError(Exception):
-    """Custom exception for missing SCF when required."""
-
-    pass
+    """Raised when an ``"optimize"`` or ``"nscf"`` task is requested without prior SCF."""
 
 
 class PseudoAtomicInput(BaseModel):
-    control: ControlInput = Field(default_factory=lambda: ControlInput())
-    sysparams: SysParamsInput = Field(default_factory=lambda: SysParamsInput())
-    solver: PseudoAtomicSolverInput = Field(default_factory=lambda: PseudoAtomicSolverInput())
-    dft: DFTInput = Field(default_factory=lambda: DFTInput())
-    confinement: ConfinementInput = Field(default_factory=lambda: ConfinementInput())
-    output: OutputInput = Field(default_factory=lambda: OutputInput())
+    """Top-level input for :func:`solve_pseudo_atomic`.
+
+    Bundles all sub-models needed to configure a pseudo-atomic run.
+    """
+
+    control: ControlInput = Field(
+        default_factory=lambda: ControlInput(),
+        description="Run-control flags (storage, restart).",
+    )
+    sysparams: SysParamsInput = Field(
+        default_factory=lambda: SysParamsInput(),
+        description="System parameters (element, UPF file, lmax / nmax).",
+    )
+    solver: PseudoAtomicSolverInput = Field(
+        default_factory=lambda: PseudoAtomicSolverInput(),
+        description="Discretisation and eigensolver parameters.",
+    )
+    dft: DFTInput = Field(
+        default_factory=lambda: DFTInput(),
+        description="DFT driver, functional, and SCF mixing parameters.",
+    )
+    confinement: ConfinementInput = Field(
+        default_factory=lambda: ConfinementInput(),
+        description="Confining potential applied to virtual orbitals during the nscf task.",
+    )
+    output: OutputInput = Field(
+        default_factory=lambda: OutputInput(),
+        description="Output toggles (wavefunction format, dipole moments, ...).",
+    )
 
 
 class PseudoAtomicResult(BaseModel):
+    """Output of :func:`solve_pseudo_atomic`.
+
+    Attributes
+    ----------
+    eigenvalues
+        Nested mapping ``{task_name: {l_str: [eps_0, eps_1, ...]}}``. The
+        outer keys are tasks that were actually run (``"scf"`` and / or
+        ``"nscf"``); the inner keys are angular-momentum quantum numbers
+        as strings.
+    energy_shifts
+        Per-:math:`\\ell` energy shifts (``"nscf"`` minus ``"scf"`` for each
+        bound state). ``None`` when ``"nscf"`` was not requested.
+    """
+
     eigenvalues: dict[str, dict[str, list[float]]]
     energy_shifts: dict[str, list[float]] | None = None
 
@@ -57,7 +97,42 @@ def solve_pseudo_atomic(
     plot: bool = False,
     export_dir: str | None = None,
 ) -> PseudoAtomicResult:
-    """Solve the pseudo-atomic problem."""
+    """Solve the pseudo-atomic Kohn-Sham problem.
+
+    Runs the requested tasks in order and returns the collected eigenvalues
+    and energy shifts.
+
+    Parameters
+    ----------
+    inp
+        Input parameters describing the system, solver, DFT, and confinement.
+    task_list
+        Sequence of tasks to run, drawn from ``"scf"``, ``"optimize"``,
+        ``"nscf"``. A single comma-separated string (e.g. ``("scf,nscf",)``)
+        is also accepted.
+    plot
+        If ``True``, plot bound-state wavefunctions after SCF and after
+        non-SCF (requires a display).
+    export_dir
+        Directory to write projector / eigenvalue / dipole output files
+        to. Requires ``"nscf"`` in ``task_list``.
+
+    Returns
+    -------
+    PseudoAtomicResult
+        Eigenvalues per task and per-:math:`\\ell` energy shifts (when
+        ``"nscf"`` ran).
+
+    Raises
+    ------
+    ConvergenceError
+        If SCF fails to converge within ``inp.dft.max_iter`` iterations.
+    MissingSCFError
+        If ``"optimize"`` or ``"nscf"`` is requested without prior SCF or
+        a valid restart file.
+    ValueError
+        If ``export_dir`` is set but ``"nscf"`` did not run.
+    """
     print(60 * "*")
     print("Pseudo-atomic Schrödinger Equation Solver".center(60))
     print(60 * "*")

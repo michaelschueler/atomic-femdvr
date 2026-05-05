@@ -1,3 +1,9 @@
+"""High-level all-electron solver entry point.
+
+Defines :class:`FullAtomicInput` and the :func:`solve_atomic` driver
+that runs all-electron Kohn-Sham SCF for a single atom.
+"""
+
 import json
 from time import perf_counter
 
@@ -16,17 +22,49 @@ from atomic_femdvr.utils import plot_wavefunctions, print_eigenvalues, print_tim
 
 
 class FullAtomicInput(BaseModel):
-    control: ControlInput
-    sysparams: SysParamsInput
-    solver: SolverInput
-    dft: DFTInput = Field(default_factory=lambda: DFTInput())
-    electrons: ElectronsInput = Field(default_factory=lambda: ElectronsInput())
+    """Top-level input for :func:`solve_atomic`.
+
+    Bundles all sub-models needed to configure an all-electron run.
+    """
+
+    control: ControlInput = Field(
+        description="Run-control flags (storage, restart).",
+    )
+    sysparams: SysParamsInput = Field(
+        description="System parameters (element, lmax / nmax).",
+    )
+    solver: SolverInput = Field(
+        description="Discretisation and eigensolver parameters.",
+    )
+    dft: DFTInput = Field(
+        default_factory=lambda: DFTInput(),
+        description="DFT driver, functional, and SCF mixing parameters.",
+    )
+    electrons: ElectronsInput = Field(
+        default_factory=lambda: ElectronsInput(),
+        description="Nuclear charge and electron configuration.",
+    )
 
 
 # ==================================================================
-def read_input(fname: str):
-    """
-    Read input parameters from a JSON file.
+def read_input(fname: str) -> tuple[dict, dict, dict, dict, dict]:
+    """Read input parameters from a JSON file.
+
+    Parameters
+    ----------
+    fname
+        Path to a JSON file containing ``control``, ``electrons``,
+        ``sysparams``, ``solver``, and (optionally) ``dft`` sections.
+
+    Returns
+    -------
+    tuple
+        ``(control, sysparams, electrons, solver, dft)`` as plain dicts.
+
+    Raises
+    ------
+    ValueError
+        If any of the required top-level sections is missing.
     """
     with open(fname) as f:
         data = json.load(f)
@@ -59,7 +97,26 @@ def solve_atomic(
     plot: bool = False,
     export_dir: str | None = None,
 ) -> None:
-    """Solve the all-electrons atomic problem."""
+    """Solve the all-electron Kohn-Sham problem for a single atom.
+
+    Runs the requested tasks in order. The non-relativistic solver runs
+    first; if ``inp.solver.theory_level == "scalar-relativistic"`` a
+    second SCF pass is run starting from the non-relativistic density.
+
+    Parameters
+    ----------
+    inp
+        Input parameters describing the system, solver, DFT, and
+        electron configuration.
+    task_list
+        Sequence of tasks to run, currently only ``"scf"`` is supported.
+        A single comma-separated string is also accepted.
+    plot
+        If ``True``, plot bound-state wavefunctions after SCF.
+    export_dir
+        Currently unused; reserved for parity with
+        :func:`atomic_femdvr.solve_pseudo_atomic`.
+    """
     print(60 * "*")
     print("All-electrons Schrödinger Equation Solver".center(60))
     print(60 * "*")

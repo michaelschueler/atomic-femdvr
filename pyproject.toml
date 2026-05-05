@@ -82,8 +82,7 @@ docs = [
     "sphinx>=8",
     "sphinx-rtd-theme>=3.0","sphinx-click",
     "sphinx_automodapi",
-    # Include if your project uses Pydantic:
-    # "autodoc_pydantic",
+    "autodoc_pydantic",
     # To include LaTeX comments easily in your docs.
     # If you uncomment this, don't forget to do the same in docs/conf.py
     # texext
@@ -233,6 +232,7 @@ extend-select = [
 ]
 ignore = [
     "D105", # Missing docstring in magic method
+    "D301", # Use r""" if any backslashes in a docstring; we use \\ in LaTeX math
     "E203", # Black conflicts with the following
     # Physics / math naming conventions: l (angular momentum), V_eff, Q, etc.
     # are correct domain notation; PEP 8 renaming would harm readability.
@@ -261,8 +261,9 @@ ignore = [
 [tool.ruff.lint.per-file-ignores]
 # Ignore security issues in the version.py, which are inconsistent
 "src/atomic_femdvr/version.py" = ["S603", "S607"]
-# Ignore commented out code in Sphinx configuration file
-"docs/source/conf.py" = ["ERA001"]
+# Sphinx conf.py is cookiecutter boilerplate; ignore commented-out code,
+# the templated assert, and a long Texinfo metadata line.
+"docs/source/conf.py" = ["E501", "ERA001", "S101"]
 # Prints are okay in notebooks
 "notebooks/**/*.ipynb" = ["T201"]
 # Asserts are okay in tests

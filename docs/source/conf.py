@@ -69,6 +69,7 @@ modindex_common_prefix = ["atomic_femdvr."]
 extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.autodoc",
+    "sphinx.ext.napoleon",
     "sphinx.ext.coverage",
     "sphinx.ext.intersphinx",
     "sphinx.ext.todo",
@@ -76,6 +77,7 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx_automodapi.automodapi",
     "sphinx_automodapi.smart_resolver",
+    "sphinxcontrib.autodoc_pydantic",
     # 'texext',
 ]
 
