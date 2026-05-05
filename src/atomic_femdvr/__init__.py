@@ -1,11 +1,14 @@
-"""Solver for the atomic Kohn-Sham equation, including all-electron and pseudo-potential calculation."""
+"""Solver for the atomic Kohn-Sham equation.
 
-from .atomic import AtomicInput, solve_atomic
+Supports all-electron and pseudo-potential calculations.
+"""
+
+from .full_atomic import FullAtomicInput, solve_atomic
 from .pseudo_atomic import PseudoAtomicInput, PseudoAtomicResult, solve_pseudo_atomic
-from .version import VERSION as __version__
+from .version import VERSION as __version__  # noqa: N811
 
 __all__ = [
-    "AtomicInput",
+    "FullAtomicInput",
     "PseudoAtomicInput",
     "PseudoAtomicResult",
     "__version__",
