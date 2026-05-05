@@ -6,7 +6,7 @@
 
     "sysparams": {
         "element": "S",
-        "file_upf": "/home/michael/PP/nc-sr-04_pbe_standard_upf/S.upf",
+        "file_upf": "examples/data/S.upf",
         "lmax": 3,
         "nmax": 2
     },
