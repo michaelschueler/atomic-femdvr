@@ -296,7 +296,7 @@ def solver_input_factory(default_hmin: float, default_hmax: float) -> type[Solve
         h_min=(float, Field(default=default_hmin, gt=0)),
         h_max=(float, Field(default=default_hmax, gt=0)),
     )
-    return cast(type[SolverInput], model)
+    return cast(type[SolverInput], model)  # type: ignore[redundant-cast]
 
 
 class DFTInput(BaseModel):

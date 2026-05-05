@@ -39,7 +39,9 @@ def test_sysparams_normalises_element_capitalisation():
 def test_sysparams_extra_fields_forbidden():
     """Unknown keys raise (typo protection)."""
     with pytest.raises(ValidationError, match="Extra inputs are not permitted"):
-        SysParamsInput(element="Mo", flmax=3)  # typo: flmax instead of lmax
+        # Intentional typo (flmax instead of lmax) to verify that pydantic
+        # rejects unknown keys.
+        SysParamsInput(element="Mo", flmax=3)  # type: ignore[call-arg]
 
 
 def test_pot_energy_unit_normalises():

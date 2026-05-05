@@ -54,5 +54,5 @@ def test_neon_scf(neon_input_dict, num_regression):
 def test_solve_atomic_smoke(neon_input_dict):
     """``solve_atomic`` runs end-to-end on neon without raising."""
     inp = FullAtomicInput(**neon_input_dict)
-    # Should return None and not raise; tighter assertions live in test_neon_scf.
-    assert solve_atomic(inp, task_list=("scf",)) is None
+    # Tighter assertions live in test_neon_scf; here we just verify no exception.
+    solve_atomic(inp, task_list=("scf",))

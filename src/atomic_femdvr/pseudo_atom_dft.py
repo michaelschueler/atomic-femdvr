@@ -41,11 +41,14 @@ class PseudoAtomDFT:
         self.dft = dft
 
         self._upf: UPFInterface | None = None
-        self.rho_grid = None
+        self.rho_grid: np.ndarray | None = None
+        self.rho_nlcc: np.ndarray | None = None
         self._Vloc_grid: np.ndarray | None = None
 
         self.Zval = 1.0  # Default value, can be set later
-        self.element = self.sysparams.element
+        if self.sysparams.element is None:
+            raise ValueError("sysparams.element must be set for a pseudo-atomic run.")
+        self.element: str = self.sysparams.element
 
         # optimize elements
         solver.Rmax = solver.Rmax or 30.0
@@ -93,8 +96,8 @@ class PseudoAtomDFT:
         self.upf = UPFInterface.from_upf(self.sysparams.file_upf)
 
         self.Zval = self.upf.zp
-        self.lmax_pseudo = np.amax(self.upf.lchi)
-        self.nmax_pseudo = np.amax(self.upf.nnodes_chi)
+        self.lmax_pseudo = int(np.amax(self.upf.lchi))
+        self.nmax_pseudo = int(np.amax(self.upf.nnodes_chi))
 
         if read_density:
             rho_upf = self.upf.get_charge_density()
@@ -127,6 +130,10 @@ class PseudoAtomDFT:
     # .......................................................
     def get_effective_potential(self, rho_grid: np.ndarray | None = None) -> np.ndarray:
         if rho_grid is None:
+            if self.rho_grid is None:
+                raise RuntimeError(
+                    "Charge density not initialised; call read_upf(read_density=True) first."
+                )
             rho_grid = self.rho_grid
 
         V_Ha = density_potential.hartree_potential(self.basis, rho_grid)
@@ -136,8 +143,8 @@ class PseudoAtomDFT:
             rho_grid,
             rho_nlcc=self.rho_nlcc,
             xc_functional=self.dft.xc_functional,
-            x_functional=self.dft.x_functional,
-            c_functional=self.dft.c_functional,
+            x_functional=self.dft.x_functional or "",
+            c_functional=self.dft.c_functional or "",
             alpha_x=self.dft.alpha_x,
             driver=self.dft.driver,
         )
@@ -244,7 +251,7 @@ class PseudoAtomDFT:
                 raise ValueError(f"Unknown polarization mode: {confinement.polarization_mode}")
 
         else:
-            eps, psi = self.SolveSchrodinger(V_eff, lmax, nmax)
+            eps, psi = self.solve_schrodinger(V_eff, lmax, nmax)
 
         eigenvalues = {}
         for l in range(lmax + 1):
@@ -282,7 +289,11 @@ class PseudoAtomDFT:
         Qmax = 10.0 * self.Zval
         result = cast(
             OptimizeResult,
-            minimize_scalar(objective_func, bounds=(Qmin, Qmax), method="bounded"),
+            minimize_scalar(  # type: ignore[call-overload]
+                objective_func,
+                bounds=(Qmin, Qmax),
+                method="bounded",
+            ),
         )
         if not result.success:
             raise RuntimeError("Optimization failed: " + result.message)
@@ -416,12 +427,16 @@ class PseudoAtomDFT:
     def ks_self_consistency(self, max_iter: int = 100, tol: float = 1.0e-6, alpha_mix: float = 0.6):
         """Perform Kohn-Sham self-consistency to find the ground state density."""
         V_eff = self.get_effective_potential()
-        lmax = np.amax(self.upf.lchi)
-        nmax = np.amax(self.upf.nnodes_chi)
+        lmax = int(np.amax(self.upf.lchi))
+        nmax = int(np.amax(self.upf.nnodes_chi))
 
         # Initial guess for the wavefunctions
         _eps, psi = self.solve_schrodinger(V_eff, lmax, nmax)
 
+        if self.rho_grid is None:
+            raise RuntimeError(
+                "Charge density not initialised; call read_upf(read_density=True) first."
+            )
         rho_old = self.rho_grid.copy()
 
         err = 1.0e8
@@ -441,7 +456,7 @@ class PseudoAtomDFT:
             V_eff = self.get_effective_potential(rho_grid=rho_new)
 
             # Compute error
-            err = np.linalg.norm(rho_new - rho_old)
+            err = float(np.linalg.norm(rho_new - rho_old))
 
             # Solve Schrödinger equation with new potential
             _eps, psi = self.solve_schrodinger(V_eff, lmax, nmax)

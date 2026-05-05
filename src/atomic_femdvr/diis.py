@@ -9,8 +9,8 @@ logger = logging.getLogger(__name__)
 class DIIS:
     def __init__(self, max_history: int = 6) -> None:
         self.max_history = max_history
-        self.x_list = []  # stored iterates
-        self.e_list = []  # stored residuals
+        self.x_list: list[np.ndarray] = []  # stored iterates
+        self.e_list: list[np.ndarray] = []  # stored residuals
 
     def update(self, x: np.ndarray, e: np.ndarray) -> None:
         """Store a new pair (x, e)."""

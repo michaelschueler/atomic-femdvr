@@ -12,7 +12,7 @@ import numpy as np
 import numpy.typing as npt
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 from typing_extensions import Self
-from upf_tools import UPFDict
+from upf_tools import UPFDict  # type: ignore[attr-defined]
 
 __all__ = ["UPFInterface"]
 
@@ -54,7 +54,7 @@ class UPFInterface(BaseModel):
     @model_validator(mode="after")
     def check_array_dimensions(self) -> Self:
         """Check that array dimensions are consistent."""
-        desired_shapes: dict[str, tuple[int, ...]] = {
+        desired_shapes: dict[str, tuple[int, ...] | None] = {
             "r": (self.mesh,),
             "nchi": (self.nwfc,),
             "lchi": (self.nwfc,),

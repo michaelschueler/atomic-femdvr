@@ -50,7 +50,7 @@ class FEDVR_Basis:
         self,
         ne: int,
         ng: int,
-        xp: list,
+        xp: list | np.ndarray,
         build_derivatives: bool = True,
         build_integrals: bool = False,
     ) -> None:
@@ -126,6 +126,7 @@ class FEDVR_Basis:
         ng = self.ng
         nvec = cff.shape[0]
 
+        psi: np.ndarray
         if cplx:
             psi = np.zeros([nvec, ne * ng + 1], dtype=np.complex128)
         else:
@@ -146,6 +147,7 @@ class FEDVR_Basis:
         v = np.reshape(cff_ext, [ne, ng])
         v = np.flip(v, axis=1)
 
+        psi: np.ndarray
         if cplx:
             psi = np.zeros(ne * ng + 1, dtype=np.complex128)
         else:
@@ -230,8 +232,8 @@ class FEDVR_Basis:
         ne = self.ne
         ng = self.ng
 
-        grid = []
-        psi_grid = []
+        grid_pieces: list[np.ndarray] = []
+        psi_pieces: list[np.ndarray] = []
         for i in range(ne):
             psi_elem = psi[i * ng : i * ng + ng + 1]
             c_elem = self.leg.to_spectral(psi_elem)
@@ -239,12 +241,12 @@ class FEDVR_Basis:
             xs = np.linspace(self.xp[i], self.xp[i + 1], nx)
             xred = np.linspace(-1.0, 1.0, nx)
             psi_elem_lin = np.polynomial.legendre.legval(xred[0 : nx - 1], c_elem)
-            psi_grid.append(psi_elem_lin)
-            grid.append(xs[0 : nx - 1])
+            psi_pieces.append(psi_elem_lin)
+            grid_pieces.append(xs[0 : nx - 1])
 
-        psi_grid = np.concatenate(psi_grid)
+        psi_grid = np.concatenate(psi_pieces)
         psi_grid = np.concatenate((psi_grid, [0.0]))  # Append zero for the last point
-        grid = np.concatenate(grid)
+        grid = np.concatenate(grid_pieces)
         grid = np.concatenate((grid, [self.xp[-1]]))
 
         return grid, psi_grid
@@ -298,6 +300,7 @@ class FEDVR_Basis:
         ne * ng - 1
         w_i = self.leg.w_i
 
+        T4: np.ndarray
         if cplx:
             T4 = np.zeros([ne, ng, ne, ng], dtype=np.complex128)
         else:
@@ -374,7 +377,6 @@ class FEDVR_Basis:
         w_i = self.leg.w_i
         x_i = self.leg.x_i
 
-        Vvec = np.zeros(nb)
         V4 = np.zeros([ne, ng])
 
         for i1 in range(ne - 1):
@@ -390,9 +392,7 @@ class FEDVR_Basis:
             V4[i1, 1:] = Vfunc(xs[1:])
 
         V2 = np.reshape(np.flip(V4, axis=1), [ne * ng])
-        Vvec = V2[0:nb]
-
-        return Vvec
+        return V2[0:nb]
 
     # ------------------------------------------------------------
     def get_potential_from_grid(self, V_grid: np.ndarray) -> np.ndarray:
@@ -400,17 +400,7 @@ class FEDVR_Basis:
         ng = self.ng
         nb = ne * ng - 1
 
-        Vvec = np.zeros(nb)
         V4 = np.zeros([ne, ng])
-
-        # for i1 in range(ne-1):
-        #   w1 = 0.5*(xp[i1+1]-xp[i1]) * w_i[ng]
-        #   w2 = 0.5*(xp[i1+2]-xp[i1+1]) * w_i[0]
-
-        #   V4[i1,0] = (V_grid[i1*ng + ng -1] * w1 + V_grid[(i1+1)*ng] * w2) / (w1 + w2)
-
-        # for i1 in range(ne):
-        #   V4[i1,1:] = V_grid[i1*ng + 1 : i1*ng + ng]
 
         for i1 in range(1, ne):
             V4[i1 - 1, 0] = V_grid[i1 * ng]
@@ -420,9 +410,7 @@ class FEDVR_Basis:
                 V4[i, m] = V_grid[i * ng + m]
 
         V2 = np.reshape(np.flip(V4, axis=1), [ne * ng])
-        Vvec = V2[0:nb]
-
-        return Vvec
+        return V2[0:nb]
 
     # ------------------------------------------------------------
     def get_grid_derivative(self, f_grid: np.ndarray) -> np.ndarray:
@@ -448,7 +436,6 @@ class FEDVR_Basis:
         w_i = self.leg.w_i
         x_i = self.leg.x_i
 
-        f_vec = np.zeros(nb)
         f4 = np.zeros([ne, ng])
 
         for i1 in range(ne - 1):
@@ -465,9 +452,7 @@ class FEDVR_Basis:
             f4[i1, 1:] = f_fnc(xs[1:]) / np.sqrt(w[1:])
 
         f2 = np.reshape(np.flip(f4, axis=1), [ne * ng])
-        f_vec = f2[0:nb]
-
-        return f_vec
+        return f2[0:nb]
 
     # ------------------------------------------------------------
     def get_coeffs_from_func_batch(
@@ -508,7 +493,11 @@ class FEDVR_Basis:
         return f_vec
 
     # ------------------------------------------------------------
-    def get_kinetic_energy_matrix(self, alpha: float = 0.0, beta: float = 0.0) -> np.ndarray:
+    def get_kinetic_energy_matrix(
+        self,
+        alpha: float = 0.0,
+        beta: float = 0.0,
+    ) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
         if alpha == 0.0 and beta == 0.0:
             Tmat = self.__get_kinetic_energy_matrix_zerobound()
             return Tmat
@@ -591,7 +580,11 @@ class FEDVR_Basis:
         return Dmat
 
     # ------------------------------------------------------------
-    def __get_kinetic_energy_matrix_asymbound(self, alpha: float, beta: float) -> np.ndarray:
+    def __get_kinetic_energy_matrix_asymbound(
+        self,
+        alpha: float,
+        beta: float,
+    ) -> tuple[np.ndarray, np.ndarray]:
         ne = self.ne
         ng = self.ng
         xp = self.xp

@@ -36,9 +36,11 @@ class FullAtomDFT:
 
         self.validate_configuration()
 
-        self.rho_grid = None
+        self.rho_grid: np.ndarray | None = None
 
-        self.element = self.sysparams.element
+        if self.sysparams.element is None:
+            raise ValueError("sysparams.element must be set for an all-electron run.")
+        self.element: str = self.sysparams.element
 
         periodic_table = PeriodicTable()
         Z_ = float(periodic_table.get_atomic_number(self.element))
@@ -82,13 +84,11 @@ class FullAtomDFT:
     def validate_configuration(self) -> None:
         shell_labels = ["S", "P", "D", "F", "G", "H", "I", "J", "K", "L"]
 
-        self.lmax = 0
-
         # check shell labels
-        self.ll = []
-        self.nrad = []
-        self.nprin = []
-        self.occ = []
+        ll: list[int] = []
+        nrad: list[int] = []
+        nprin: list[int] = []
+        occ: list[float] = []
         for shell in self.electrons.configuration:
             # split into principal quantum number and angular momentum
             n_char = shell[0]
@@ -106,37 +106,37 @@ class FullAtomDFT:
                 ) from err
 
             try:
-                occ = float(occ_str)
+                occ_val = float(occ_str)
             except ValueError as err:
                 raise ValueError(
                     f"Invalid occupation number {occ_str} in configuration {shell}."
                 ) from err
 
             l = shell_labels.index(l_char)
-            self.ll.append(l)
+            ll.append(l)
 
-            nrad = n - l - 1
-            if nrad < 0:
+            nrad_val = n - l - 1
+            if nrad_val < 0:
                 raise ValueError(f"Invalid shell {shell}: n must be greater than l.")
-            self.nrad.append(nrad)
-            self.nprin.append(n)
+            nrad.append(nrad_val)
+            nprin.append(n)
 
             max_occ = 2 * (2 * l + 1)
-            if occ < 0.0 or occ > max_occ:
+            if occ_val < 0.0 or occ_val > max_occ:
                 raise ValueError(
-                    f"Invalid occupation {occ} for shell {shell}. Max occupation is {max_occ}."
+                    f"Invalid occupation {occ_val} for shell {shell}. Max occupation is {max_occ}."
                 )
-            self.occ.append(occ)
+            occ.append(occ_val)
 
-        self.ll = np.array(self.ll, dtype=int)
-        self.nrad = np.array(self.nrad, dtype=int)
-        self.nprin = np.array(self.nprin, dtype=int)
-        self.occ = np.array(self.occ, dtype=float)
+        self.ll = np.array(ll, dtype=int)
+        self.nrad = np.array(nrad, dtype=int)
+        self.nprin = np.array(nprin, dtype=int)
+        self.occ = np.array(occ, dtype=float)
         self.nshells = len(self.occ)
 
-        self.nmax = np.amax(self.nrad)
-        self.lmax = np.amax(self.ll)
-        self.num_electrons = np.sum(self.occ)
+        self.nmax = int(np.amax(self.nrad))
+        self.lmax = int(np.amax(self.ll))
+        self.num_electrons = float(np.sum(self.occ))
 
     # .......................................................
     def initialize_density(self) -> None:
@@ -145,6 +145,10 @@ class FullAtomDFT:
     # .......................................................
     def get_effective_potential(self, rho_grid: np.ndarray | None = None) -> np.ndarray:
         if rho_grid is None:
+            if self.rho_grid is None:
+                raise RuntimeError(
+                    "Charge density not initialised; call initialize_density() first."
+                )
             rho_grid = self.rho_grid
 
         V_Ha = density_potential.hartree_potential(self.basis, rho_grid)
@@ -153,8 +157,8 @@ class FullAtomDFT:
             self.basis,
             rho_grid,
             xc_functional=self.dft.xc_functional,
-            x_functional=self.dft.x_functional,
-            c_functional=self.dft.c_functional,
+            x_functional=self.dft.x_functional or "",
+            c_functional=self.dft.c_functional or "",
             alpha_x=self.dft.alpha_x,
             driver=self.dft.driver,
         )
@@ -230,6 +234,8 @@ class FullAtomDFT:
         # Initial guess for the wavefunctions
         _eps, psi = self.solve_schrodinger(V_eff, self.lmax, self.nmax)
 
+        if self.rho_grid is None:
+            raise RuntimeError("Charge density not initialised; call initialize_density() first.")
         rho = self.rho_grid.copy()
 
         err = 1.0e8
@@ -255,7 +261,7 @@ class FullAtomDFT:
                 else:
                     rho = rho_out
 
-                err = np.linalg.norm(r)
+                err = float(np.linalg.norm(r))
 
             elif mixing_scheme.lower() == "anderson":
                 r = rho_out - rho
@@ -268,12 +274,12 @@ class FullAtomDFT:
                 else:
                     rho = rho_out
 
-                err = np.linalg.norm(r)
+                err = float(np.linalg.norm(r))
 
             else:
                 # linear mixing of the density
                 rho = alpha_mix * rho_out + (1 - alpha_mix) * rho
-                err = np.linalg.norm(rho - rho_out)
+                err = float(np.linalg.norm(rho - rho_out))
 
             # regularize density to be non-negative
             rho[rho < 0.0] = 0.0

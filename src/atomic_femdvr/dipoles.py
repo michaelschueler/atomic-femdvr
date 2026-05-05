@@ -48,23 +48,23 @@ def minus_one_pow(n: int) -> int:
 
 
 # =================================================================
-def dipole_moments(basis: FEDVR_Basis, psi: np.ndarray) -> np.ndarray:
-    """
-    Compute dipole moments between all states:
-        D(l n, l' n') = ∫ r * psi_{n, l}(r) * psi_{n', l'}(r) dr.
+def dipole_moments(basis: FEDVR_Basis, psi: np.ndarray) -> tuple[np.ndarray, np.ndarray]:
+    """Compute dipole moments between all states.
+
+    D(l n, l' n') = ∫ r * psi_{n, l}(r) * psi_{n', l'}(r) dr.
     """
     lmax = psi.shape[0] - 1
     nmax = psi.shape[1] - 1
 
     r_integs = radial_integrals(basis, psi, r_pow=1)
 
-    Indices = []
+    index_list: list[tuple[int, int, int]] = []
     for l in range(lmax + 1):
         for n in range(nmax + 1):
             for m in range(-l, l + 1):
-                Indices.append((l, n, m))
+                index_list.append((l, n, m))
 
-    Indices = np.array(Indices)
+    Indices = np.array(index_list)
     norbs_tot = Indices.shape[0]
 
     D_matrix = np.zeros((3, norbs_tot, norbs_tot), dtype=np.complex128)

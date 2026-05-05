@@ -178,9 +178,7 @@ def solve_pseudo_atomic(
     # split comma-separated tasks
     task_string = task_list[0]
     if "," in task_string:
-        task_list = []
-        for t in task_string.split(","):
-            task_list.append(t.strip())
+        task_list = tuple(t.strip() for t in task_string.split(","))
 
     all_eigenvalues = {}
     energy_shifts = None
@@ -282,12 +280,7 @@ def solve_pseudo_atomic(
         toc = perf_counter()
         print_time(tic, toc, "Exporting Wave-Functions")
 
-        pseudo_atom.export_eigenvalues(
-            eigenvalues,
-            out_dir=export_dir,
-            lmax=inp.sysparams.lmax,
-            nmax=inp.sysparams.nmax,
-        )
+        pseudo_atom.export_eigenvalues(eigenvalues, out_dir=export_dir)
 
         if inp.output.output_dipole_moments:
             tic = perf_counter()

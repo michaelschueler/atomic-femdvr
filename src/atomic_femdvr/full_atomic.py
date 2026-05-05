@@ -117,9 +117,7 @@ def solve_atomic(
     # split comma-separated tasks
     task_string = task_list[0]
     if "," in task_string:
-        task_list = []
-        for t in task_string.split(","):
-            task_list.append(t.strip())
+        task_list = tuple(t.strip() for t in task_string.split(","))
 
     all_eigenvalues = {}
     if "scf" in task_list:

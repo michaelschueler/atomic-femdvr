@@ -6,9 +6,9 @@ import numpy as np
 class AndersonMixing:
     def __init__(self, max_history: int = 5) -> None:
         self.max_history = max_history
-        self.x_list = []  # stored iterates
-        self.y_list = []  # stored function values
-        self.e_list = []  # stored residuals
+        self.x_list: list[np.ndarray] = []  # stored iterates
+        self.y_list: list[np.ndarray] = []  # stored function values
+        self.e_list: list[np.ndarray] = []  # stored residuals
 
     def update(self, x: np.ndarray, y: np.ndarray, e: np.ndarray) -> None:
         """Store a new pair (x, e)."""
