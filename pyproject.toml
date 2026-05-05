@@ -60,7 +60,8 @@ dependencies = [
     "pydantic",
     "upf_tools",
     "h5py",
-    "primme"
+    "primme",
+    "sympy"
 ]
 
 # see https://peps.python.org/pep-0735/ and https://docs.astral.sh/uv/concepts/dependencies/#dependency-groups

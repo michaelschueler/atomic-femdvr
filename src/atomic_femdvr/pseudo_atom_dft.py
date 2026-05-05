@@ -95,6 +95,8 @@ class PseudoAtomDFT:
 
         if read_density and self.upf.rho_nlcc is not None:
             self.rho_nlcc = interpolate_density(self.upf.r, self.upf.rho_nlcc, self.grid)
+        else:
+            self.rho_nlcc = None
 
         # interpolate beta projectors to new grid
         self.nbeta = self.upf.nbeta
@@ -250,7 +252,7 @@ class PseudoAtomDFT:
 
         return Q_opt
     #.......................................................
-    def get_states_energy_shift(self, lmax:int, nmax:int, confinement: ConfinementInput):
+    def get_states_energy_shift(self, lmax:int, nmax:int, confinement: ConfinementInput) -> tuple[np.ndarray, dict[str, list[float]], np.ndarray]:
         eigenvalues_bounds, psi_bound = self.get_bound_states()
         eigenvalues_all, psi_all = self.get_all_states(lmax, nmax, confinement=confinement)
 
@@ -262,6 +264,20 @@ class PseudoAtomDFT:
             epsl_all = np.array(eigenvalues_all[tag])
             n = np.argmax(epsl_bound)
             energy_shifts[l] = epsl_all[n] - epsl_bound[n]
+        return energy_shifts, eigenvalues_all, psi_all
+    #.......................................................
+    def get_all_states_energy_shifts(self, lmax:int, nmax:int, confinement: ConfinementInput) -> tuple[dict[str, list[float]], dict[str, list[float]], np.ndarray]:
+        eigenvalues_bounds, psi_bound = self.get_bound_states()
+        eigenvalues_all, psi_all = self.get_all_states(lmax, nmax, confinement=confinement)
+
+        energy_shifts = {}
+
+        for l in range(self.lmax_pseudo + 1):
+            tag = f'{l}'
+            epsl_bound = np.array(eigenvalues_bounds[tag])
+            epsl_all = np.array(eigenvalues_all[tag])
+            n_bound = len(epsl_bound)
+            energy_shifts[tag] = list(epsl_all[:n_bound] - epsl_bound)
 
         return energy_shifts, eigenvalues_all, psi_all
     #.......................................................
