@@ -27,7 +27,7 @@ class FullAtomDFT:
         electrons: ElectronsInput,
         solver: SolverInput,
         dft: DFTInput,
-    ):
+    ) -> None:
         self.control = control
         self.electrons = electrons
         self.sysparams = sysparams
@@ -79,7 +79,7 @@ class FullAtomDFT:
         self.V0_grid[0] = self.V0_grid[1]  # avoid singularity at r=0
 
     # .......................................................
-    def validate_configuration(self):
+    def validate_configuration(self) -> None:
         shell_labels = ["S", "P", "D", "F", "G", "H", "I", "J", "K", "L"]
 
         self.lmax = 0
@@ -298,7 +298,7 @@ class FullAtomDFT:
     # .......................................................
 
     # .......................................................
-    def save_density_potential(self):
+    def save_density_potential(self) -> None:
         """
         Saves the charge density and potential to a file.
         """
@@ -314,9 +314,13 @@ class FullAtomDFT:
             f.create_dataset("Veff", data=V_eff)
 
     # .......................................................
-    def read_density_potential(self):
-        """
-        Reads the charge density and potential from a file.
+    def read_density_potential(self) -> bool:
+        """Read the charge density and potential from a file.
+
+        Returns
+        -------
+        bool
+            ``True`` if a compatible restart was successfully loaded.
         """
         storage_dir = self.control.storage_dir
         filename = f"{self.element}_density_potential.h5"

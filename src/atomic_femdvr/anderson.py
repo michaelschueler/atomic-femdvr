@@ -1,3 +1,5 @@
+from collections.abc import Callable
+
 import numpy as np
 
 
@@ -20,7 +22,11 @@ class AndersonMixing:
             self.y_list.pop(0)
             self.e_list.pop(0)
 
-    def extrapolate(self, dot_product: callable, beta: float) -> np.ndarray:
+    def extrapolate(
+        self,
+        dot_product: Callable[[np.ndarray, np.ndarray], float],
+        beta: float,
+    ) -> np.ndarray:
         """Return the Anderson-mixed x."""
         m = len(self.e_list) - 1
 

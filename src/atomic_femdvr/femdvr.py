@@ -5,6 +5,8 @@ this package, plus a few low-level helpers used to build derivative and
 kinetic-energy matrices.
 """
 
+from collections.abc import Callable
+
 import numpy as np
 
 from atomic_femdvr.legendre import Legendre
@@ -49,7 +51,7 @@ class FEDVR_Basis:
         xp: list,
         build_derivatives: bool = True,
         build_integrals: bool = False,
-    ):
+    ) -> None:
         self.ne = ne
         self.ng = ng
         self.xp = np.array(xp)
@@ -362,7 +364,7 @@ class FEDVR_Basis:
         return T4
 
     # ------------------------------------------------------------
-    def get_potential_from_func(self, Vfunc: callable) -> np.ndarray:
+    def get_potential_from_func(self, Vfunc: Callable[[np.ndarray], np.ndarray]) -> np.ndarray:
         ne = self.ne
         ng = self.ng
         xp = self.xp
@@ -436,7 +438,7 @@ class FEDVR_Basis:
         return df_grid
 
     # ------------------------------------------------------------
-    def get_coeffs_from_func(self, f_fnc: callable) -> np.ndarray:
+    def get_coeffs_from_func(self, f_fnc: Callable[[np.ndarray], np.ndarray]) -> np.ndarray:
         ne = self.ne
         ng = self.ng
         xp = self.xp
@@ -466,7 +468,11 @@ class FEDVR_Basis:
         return f_vec
 
     # ------------------------------------------------------------
-    def get_coeffs_from_func_batch(self, ndim: int, f_fnc: callable) -> np.ndarray:
+    def get_coeffs_from_func_batch(
+        self,
+        ndim: int,
+        f_fnc: Callable[[np.ndarray], np.ndarray],
+    ) -> np.ndarray:
         ne = self.ne
         ng = self.ng
         xp = self.xp
