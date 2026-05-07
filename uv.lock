@@ -280,7 +280,7 @@ build = [
 bump = [{ name = "bump-my-version" }]
 docs = [
     { name = "autodoc-pydantic" },
-    { name = "sphinx", specifier = ">=8" },
+    { name = "sphinx", specifier = ">=8,<9" },
     { name = "sphinx-automodapi" },
     { name = "sphinx-click" },
     { name = "sphinx-rtd-theme", specifier = ">=3.0" },
@@ -288,7 +288,7 @@ docs = [
 docs-lint = [
     { name = "autodoc-pydantic" },
     { name = "doc8" },
-    { name = "sphinx", specifier = ">=8" },
+    { name = "sphinx", specifier = ">=8,<9" },
     { name = "sphinx-automodapi" },
     { name = "sphinx-click" },
     { name = "sphinx-rtd-theme", specifier = ">=3.0" },
@@ -300,7 +300,7 @@ doctests = [
 format-docs = [
     { name = "autodoc-pydantic" },
     { name = "docstrfmt" },
-    { name = "sphinx", specifier = ">=8" },
+    { name = "sphinx", specifier = ">=8,<9" },
     { name = "sphinx-automodapi" },
     { name = "sphinx-click" },
     { name = "sphinx-rtd-theme", specifier = ">=3.0" },
