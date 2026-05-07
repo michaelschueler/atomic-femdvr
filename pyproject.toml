@@ -172,6 +172,11 @@ plugins = [
     "pydantic.mypy",
 ]
 strict = true
+# A handful of "type: ignore" comments only fire under older versions of
+# scipy-stubs / upf-tools / etc. We do not pin those, so leaving them in
+# place is the safer default; tolerate the ones that happen to be unused
+# on whichever version CI resolves to.
+warn_unused_ignores = false
 # Annotating numpy ndarrays (and dict / list / tuple generics) thoroughly
 # is a separate sweep; disable the two checks that would otherwise produce
 # hundreds of noise errors against internal solver code. The remaining

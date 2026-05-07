@@ -301,7 +301,7 @@ class PseudoAtomDFT:
         Qmax = 10.0 * self.Zval
         result = cast(
             OptimizeResult,
-            minimize_scalar(
+            minimize_scalar(  # type: ignore[call-overload]
                 objective_func,
                 bounds=(Qmin, Qmax),
                 method="bounded",
