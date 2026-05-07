@@ -1,5 +1,4 @@
 import numpy as np
-import primme
 import scipy.linalg as la
 from scipy.interpolate import interp1d
 from scipy.sparse.linalg import LinearOperator, lobpcg
@@ -102,9 +101,6 @@ def solve_iterative(
     -0.5 * D_offdiag
     H_diag = T_diag + np.diag(Vsc_mat)
 
-    # estimation of lowest eigenvalues for preconditioning
-    eps0 = -0.5 * Z**2 / ((l + 1) ** 2)
-
     # arrays for preconditioning
     if preconditioner == "diag":
         P_1 = 1.0 / np.diag(H_mat)
@@ -146,16 +142,7 @@ def solve_iterative(
     # initial guess for wavefunctions
     _lam, X = get_guess(r_grid, Z, l, num_states, a0)
 
-    if driver == "primme":
-        # solve eigenvalue problem using PRIMME
-
-        eigvals, eigvecs = primme.eigsh(
-            H_op, num_states, M=P_op, sigma=eps0, which="SM", maxiter=10000, tol=tol
-        )
-
-        return eigvals, eigvecs.T  # shape (num_states, nb)
-
-    elif driver == "lobpcg":
+    if driver == "lobpcg":
         # solve eigenvalue problem using LOBPCG
         eigvals, eigvecs = lobpcg(H_op, X, M=P_op, largest=False, maxiter=maxiter, tol=tol)
     else:
