@@ -1,12 +1,19 @@
+"""Anderson mixing for SCF fixed-point iteration."""
+
+from collections.abc import Callable
+
 import numpy as np
 
 
 class AndersonMixing:
-    def __init__(self, max_history:int=5) -> None:
+    """Fixed-window Anderson mixing of an iterate ``x`` and its image ``y = F(x)``."""
+
+    def __init__(self, max_history: int = 5) -> None:
+        """Create an Anderson mixer that retains up to ``max_history`` past iterates."""
         self.max_history = max_history
-        self.x_list = []  # stored iterates
-        self.y_list = []  # stored function values
-        self.e_list = []  # stored residuals
+        self.x_list: list[np.ndarray] = []  # stored iterates
+        self.y_list: list[np.ndarray] = []  # stored function values
+        self.e_list: list[np.ndarray] = []  # stored residuals
 
     def update(self, x: np.ndarray, y: np.ndarray, e: np.ndarray) -> None:
         """Store a new pair (x, e)."""
@@ -20,7 +27,11 @@ class AndersonMixing:
             self.y_list.pop(0)
             self.e_list.pop(0)
 
-    def extrapolate(self, dot_product: callable, beta: float) -> np.ndarray:
+    def extrapolate(
+        self,
+        dot_product: Callable[[np.ndarray, np.ndarray], float],
+        beta: float,
+    ) -> np.ndarray:
         """Return the Anderson-mixed x."""
         m = len(self.e_list) - 1
 

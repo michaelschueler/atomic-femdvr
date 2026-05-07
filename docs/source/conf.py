@@ -69,6 +69,7 @@ modindex_common_prefix = ["atomic_femdvr."]
 extensions = [
     "sphinx.ext.autosummary",
     "sphinx.ext.autodoc",
+    "sphinx.ext.napoleon",
     "sphinx.ext.coverage",
     "sphinx.ext.intersphinx",
     "sphinx.ext.todo",
@@ -76,6 +77,7 @@ extensions = [
     "sphinx.ext.viewcode",
     "sphinx_automodapi.automodapi",
     "sphinx_automodapi.smart_resolver",
+    "sphinxcontrib.autodoc_pydantic",
     # 'texext',
 ]
 
@@ -85,6 +87,42 @@ extensions.append("sphinx_click.ext")
 
 # generate autosummary pages
 autosummary_generate = True
+
+# autodoc_pydantic: don't try to render JSON schemas (numpy fields don't
+# serialise), drop the bullet-point field summary (fields are already
+# described in detail below), and skip the config / validator summaries.
+autodoc_pydantic_model_show_json = False
+autodoc_pydantic_model_show_config_summary = False
+autodoc_pydantic_model_show_field_summary = False
+autodoc_pydantic_model_show_validator_summary = False
+autodoc_pydantic_model_show_validator_members = False
+autodoc_pydantic_field_list_validators = False
+
+
+def _strip_pydantic_init_boilerplate(_app, _what, _name, _obj, _options, lines):
+    """Drop pydantic's BaseModel.__init__ docstring leaking into class docs."""
+    boilerplate_markers = (
+        "Create a new model by parsing and validating",
+        "Raises [`ValidationError`]",
+        "is explicitly positional-only",
+        "validated to form a valid model",
+    )
+    keep = [ln for ln in lines if not any(m in ln for m in boilerplate_markers)]
+    cleaned = []
+    prev_blank = False
+    for ln in keep:
+        is_blank = not ln.strip()
+        if is_blank and prev_blank:
+            continue
+        cleaned.append(ln)
+        prev_blank = is_blank
+    lines[:] = cleaned
+
+
+def setup(app):
+    """Register the docstring-cleaning hook."""
+    app.connect("autodoc-process-docstring", _strip_pydantic_init_boilerplate)
+
 
 # Add any paths that contain templates here, relative to this directory.
 templates_path = ["_templates"]

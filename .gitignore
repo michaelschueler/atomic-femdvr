@@ -1,5 +1,31 @@
+# Virtual environments
 .venv
+
+# Editor / IDE
 .vscode
+
+# Python build artifacts
 __pycache__
+*.py[cod]
+*.egg-info/
+build/
+dist/
+
+# Test / type / lint caches
 .coverage
 coverage.xml
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.tox/
+
+# Generated docs
+docs/build/
+
+# Local scratch / legacy code (out-of-tree)
+dev/
+
+# SCF restart files (created by runs)
+*.pkl
+Mo_Pseudo/
+examples/Mo_Pseudo/

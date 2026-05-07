@@ -1,5 +1,5 @@
 <!--
-Thanks for contributing to `wannier90-input`.
+Thanks for contributing to `atomic-femdvr`.
 To help us out with reviewing, please consider the following:
 
 - Does this pull request include a summary of the change? (See below.)

@@ -1,41 +1,21 @@
 atomic-femdvr |release| Documentation
 =====================================
 
-Cookiecutter
-------------
+``atomic-femdvr`` solves the radial Kohn-Sham equation for an isolated
+atom on a finite-element discrete-variable (FEM-DVR) basis. It supports
+both all-electron calculations and norm-conserving pseudopotentials read
+from UPF files.
 
-This package was created with the `cookiecutter <https://github.com/cookiecutter/cookiecutter>`_
-package using `cookiecutter-snekpack <https://github.com/cthoyt/cookiecutter-snekpack>`_ template.
-It comes with the following:
+The package exposes two top-level entry points:
 
-- Standard ``src/`` layout
-- Declarative setup with `pyproject.toml` (following `PEP 621 <https://peps.python.org/pep-0621/>`_)
-- Reproducible workflows configured with ``tox``
-  - Reproducible tests with ``pytest``
-  - A command line interface with ``click``
-  - Reproducible notebooks with `treon <https://github.com/reviewNB/treon>`_
-  - Documentation build with ``sphinx`` 8.0 and ``sphinx-rtd-theme`` 3.0
-  - Testing of code quality with ``ruff``
-  - Testing of documentation coverage with ``docstr-coverage``
-  - Testing of documentation format
-  - Testing of package metadata completeness with ``pyroma``
-  - Testing of MANIFEST correctness with ``check-manifest``
-  - Testing of optional static typing with ``mypy``
-  - Version management with `bump-my-version <https://github.com/callowayproject/bump-my-version>`_
-  - Building with `uv build <https://docs.astral.sh/uv/guides/publish/#building-your-package>`_
-  - Releasing to PyPI with `uv publish <https://docs.astral.sh/uv/guides/publish/#publishing-your-package>`_
-- A command line interface with ``click``
-- A vanity CLI via python entrypoints
-- A `py.typed` file so other packages can use your type hints
-- Automated running of tests on each push
-  with `GitHub Actions <https://docs.github.com/en/actions/learn-github-actions/understanding-github-actions>`_
-- Configuration for `ReadTheDocs <https://readthedocs.org>`_
-- A good base `.gitignore` generated from `gitignore.io <https://gitignore.io>`_.
-- A pre-formatted README with badges
-- A pre-formatted LICENSE file with the MIT License (you can change this to whatever you want, though)
-- A pre-formatted CONTRIBUTING guide
-- A copy of the `Contributor Covenant <https://www.contributor-covenant.org>`_ as a basic code of conduct
+- :func:`atomic_femdvr.solve_atomic` — all-electron DFT, configured via
+  :class:`atomic_femdvr.FullAtomicInput`.
+- :func:`atomic_femdvr.solve_pseudo_atomic` — pseudo-atomic DFT,
+  configured via :class:`atomic_femdvr.PseudoAtomicInput`, returning a
+  :class:`atomic_femdvr.PseudoAtomicResult`.
 
+A console script ``atomic_femdvr`` (also runnable as
+``python -m atomic_femdvr``) wraps both solvers with JSON-driven inputs.
 
 .. toctree::
     :maxdepth: 2
