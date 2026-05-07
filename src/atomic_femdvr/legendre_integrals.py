@@ -1,3 +1,5 @@
+"""Indefinite-integral tables of Legendre-polynomial products on each FEDVR element."""
+
 import numpy as np
 from scipy.integrate import solve_ivp
 from scipy.special import eval_legendre
@@ -7,12 +9,14 @@ from atomic_femdvr.legendre import Legendre
 
 # ===================================================================
 def gen_btensor_ode(N: int) -> np.ndarray:
+    """Build the rank-3 tensor of pairwise Legendre indefinite integrals at the LGL nodes."""
     np.zeros([N, N, N])
 
     leg = Legendre(N)
     x_i = leg.x_i
 
     def integrand(t, x):
+        """ODE RHS: outer product ``P_i(t) P_j(t)`` flattened to a vector."""
         pn = np.zeros(N)
         for n in range(N):
             pn[n] = eval_legendre(n, t)
@@ -28,12 +32,14 @@ def gen_btensor_ode(N: int) -> np.ndarray:
 
 # ===================================================================
 def gen_bvector_ode(N: int) -> np.ndarray:
+    """Build the indefinite integrals of the first ``N`` Legendre polynomials at the LGL nodes."""
     np.zeros([N, N])
 
     leg = Legendre(N)
     x_i = leg.x_i
 
     def integrand(t, x):
+        """ODE RHS: vector of Legendre polynomials ``P_n(t)``."""
         pn = np.zeros(N)
         for n in range(N):
             pn[n] = eval_legendre(n, t)
@@ -49,6 +55,7 @@ def gen_bvector_ode(N: int) -> np.ndarray:
 
 # ===================================================================
 def get_legendre_integrals(leg: Legendre, xp: np.ndarray) -> np.ndarray:
+    """Per-element table of Legendre-basis indefinite integrals scaled to ``xp``."""
     B_in = gen_bvector_ode(leg.N)
 
     ne = len(xp) - 1

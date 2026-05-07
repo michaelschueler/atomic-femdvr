@@ -1,3 +1,5 @@
+"""All-electron Kohn-Sham DFT driver for spherical atoms on the FEDVR grid."""
+
 import logging
 import os
 
@@ -19,6 +21,8 @@ logger = logging.getLogger(__name__)
 
 # ==========================================================================
 class FullAtomDFT:
+    """All-electron radial DFT solver bound to a single element configuration."""
+
     # .......................................................
     def __init__(
         self,
@@ -28,6 +32,7 @@ class FullAtomDFT:
         solver: SolverInput,
         dft: DFTInput,
     ) -> None:
+        """Validate inputs, build the FEDVR basis, and set the bare nuclear potential."""
         self.control = control
         self.electrons = electrons
         self.sysparams = sysparams
@@ -82,6 +87,7 @@ class FullAtomDFT:
 
     # .......................................................
     def validate_configuration(self) -> None:
+        """Parse the spectroscopic configuration string into ``n``, ``l``, and occupation arrays."""
         shell_labels = ["S", "P", "D", "F", "G", "H", "I", "J", "K", "L"]
 
         # check shell labels
@@ -140,10 +146,12 @@ class FullAtomDFT:
 
     # .......................................................
     def initialize_density(self) -> None:
+        """Seed ``rho_grid`` with a Slater-shielded hydrogenic guess."""
         self.rho_grid = get_slater_density(self.grid, self.Z, self.nprin, self.ll, self.occ)
 
     # .......................................................
     def get_effective_potential(self, rho_grid: np.ndarray | None = None) -> np.ndarray:
+        """Return ``V_nuc + V_Hartree[rho] + V_xc[rho]`` on the radial grid."""
         if rho_grid is None:
             if self.rho_grid is None:
                 raise RuntimeError(
@@ -176,6 +184,7 @@ class FullAtomDFT:
         lmin: int = 0,
         theory_level: str | None = None,
     ) -> tuple[np.ndarray, np.ndarray]:
+        """Diagonalise the radial Hamiltonian for ``l = lmin..lmax`` at the given theory level."""
         if theory_level is None:
             theory_flag = "non-relativistic"
         else:
@@ -200,6 +209,7 @@ class FullAtomDFT:
         self,
         theory_level: str | None = None,
     ) -> tuple[dict[str, list[float]], np.ndarray]:
+        """Return bound-state eigenvalues (per ``l``) and wavefunctions for the current density."""
         V_eff = self.get_effective_potential()
         eps, psi = self.solve_schrodinger(V_eff, self.lmax, self.nmax, theory_level=theory_level)
 

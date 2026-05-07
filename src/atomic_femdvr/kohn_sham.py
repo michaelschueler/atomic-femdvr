@@ -1,3 +1,5 @@
+"""Radial Kohn-Sham/Schrödinger eigenproblem solvers on the FEDVR basis."""
+
 import numpy as np
 import scipy.linalg as la
 
@@ -157,6 +159,7 @@ def solve_scalar_relativistic(
     maxiter: int = 100,
     tol: float = 1.0e-6,
 ) -> tuple[np.ndarray, np.ndarray]:
+    """Scalar-relativistic Schrödinger solver (work in progress; do not rely on)."""
     c = 137.035999074  # Fine structure constant
     1.0 / c  # Fine structure constant
     kappa = -1.0  # Kappa value for the radial equation
@@ -269,6 +272,7 @@ def get_green_function(
     l: int,
     eps: float,
 ) -> np.ndarray:
+    """Build the scalar-relativistic Green's function matrix (incomplete sketch)."""
     c = 137.035999074  # Fine structure constant
     alpha = 1.0 / c  # Fine structure constant
 

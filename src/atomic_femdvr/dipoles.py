@@ -1,3 +1,5 @@
+"""Dipole-moment matrix elements between FEDVR atomic orbitals."""
+
 import h5py
 import numpy as np
 from sympy.physics.wigner import gaunt

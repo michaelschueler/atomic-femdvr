@@ -1,3 +1,5 @@
+"""Simple density-mixing utilities used by the SCF loop."""
+
 import numpy as np
 
 

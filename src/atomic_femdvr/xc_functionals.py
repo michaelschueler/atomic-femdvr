@@ -1,9 +1,10 @@
+"""Closed-form GGA exchange-correlation functionals (PBE, PBE0, B3LYP)."""
+
 import numpy as np
 
 
 def gga_functional(name, rho, grad_rho, alpha):
-    # evaluate the Perdwe, Burke and Ernzerhof Generalized Gradient Approximation functional
-
+    """Evaluate ``exc`` and ``(v_rho, v_sigma)`` for the named GGA functional."""
     # deal with zeros for divide
     epsilon = 1e-30
     rho = rho + epsilon
@@ -15,6 +16,7 @@ def gga_functional(name, rho, grad_rho, alpha):
         PW = np.array([0.0310907, 0.2137000, 7.5957000, 3.5876000, 1.6382000, 0.4929400])
 
         def interpolate_LSD_energy(r, PW):
+            """Return the PW91-interpolated LSD correlation energy and its ``r_s`` derivative."""
             # correlation energy interpolation from PW91
 
             q = [0.0, 0.0, 0.0, 0.0]
@@ -29,6 +31,7 @@ def gga_functional(name, rho, grad_rho, alpha):
             return gg, gg_rs
 
         def gga_pbe_exchange(rho, grad_rho):
+            """PBE exchange energy density and its derivatives w.r.t. ``rho`` and ``sigma``."""
             # local density approximation exchange energy
             ex_lda = -0.75 * (3.0 * rho / np.pi) ** (1.0 / 3.0)
 
@@ -54,6 +57,7 @@ def gga_functional(name, rho, grad_rho, alpha):
             return ex, v_rho_x, v_sigma_x, kf
 
         def gga_pbe_correlation(rho, grad_rho, kf):
+            """PBE correlation energy density and its ``rho`` derivative."""
             # Seitz radius
             rs = (0.75 / (np.pi * rho)) ** (1.0 / 3.0)
             rrs = np.sqrt(rs)
@@ -94,6 +98,7 @@ def gga_functional(name, rho, grad_rho, alpha):
             return ec, v_rho_c
 
         def gga_pbe_sigma_potential(rho, sigma, epsilon):
+            """PBE correlation potential w.r.t. the gradient invariant ``sigma``."""
             # Seitz radius
             rs = (3.0 / (4.0 * np.pi)) ** (1 / 3) / rho ** (1.0 / 3.0)
             rrs = np.sqrt(rs)
@@ -142,6 +147,7 @@ def gga_functional(name, rho, grad_rho, alpha):
         sigma = grad_rho * grad_rho + epsilon
 
         def local_density_approximation(rho):
+            """Slater LDA exchange energy density and potential."""
             # LDA exchange
 
             ex = -0.75 * pow(3 / np.pi, 1 / 3) * pow(rho, 1 / 3)
@@ -150,6 +156,7 @@ def gga_functional(name, rho, grad_rho, alpha):
             return ex, vx
 
         def becke_88_exchange(rho, sigma, ex_lda, vx_lda):
+            """Becke-88 exchange energy density and ``rho``/``sigma`` derivatives on top of LDA."""
             # Becke 88 exchange functional
 
             beta = 0.0042
@@ -188,6 +195,7 @@ def gga_functional(name, rho, grad_rho, alpha):
             return ex_lda + ex_b, vx_lda + vx_rho_b, vx_sigma_b
 
         def vwn_3_correlation(rho):
+            """Vosko-Wilk-Nusair (parametrisation 3) correlation energy and potential."""
             # The Vosko, Wilk and Nusair 3 functional
 
             # VWN3 parameterisation
@@ -202,6 +210,7 @@ def gga_functional(name, rho, grad_rho, alpha):
             q.append(np.sqrt(4 * c - b * b))
 
             def X(y):
+                """VWN auxiliary polynomial ``y^2 + b y + c``."""
                 return y * y + b * y + c
 
             # correlation energy
@@ -224,6 +233,7 @@ def gga_functional(name, rho, grad_rho, alpha):
             return ec_vwn, vc_rho_vwn
 
         def lyp_correlation(rho, sigma):
+            """Lee-Yang-Parr correlation energy and ``rho``/``sigma`` derivatives."""
             # The Lee, Yang and Parr correlation functional
 
             a = 0.04918

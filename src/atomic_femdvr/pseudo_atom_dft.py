@@ -1,3 +1,5 @@
+"""Pseudopotential atomic DFT driver: reads UPF data and runs the SCF on the FEDVR grid."""
+
 import logging
 import os
 from typing import cast
@@ -31,10 +33,13 @@ logger = logging.getLogger(__name__)
 
 # ==========================================================================
 class PseudoAtomDFT:
+    """Pseudopotential atomic DFT solver bound to a UPF pseudopotential file."""
+
     # .......................................................
     def __init__(
         self, control: ControlInput, sysparams: SysParamsInput, solver: SolverInput, dft: DFTInput
     ) -> None:
+        """Build the radial FEDVR basis sized for the configured pseudopotential element."""
         self.control = control
         self.sysparams = sysparams
         self.solver = solver
@@ -70,6 +75,7 @@ class PseudoAtomDFT:
 
     @property
     def upf(self) -> UPFInterface:
+        """Loaded UPF interface; raises if :meth:`read_upf` has not been called."""
         if self._upf is None:
             raise ValueError("UPF file has not been read yet. Call ReadUPF() first.")
         return self._upf
@@ -80,6 +86,7 @@ class PseudoAtomDFT:
 
     @property
     def Vloc_grid(self) -> np.ndarray:
+        """Local pseudopotential resampled onto the FEDVR grid."""
         if self._Vloc_grid is None:
             raise ValueError(
                 "Local potential has not been read yet. Call ReadUPF(read_potential=True) first."
@@ -91,6 +98,7 @@ class PseudoAtomDFT:
         self._Vloc_grid = value
 
     def read_upf(self, read_density: bool = True, read_potential: bool = True):
+        """Load UPF pseudopotential data and (optionally) seed density/potential."""
         if self.sysparams.file_upf is None:
             raise ValueError("sysparams.file_upf must be set to read a UPF file.")
         self.upf = UPFInterface.from_upf(self.sysparams.file_upf)
@@ -129,6 +137,7 @@ class PseudoAtomDFT:
 
     # .......................................................
     def get_effective_potential(self, rho_grid: np.ndarray | None = None) -> np.ndarray:
+        """Return ``V_loc + V_Hartree[rho] + V_xc[rho]`` on the FEDVR grid."""
         if rho_grid is None:
             if self.rho_grid is None:
                 raise RuntimeError(
@@ -162,6 +171,7 @@ class PseudoAtomDFT:
         lmin: int = 0,
         non_local: bool = True,
     ) -> tuple[np.ndarray, np.ndarray]:
+        """Diagonalise the radial Hamiltonian, with or without the non-local UPF projector terms."""
         if non_local:
             eps, psi = kohn_sham.solve_schrodinger_pseudo(
                 self.basis,
@@ -183,6 +193,7 @@ class PseudoAtomDFT:
 
     # .......................................................
     def get_bound_states(self):
+        """Return bound-state eigenvalues (per ``l``) and wavefunctions for the pseudoatom."""
         V_eff = self.get_effective_potential()
         eps, psi = self.solve_schrodinger(V_eff, self.lmax_pseudo, self.nmax_pseudo)
 
@@ -273,6 +284,7 @@ class PseudoAtomDFT:
 
         # wrapper for the optimization function
         def objective_func(Q: float) -> float:
+            """Return ``1 - |<psi_ref | psi(Q)>|^2`` for the soft-Coulomb optimisation."""
             # Set up the soft Coulomb potential
             Vsoftcoul = soft_coulomb_potential(self.grid, Q, confinement.softcoul_delta)
 
@@ -289,7 +301,7 @@ class PseudoAtomDFT:
         Qmax = 10.0 * self.Zval
         result = cast(
             OptimizeResult,
-            minimize_scalar(  # type: ignore[call-overload]
+            minimize_scalar(
                 objective_func,
                 bounds=(Qmin, Qmax),
                 method="bounded",
@@ -305,6 +317,7 @@ class PseudoAtomDFT:
     def get_states_energy_shift(
         self, lmax: int, nmax: int, confinement: ConfinementInput
     ) -> tuple[np.ndarray, dict[str, list[float]], np.ndarray]:
+        """Energy shifts of the highest bound state per ``l`` induced by the confinement."""
         eigenvalues_bounds, _psi_bound = self.get_bound_states()
         eigenvalues_all, psi_all = self.get_all_states(lmax, nmax, confinement=confinement)
 
@@ -322,6 +335,7 @@ class PseudoAtomDFT:
     def get_all_states_energy_shifts(
         self, lmax: int, nmax: int, confinement: ConfinementInput
     ) -> tuple[dict[str, list[float]], dict[str, list[float]], np.ndarray]:
+        """Per-state confinement-induced energy shifts for every bound state."""
         eigenvalues_bounds, _psi_bound = self.get_bound_states()
         eigenvalues_all, psi_all = self.get_all_states(lmax, nmax, confinement=confinement)
 
@@ -338,6 +352,7 @@ class PseudoAtomDFT:
 
     # .......................................................
     def export_eigenvalues(self, eigenvalues: dict[str, list[float]], out_dir: str):
+        """Write a flat ``l n eps`` text table of eigenvalues to ``{element}_eigenvalues.dat``."""
         elem = self.element
         file_eigenvalues = os.path.join(out_dir, f"{elem}_eigenvalues.dat")
 
@@ -358,6 +373,7 @@ class PseudoAtomDFT:
         output: OutputInput,
         out_dir: str,
     ):
+        """Write basis-set-tagged projector files (QE / HDF5 / Bessel) for the wavefunctions."""
         # here we build the tag for the output files
         # following quantum chemistry conventions: SZ, DZP etc.
 
@@ -416,6 +432,7 @@ class PseudoAtomDFT:
     def export_dipole_moments(
         self, lmax: int, nmax: int, psi: np.ndarray, output: OutputInput, out_dir: str
     ):
+        """Compute and save the dipole moment matrix to ``{element}_dipole_moments.h5``."""
         orb_indx, D_matrix = dipole_moments(self.basis, psi)
 
         elem = self.element

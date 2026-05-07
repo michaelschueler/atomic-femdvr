@@ -1,3 +1,5 @@
+"""I/O helpers for reading tabulated radial potentials from text files."""
+
 import os
 
 import numpy as np
@@ -5,8 +7,12 @@ import numpy as np
 
 # ==================================================================
 def read_potential(sysparams):
-    # Read the potential. If file_pot is specified, read in the total potential,
-    # otherwise read the exchange-correlation potential from file_vhx
+    """Load a radial potential from disk and convert it to Hartree units.
+
+    Reads the total potential from ``file_pot`` if given, otherwise the
+    exchange-correlation potential from ``file_vhx``. Returns the radial grid,
+    the potential, and a tag (``"tot"`` or ``"vhx"``) identifying the source.
+    """
     file_pot = sysparams.get("file_pot", "")
     file_vhx = sysparams.get("file_vhx", "")
     if file_pot:

@@ -9,6 +9,7 @@ logger = logging.getLogger(__name__)
 
 
 def legendre_spectral_derivative_matrix(N):
+    """Return the ``N x N`` derivative matrix in the Legendre-spectral basis."""
     D_nn = np.zeros((N, N))
     k = np.arange(N)
 
@@ -20,7 +21,10 @@ def legendre_spectral_derivative_matrix(N):
 
 
 class Legendre:
+    """Legendre-Gauss-Lobatto nodes, weights, and basis-conversion matrices on ``[-1, 1]``."""
+
     def __init__(self, N):
+        """Precompute LGL nodes/weights and spectral/collocation transforms of order ``N``."""
         self.N = N
         n = np.arange(N)
 
@@ -37,12 +41,15 @@ class Legendre:
         self.D_nn = legendre_spectral_derivative_matrix(N)
 
     def to_collocation(self, f_nX):
+        """Transform spectral coefficients to nodal values at the LGL points."""
         return np.tensordot(self.L_in, f_nX, axes=(1, 0))
 
     def to_spectral(self, f_iX):
+        """Transform nodal values at the LGL points back to spectral coefficients."""
         return np.tensordot(self.S_ni, f_iX, axes=(1, 0))
 
     def __derivative_matrix(self):
+        """Compute the LGL collocation differentiation matrix on ``[-1, 1]``."""
         x_i = self.x_i
         N = len(x_i)
 
@@ -67,6 +74,7 @@ class Legendre:
         return D_ii
 
     def __leggausslobatto_quadrature_weights(self, x_i):
+        """Closed-form LGL quadrature weights at the supplied nodes."""
         N = self.N - 1
 
         c_n = np.zeros(N + 1)
@@ -76,6 +84,7 @@ class Legendre:
         return w_i
 
     def __leggausslobatto_quadrature(self):
+        """Compute the full set of LGL nodes on ``[-1, 1]`` (including endpoints)."""
         N = self.N - 1
 
         x_i = self.__x_i_guess()
@@ -98,6 +107,7 @@ class Legendre:
         return x_i_out
 
     def __x_i_guess(self):
+        """Asymptotic starting guess for the interior LGL nodes."""
         N = self.N - 1
 
         k = np.arange(1, N + 1)
@@ -113,6 +123,7 @@ class Legendre:
         return x_i
 
     def __newton_iter(self, x_i_guess, niter_max=1000, tol=1e-16):
+        """Newton-iterate the LGL node guesses to machine precision."""
         N = self.N - 1
 
         c_n = np.zeros(N + 1)

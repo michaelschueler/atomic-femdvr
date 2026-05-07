@@ -1,3 +1,5 @@
+"""Slater-rule initial densities used to seed the SCF iteration."""
+
 import logging
 
 import numpy as np
@@ -73,6 +75,7 @@ def slater_shielding(
 def get_slater_density(
     r: np.ndarray, Z: float, n_vals: np.ndarray, l_vals: np.ndarray, occ_vals: np.ndarray
 ) -> np.ndarray:
+    """Build a starting radial density by summing screened hydrogenic shells."""
     density = np.zeros_like(r)
 
     for n, l, occ in zip(n_vals, l_vals, occ_vals, strict=False):

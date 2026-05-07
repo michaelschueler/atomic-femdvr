@@ -1,3 +1,5 @@
+"""Radial confinement potentials and a soft-Coulomb model potential."""
+
 import numpy as np
 
 
@@ -65,4 +67,5 @@ def soft_step(r: np.ndarray, ri: float, rc: float, Vbarrier: float = 1.0e1) -> n
 
 # ===================================================================
 def soft_coulomb_potential(r: np.ndarray, Q: float, delta: float, lam: float = 0.0) -> np.ndarray:
+    """Regularised Coulomb potential ``-Q exp(-lam r) / sqrt(r^2 + delta^2)``."""
     return -Q / np.sqrt(r**2 + delta**2) * np.exp(-lam * r)

@@ -1,8 +1,14 @@
+"""Minimal element-symbol to atomic-number lookup (first 20 elements)."""
+
+
 # ==========================================================================
 class PeriodicTable:
+    """Lookup table mapping chemical symbols to atomic numbers."""
+
     # .......................................................
     @staticmethod
     def get_atomic_number(element: str) -> int:
+        """Return the atomic number ``Z`` for the given element symbol."""
         periodic_table = {
             "H": 1,
             "He": 2,

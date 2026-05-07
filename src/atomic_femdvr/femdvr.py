@@ -54,6 +54,7 @@ class FEDVR_Basis:
         build_derivatives: bool = True,
         build_integrals: bool = False,
     ) -> None:
+        """Construct the FEDVR basis from element breakpoints and per-element node count."""
         self.ne = ne
         self.ng = ng
         self.xp = np.array(xp)
@@ -122,6 +123,7 @@ class FEDVR_Basis:
 
     # ------------------------------------------------------------
     def __get_psi_all(self, cff: np.ndarray, cplx: bool = False) -> np.ndarray:
+        """Vectorised :meth:`get_psi` for a stack of coefficient vectors."""
         ne = self.ne
         ng = self.ng
         nvec = cff.shape[0]
@@ -139,6 +141,7 @@ class FEDVR_Basis:
 
     # ------------------------------------------------------------
     def __get_psi_single(self, cff: np.ndarray, cplx: bool = False) -> np.ndarray:
+        """Convert one coefficient vector to wavefunction values on the Lobatto grid."""
         ne = self.ne
         ng = self.ng
         xp = self.xp
@@ -229,6 +232,7 @@ class FEDVR_Basis:
 
     # ------------------------------------------------------------
     def to_linear_grid(self, psi: np.ndarray, nx: int) -> tuple[np.ndarray, np.ndarray]:
+        """Resample ``psi`` from the Lobatto grid onto a piecewise-uniform grid with ``nx`` points per element."""
         ne = self.ne
         ng = self.ng
 
@@ -294,6 +298,7 @@ class FEDVR_Basis:
 
     # ------------------------------------------------------------
     def get_deriv_matrix_full(self, n: int = 2, cplx: bool = False) -> np.ndarray:
+        """Assemble the rank-4 ``(ne, ng, ne, ng)`` first or second derivative tensor."""
         ne = self.ne
         ng = self.ng
         xp = self.xp
@@ -370,6 +375,7 @@ class FEDVR_Basis:
 
     # ------------------------------------------------------------
     def get_potential_from_func(self, Vfunc: Callable[[np.ndarray], np.ndarray]) -> np.ndarray:
+        """Evaluate ``Vfunc(r)`` at the Lobatto nodes and pack into a basis-aligned diagonal."""
         ne = self.ne
         ng = self.ng
         xp = self.xp
@@ -396,6 +402,7 @@ class FEDVR_Basis:
 
     # ------------------------------------------------------------
     def get_potential_from_grid(self, V_grid: np.ndarray) -> np.ndarray:
+        """Project a Lobatto-grid potential onto the diagonal of the basis representation."""
         ne = self.ne
         ng = self.ng
         nb = ne * ng - 1
@@ -414,6 +421,7 @@ class FEDVR_Basis:
 
     # ------------------------------------------------------------
     def get_grid_derivative(self, f_grid: np.ndarray) -> np.ndarray:
+        """Compute ``df/dr`` on the Lobatto grid using the per-element collocation derivative."""
         ne = self.ne
         ng = self.ng
 
@@ -429,6 +437,7 @@ class FEDVR_Basis:
 
     # ------------------------------------------------------------
     def get_coeffs_from_func(self, f_fnc: Callable[[np.ndarray], np.ndarray]) -> np.ndarray:
+        """Sample ``f_fnc(r)`` at the Lobatto nodes and convert to FEDVR basis coefficients."""
         ne = self.ne
         ng = self.ng
         xp = self.xp
@@ -460,6 +469,7 @@ class FEDVR_Basis:
         ndim: int,
         f_fnc: Callable[[np.ndarray], np.ndarray],
     ) -> np.ndarray:
+        """Batched :meth:`get_coeffs_from_func` for a vector-valued ``f_fnc`` of dimension ``ndim``."""
         ne = self.ne
         ng = self.ng
         xp = self.xp
@@ -498,6 +508,7 @@ class FEDVR_Basis:
         alpha: float = 0.0,
         beta: float = 0.0,
     ) -> np.ndarray | tuple[np.ndarray, np.ndarray]:
+        """Build the kinetic-energy matrix; with non-zero ``alpha``/``beta`` apply asymptotic boundary terms."""
         if alpha == 0.0 and beta == 0.0:
             Tmat = self.__get_kinetic_energy_matrix_zerobound()
             return Tmat
@@ -507,6 +518,7 @@ class FEDVR_Basis:
 
     # ------------------------------------------------------------
     def get_kinetic_energy_banded(self) -> np.ndarray:
+        """Banded-storage form of the zero-Dirichlet kinetic-energy matrix."""
         Tmat = self.__get_kinetic_energy_matrix_zerobound()
         ne = self.ne
         ng = self.ng
@@ -529,11 +541,13 @@ class FEDVR_Basis:
 
     # ------------------------------------------------------------
     def get_deriv_matrix(self) -> np.ndarray:
+        """Dense first-derivative matrix in the FEDVR basis (zero-Dirichlet)."""
         Dmat = self.__get_deriv_matrix_zerobound()
         return Dmat
 
     # ------------------------------------------------------------
     def get_deriv_matrix_banded(self) -> np.ndarray:
+        """Banded-storage form of the zero-Dirichlet first-derivative matrix."""
         Dmat = self.__get_deriv_matrix_zerobound()
         ne = self.ne
         ng = self.ng
@@ -552,6 +566,7 @@ class FEDVR_Basis:
 
     # ------------------------------------------------------------
     def __get_kinetic_energy_matrix_zerobound(self):
+        """Kinetic-energy matrix with zero Dirichlet boundary conditions."""
         ne = self.ne
         ng = self.ng
         nb = ne * ng - 1
@@ -566,6 +581,7 @@ class FEDVR_Basis:
 
     # ------------------------------------------------------------
     def __get_deriv_matrix_zerobound(self):
+        """First-derivative matrix with zero Dirichlet boundary conditions."""
         ne = self.ne
         ng = self.ng
         nb = ne * ng - 1
@@ -585,6 +601,7 @@ class FEDVR_Basis:
         alpha: float,
         beta: float,
     ) -> tuple[np.ndarray, np.ndarray]:
+        """Kinetic-energy matrix with Robin-type asymptotic boundary conditions ``alpha``, ``beta``."""
         ne = self.ne
         ng = self.ng
         xp = self.xp
@@ -633,6 +650,7 @@ class FEDVR_Basis:
 
 # =================================================================
 def lobatto_shape_derivatives(nodes):
+    """Compute the derivative of each Lobatto shape function at every node."""
     ng = len(nodes)
     df = np.zeros((ng, ng))  # df[m][n] = f'_m(x_n)
     for m in range(ng):
@@ -655,6 +673,7 @@ def lobatto_shape_derivatives(nodes):
 # =================================================================
 # Assemble first derivative matrix for one element
 def local_first_derivative_matrix(nodes, weights):
+    """Assemble the first-derivative matrix on a single element."""
     df = lobatto_shape_derivatives(nodes)
     ng = len(nodes)
     D = np.zeros((ng, ng))
@@ -667,6 +686,7 @@ def local_first_derivative_matrix(nodes, weights):
 
 # =================================================================
 def dtilde(leg, L):
+    """Element-local weighted first-derivative matrix used to build ``D``."""
     D_ii = leg.D_ii
     w_i = leg.w_i
 
@@ -680,6 +700,7 @@ def dtilde(leg, L):
 
 # =================================================================
 def ttilde(leg, L):
+    """Element-local weighted Laplacian matrix on an interval of length ``L``."""
     D_ii = leg.D_ii
     w_i = leg.w_i
 

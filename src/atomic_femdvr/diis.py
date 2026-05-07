@@ -1,3 +1,5 @@
+"""DIIS (Pulay) extrapolation for SCF iterations."""
+
 import logging
 from collections.abc import Callable
 
@@ -7,7 +9,10 @@ logger = logging.getLogger(__name__)
 
 
 class DIIS:
+    """DIIS extrapolator: combines past iterates by minimising the residual norm."""
+
     def __init__(self, max_history: int = 6) -> None:
+        """Create a DIIS extrapolator that keeps up to ``max_history`` iterates."""
         self.max_history = max_history
         self.x_list: list[np.ndarray] = []  # stored iterates
         self.e_list: list[np.ndarray] = []  # stored residuals

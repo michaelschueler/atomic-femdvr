@@ -1,10 +1,15 @@
+"""Anderson mixing for SCF fixed-point iteration."""
+
 from collections.abc import Callable
 
 import numpy as np
 
 
 class AndersonMixing:
+    """Fixed-window Anderson mixing of an iterate ``x`` and its image ``y = F(x)``."""
+
     def __init__(self, max_history: int = 5) -> None:
+        """Create an Anderson mixer that retains up to ``max_history`` past iterates."""
         self.max_history = max_history
         self.x_list: list[np.ndarray] = []  # stored iterates
         self.y_list: list[np.ndarray] = []  # stored function values

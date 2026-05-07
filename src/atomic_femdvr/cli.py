@@ -44,6 +44,7 @@ def _setup_logging(verbose: bool) -> None:
 @click.option("-v", "--verbose", is_flag=True, help="Enable DEBUG-level logging.")
 @click.version_option(version=get_version(), message="atomic_femdvr %(version)s")
 def main(verbose: bool) -> None:
+    """Top-level CLI entry point; wires logging before dispatching subcommands."""
     _setup_logging(verbose)
 
 
@@ -53,6 +54,7 @@ def main(verbose: bool) -> None:
 @click.option("-t", "--task", type=str, multiple=True, required=True)
 @click.option("--plot", is_flag=True, help="Plot the results")
 def atomic(input_file: str, task: tuple[str, ...], plot: bool) -> None:
+    """Run the full (all-electron) atomic DFT solver from a JSON input file."""
     perf_counter()
 
     # Read input parameters
@@ -71,6 +73,7 @@ def atomic(input_file: str, task: tuple[str, ...], plot: bool) -> None:
 def pseudoatomic(
     input_file: str, task: tuple[str, ...], plot: bool, export_dir: str | None
 ) -> None:
+    """Run the pseudopotential atomic DFT solver from a JSON input file."""
     with open(input_file) as f:
         data = json.load(f)
 

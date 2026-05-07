@@ -1,3 +1,5 @@
+"""Charge density, Hartree, and exchange-correlation potentials on the FEDVR grid."""
+
 import numpy as np
 
 from atomic_femdvr.femdvr import FEDVR_Basis
@@ -35,6 +37,7 @@ def charge_density(
 
 # ===================================================================
 def hartree_potential(basis: FEDVR_Basis, rho: np.ndarray) -> np.ndarray:
+    """Solve the radial Poisson equation for the Hartree potential of ``rho``."""
     ne = basis.ne
     ng = basis.ng
     grid = basis.get_gridpoints()

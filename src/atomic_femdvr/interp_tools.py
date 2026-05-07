@@ -1,3 +1,5 @@
+"""Radial interpolation/extrapolation helpers for potentials and densities."""
+
 import numpy as np
 from scipy.interpolate import UnivariateSpline, interp1d
 

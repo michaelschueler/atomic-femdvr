@@ -1,3 +1,5 @@
+"""Direct and iterative radial Schrödinger solvers for the soft-Coulomb potential."""
+
 import numpy as np
 import scipy.linalg as la
 from scipy.interpolate import interp1d
@@ -46,6 +48,7 @@ def get_derivative_matrix(rs: np.ndarray) -> np.ndarray:
 
 # ====================================================================
 def get_guess(rgrid: np.ndarray, Z: float, l: int, num_states: int, a0: float) -> np.ndarray:
+    """Build a tridiagonal finite-difference initial guess for LOBPCG (soft-Coulomb)."""
     nr = len(rgrid)
     rs = np.linspace(rgrid[1], rgrid[-2], nr)
     h = rs[1] - rs[0]
@@ -106,6 +109,7 @@ def solve_iterative(
         P_1 = 1.0 / np.diag(H_mat)
 
         def prec(x):
+            """Diagonal (Jacobi) preconditioner ``M^{-1} x``."""
             if x.ndim == 1:
                 return x * P_1
             else:
@@ -116,6 +120,7 @@ def solve_iterative(
         P_2 = la.inv(Tmat) * np.eye(nb)
 
         def prec(x):
+            """Apply the dense inverse-kinetic preconditioner ``M^{-1} x``."""
             return P_2 @ x
 
     elif preconditioner == "tri":
@@ -125,15 +130,18 @@ def solve_iterative(
         H_offdiag = -0.5 / h**2 * np.ones(nb - 1)
 
         def prec(x):
+            """Tridiagonal-Laplacian preconditioner solved via LAPACK ``dgtsv``."""
             _du2, _d, _du, y, _info = la.lapack.dgtsv(H_offdiag, H_diag, H_offdiag, x)
             return y
     else:
 
         def prec(x):
+            """Identity preconditioner (no preconditioning)."""
             return x
 
     # define linear operator for Hamiltonian
     def matvec(x):
+        """Hamiltonian matrix-vector product for the LOBPCG ``LinearOperator``."""
         return H_mat @ x
 
     H_op = LinearOperator((nb, nb), matvec=matvec)
