@@ -91,7 +91,13 @@ lint = [
     "ruff",
 ]
 typing = [
-    { include-group = "tests" },
+    # Note: deliberately does NOT pull in the "tests" group, because that
+    # group transitively installs pylibxc from git (a long source build).
+    # mypy runs with --ignore-missing-imports, so it does not need pylibxc.
+    "pytest",
+    "pytest-console-scripts",
+    "pytest-regressions[num]",
+    "coverage[toml]",
     "mypy",
     "pydantic",
     "click-types",
