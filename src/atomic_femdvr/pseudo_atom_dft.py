@@ -265,7 +265,16 @@ class PseudoAtomDFT:
 
         return energy_shifts, eigenvalues_all, psi_all
     #.......................................................
-    def export_eigenvalues(self, eigenvalues: dict[str, list[float]], out_dir:str):
+    def export_eigenvalues(
+        self,
+        eigenvalues: dict[str, list[float]],
+        out_dir: str,
+        lmax: int | None = None,
+        nmax: int | None = None,
+    ):
+        # Keep optional lmax/nmax for compatibility with older/newer call sites.
+        # Export behavior is driven by the provided eigenvalues payload.
+        _ = (lmax, nmax)
         elem = self.element
         file_eigenvalues = os.path.join(out_dir, f"{elem}_eigenvalues.dat")
 
