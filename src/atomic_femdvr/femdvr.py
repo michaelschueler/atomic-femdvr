@@ -21,6 +21,10 @@ class FEDVR_Basis:
 			self.tts[:,:,i1] = ttilde(self.leg,self.xp[i1+1]-self.xp[i1])
 			self.dts[:,:,i1] = dtilde(self.leg,self.xp[i1+1]-self.xp[i1])
 
+		# Outer product D[m,a]*D[m,b] precomputed for get_p_kinetic_matrix()
+		D_ii = self.leg.D_ii
+		self._DD = D_ii[:, :, None] * D_ii[:, None, :]   # (ng+1, ng+1, ng+1)
+
 		self.have_derivatives = build_derivatives
 		if self.have_derivatives:
 			self.der1_full = self.get_deriv_matrix_full(n=1, cplx=False)
@@ -378,6 +382,73 @@ class FEDVR_Basis:
 			Tmat, Rvec = self.__get_kinetic_energy_matrix_asymbound(alpha, beta)
 			return Tmat, Rvec
 	#------------------------------------------------------------
+	def get_p_kinetic_matrix(self, p_grid: np.ndarray) -> np.ndarray:
+		"""
+		Matrix of -(1/2) d/dr[p(r) d/dr] in DVR coefficient space.
+
+		Matrix element: (1/2) ∫ χ'_i(r) p(r) χ'_j(r) dr
+
+		Same assembly structure as get_kinetic_energy_matrix() but with p(r)
+		inserted as a weight at each GL quadrature point.  When p_grid == 1
+		everywhere the result equals get_kinetic_energy_matrix() exactly.
+
+		Args:
+			p_grid: p(r) sampled at the ne*ng+1 FEM-DVR grid points.
+		"""
+		ne, ng, nb = self.ne, self.ng, self.ne * self.ng - 1
+		xp  = self.xp
+		w_i = self.leg.w_i                     # (ng+1,) GL weights on [-1,1]
+		L   = np.diff(xp)                       # (ne,) element lengths
+
+		# p at all ng+1 GL points of every element — contiguous slice per element
+		# element ie uses grid indices ie*ng … ie*ng+ng (inclusive)
+		idx    = np.arange(ne)[:, None] * ng + np.arange(ng + 1)[None, :]  # (ne, ng+1)
+		p_elem = p_grid[idx]                                                 # (ne, ng+1)
+
+		# de_p[ie, a, b] = (1/L_ie) Σ_m w_m p_m D[m,a] D[m,b]
+		# (same role as 0.5*tts in the NR case; includes the factor of 1/2
+		# from the kinetic-energy convention so the result matches T_NR for p=1)
+		wP   = w_i[None, :] * p_elem                                        # (ne, ng+1)
+		de_p = np.einsum('em,mab->eab', wP, self._DD) / L[:, None, None]   # (ne, ng+1, ng+1)
+
+		T4 = np.zeros((ne, ng, ne, ng))
+
+		# --- interior–interior (same element) ---
+		norm_int = 0.5 * L[:, None, None] * np.sqrt(w_i[1:ng, None] * w_i[None, 1:ng])
+		for ie in range(ne):
+			T4[ie, 1:ng, ie, 1:ng] = de_p[ie, 1:ng, 1:ng] / norm_int[ie]
+
+		# bridge physical weights: wb[k] = (L[k]/2)*w_i[ng] + (L[k+1]/2)*w_i[0]
+		wb = 0.5 * L[:-1] * w_i[ng] + 0.5 * L[1:] * w_i[0]               # (ne-1,)
+
+		# --- bridge–interior, interior–bridge, bridge–bridge (one loop) ---
+		for k in range(ne - 1):
+			il, ir = k, k + 1
+			wl = 0.5 * L[il] * w_i                    # interior phys. weights of elem il
+			wr = 0.5 * L[ir] * w_i                    # interior phys. weights of elem ir
+			wb_k = wb[k]
+
+			# bridge k → interior
+			T4[il, 0, il, 1:ng] = de_p[il, ng,   1:ng] / np.sqrt(wb_k * wl[1:ng])
+			T4[il, 0, ir, 1:ng] = de_p[ir,  0,   1:ng] / np.sqrt(wb_k * wr[1:ng])
+
+			# interior → bridge k
+			T4[il, 1:ng, il, 0] = de_p[il, 1:ng, ng  ] / np.sqrt(wl[1:ng] * wb_k)
+			T4[ir, 1:ng, il, 0] = de_p[ir, 1:ng,  0  ] / np.sqrt(wr[1:ng] * wb_k)
+
+			# bridge k ↔ bridge k (diagonal)
+			T4[il, 0, il, 0] = (de_p[il, ng, ng] + de_p[ir, 0, 0]) / wb_k
+
+			# bridge k ↔ bridge k+1 (off-diagonal; element ir connects them)
+			if ir <= ne - 2:
+				wb_ir = wb[ir]
+				val = de_p[ir, 0, ng] / np.sqrt(wb_k * wb_ir)
+				T4[il, 0, ir, 0] = val
+				T4[ir, 0, il, 0] = val
+
+		T2 = np.reshape(np.flip(T4, axis=(1, 3)), [ne * ng, ne * ng])
+		return T2[0:nb, 0:nb]
+	#------------------------------------------------------------
 	def get_kinetic_energy_banded(self) -> np.ndarray:
 		Tmat = self.__get_kinetic_energy_matrix_zerobound()
 		ne = self.ne
@@ -529,9 +600,6 @@ def dtilde(leg,L):
 	# local_der1 = local_first_derivative_matrix(x_i, w_i)
 	local_der1 = np.einsum('mn, m -> mn', D_ii, w_i)
 	return local_der1
-
-	# dt = np.einsum('nm, m -> mn', D_ii, w_i)
-	# return 2. * dt
 #=================================================================
 def ttilde(leg,L):
 	D_ii = leg.D_ii

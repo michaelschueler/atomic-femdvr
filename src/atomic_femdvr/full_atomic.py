@@ -102,11 +102,24 @@ def solve_atomic(inp: FullAtomicInput, task_list: tuple[str, ...],
     all_eigenvalues = {}
     if 'scf' in task_list:
 
-        print("Starting Kohn-Sham self-consistency: non-relativistic ...\n")
+        theory_level = inp.dft.theory_level
+
+        # For energy-dependent theory levels (KH), warm up with NR to give the
+        # fixed-point iteration a good starting density.
+        if theory_level == 'scalar-relativistic' and inp.dft.max_iter > 0:
+            print("Warm-up: NR SCF before scalar-relativistic ...\n")
+            tic = perf_counter()
+            atom.dft.theory_level = 'non-relativistic'
+            atom.ks_self_consistency()
+            atom.dft.theory_level = theory_level
+            toc = perf_counter()
+            print_time(tic, toc, "NR warm-up SCF")
+
+        print(f"Starting Kohn-Sham self-consistency: {theory_level} ...\n")
 
         tic = perf_counter()
         if inp.dft.max_iter > 0:
-            num_iter, err = atom.ks_self_consistency(theory_level='non-relativistic')
+            num_iter, err = atom.ks_self_consistency()
 
             if err < inp.dft.conv_tol:
                 print(f"Self-consistency converged in {num_iter} iterations with error: {err:.2e}")
@@ -118,26 +131,10 @@ def solve_atomic(inp: FullAtomicInput, task_list: tuple[str, ...],
         toc = perf_counter()
         print_time(tic, toc, "SCF")
 
-        eigenvalues, psi = atom.get_bound_states(theory_level='non-relativistic')
+        eigenvalues, psi = atom.get_bound_states()
         all_eigenvalues['scf'] = eigenvalues
 
         print_eigenvalues(atom.lmax, eigenvalues)
-
-        if inp.solver.theory_level.lower() == 'scalar-relativistic':
-
-            print("Starting Kohn-Sham self-consistency: scalar-relativistic ...\n")
-
-            tic = perf_counter()
-            num_iter, err = atom.ks_self_consistency(theory_level='scalar-relativistic')
-
-            toc = perf_counter()
-            print_time(tic, toc, "SCF")
-
-            eigenvalues, psi = atom.get_bound_states(theory_level='scalar-relativistic')
-            all_eigenvalues['scf'] = eigenvalues
-
-            print_eigenvalues(atom.lmax, eigenvalues)
-
 
         atom.save_density_potential()
 

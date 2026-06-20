@@ -29,7 +29,8 @@ from atomic_femdvr.vxc_test import vxc_benchmark
 __all__ = [
     "atomic",
     "debug",
-    "pseudoatomic"
+    "photoemission",
+    "pseudoatomic",
 ]
 
 @click.group()
@@ -47,9 +48,9 @@ def atomic(input_file: str, task: tuple[str, ...], plot: bool) -> None:
 
     tic = perf_counter()
 
-    # Read input parameters
     with open(input_file) as f:
         data = json.load(f)
+    data.pop('photoemission', None)
     inp = FullAtomicInput(**data)
 
     solve_atomic(inp, task, plot)
@@ -67,6 +68,28 @@ def pseudoatomic(input_file: str, task: tuple[str, ...], plot: bool, export_dir:
     inp = PseudoAtomicInput(**data)
 
     solve_pseudo_atomic(inp, task, plot, export_dir)
+
+
+@main.command()
+@click.argument("input_file", type=click.Path(exists=True))
+def photoemission(input_file: str) -> None:
+    """Compute photoemission matrix elements from a completed SCF calculation.
+
+    INPUT_FILE is the same JSON as used for 'atomic', with an additional
+    'photoemission' section specifying the energy range and output options.
+    The KS potential must already be saved (run 'atomic -t scf' first).
+    """
+    from atomic_femdvr.input import PhotoemissionInput
+    from atomic_femdvr.photo_atomic import solve_photoemission_atomic
+
+    with open(input_file) as f:
+        data = json.load(f)
+
+    photo_data = data.pop('photoemission', {})
+    photo_inp = PhotoemissionInput(**photo_data)
+
+    inp = FullAtomicInput(**data)
+    solve_photoemission_atomic(inp, photo_inp)
 
 
 @main.command()

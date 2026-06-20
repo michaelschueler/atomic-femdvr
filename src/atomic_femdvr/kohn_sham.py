@@ -136,188 +136,150 @@ def solve_schrodinger_local(basis:FEDVR_Basis, Veff_grid:np.ndarray, lmax:int, n
 
     return eps, psi
 #========================================================================================================
-def solve_scalar_relativistic(basis:FEDVR_Basis, Veff_grid:np.ndarray, lmax:int, nmax:int,
-                              Vconf: np.ndarray | None = None, lmin:int=0, 
-                              maxiter:int=100, tol:float=1.0e-6) -> tuple[np.ndarray, np.ndarray]:
+def solve_schrodinger_zora(basis: FEDVR_Basis, Veff_grid: np.ndarray, lmax: int, nmax: int,
+                           Vconf: np.ndarray | None = None, lmin: int = 0) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Scalar-relativistic solver using ZORA (Zeroth Order Regular Approximation).
 
-    c = 137.035999074  # Fine structure constant
-    alpha = 1. / c  # Fine structure constant
-    kappa = -1. # Kappa value for the radial equation
+    The ZORA mass factor M(r) = 1/(1 - V(r)/(2c^2)) depends only on the potential,
+    so H_ZORA is energy-independent and Hermitian. This is a standard eigenvalue
+    problem; eigenstates are exactly orthogonal.
 
-    ne = basis.ne  # Number of elements
-    ng = basis.ng  # Number of grid points per element
-    nb = ne * ng - 1  # Total number of grid points
+    The kinetic energy -(1/2)d/dr[M d/dr] is assembled element-by-element using
+    GL quadrature with M(r) as a weight, exactly as T_NR but with M inserted.
+    This correctly handles bridge-point contributions that are missed by the
+    naive D^T diag(M) D / 2 formula.
+
+    The centrifugal term picks up the same M factor: l(l+1)*M(r)/(2r^2).
+
+    Vconf is excluded from M (it is an artificial potential) but included in the
+    diagonal potential.
+    """
+    c = 137.035999074 
+
     r_grid = basis.get_gridpoints()
     r_grid[0] = 1.0e-10  # avoid division by zero
 
     lchannels = np.arange(lmin, lmax + 1, step=1, dtype=int)
     num_channels = len(lchannels)
 
+    psi = np.zeros([num_channels, nmax + 1, len(r_grid)], dtype=np.float64)
+    eps = np.zeros([num_channels, nmax + 1], dtype=np.float64)
+
+    # ZORA mass factor from physical potential only (not confinement)
+    M_grid = 1.0 / (1.0 - Veff_grid / (2.0 * c**2))
+
     Veff_diag = basis.get_potential_from_grid(Veff_grid)
-
     if Vconf is not None:
-        Vconf_diag = basis.get_potential_from_grid(Vconf)
-        Veff_diag += Vconf_diag
+        Veff_diag += basis.get_potential_from_grid(Vconf)
 
-    # derivative of potential
-    dVeff_dr = basis.get_grid_derivative(Veff_grid)
-
-    Tmat = basis.get_kinetic_energy_matrix()
-    Dmat = basis.get_deriv_matrix()
-
-    one_over_r = 1. / r_grid
-    one_over_r_mat = np.diag(basis.get_potential_from_grid(one_over_r))
-    Dterm_mat = Dmat + kappa * one_over_r_mat
-
-    psi = np.zeros([num_channels, nmax+1, len(r_grid)], dtype=np.float64)
-    eps = np.zeros([num_channels, nmax+1], dtype=np.float64)
+    # T_ZORA = -(1/2) d/dr[M d/dr], built element-by-element (same as T_NR but M-weighted)
+    T_ZORA = basis.get_p_kinetic_matrix(M_grid)
 
     for il, l in enumerate(lchannels):
 
-        # non-relativistic Hamiltonian matrix
-        Vl_grid = get_centrifugal_potential(r_grid, l)
+        # Centrifugal term: l(l+1) M(r) / (2r^2)
+        Vl_grid = np.zeros_like(r_grid)
+        if l > 0:
+            Vl_grid[1:] = l * (l + 1) * M_grid[1:] / (2.0 * r_grid[1:]**2)
+        Vl_grid[0] = Vl_grid[1]
         Vl_diag = basis.get_potential_from_grid(Vl_grid)
-        H0_mat = Tmat + np.diag(Veff_diag + Vl_diag)
 
-        eps_l, vect = la.eigh(H0_mat, subset_by_index=[0, nmax])
+        H_mat = T_ZORA + np.diag(Veff_diag + Vl_diag)
+        eps_l, vect = la.eigh(H_mat, subset_by_index=[0, nmax])
+
         vect_T = np.ascontiguousarray(vect.T)
-
-        for istate in range(nmax+1):
-            eps_curr = eps_l[istate]
-            y0 = vect_T[istate, :].copy()
-            y = y0.copy()
-            dlt = np.zeros(nb)
-
-            err = 1.0
-            it = 0
-
-            # while err > tol and it < maxiter:
-            #     it += 1
-
-            #     eps_old = eps_curr
-
-            #     M_inv_grid = 1./(1. - 0.5 * alpha**2 * (Veff_grid - eps_curr))
-            #     Bterm_grid = 0.5 * alpha**2 * M_inv_grid**2 * dVeff_dr
-            #     lM_grid = l * (l + 1) / (2. * r_grid**2) * M_inv_grid
-
-            #     M_inv_diag = basis.get_potential_from_grid(M_inv_grid)
-            #     lM_diag = basis.get_potential_from_grid(lM_grid)
-            #     Bterm_diag = basis.get_potential_from_grid(Bterm_grid)
-
-            #     H_mat = np.einsum('i, ij -> ij', M_inv_diag, Tmat)
-            #     H_mat += np.diag(Veff_diag + lM_diag)
-            #     H_mat -= 0.5 * np.einsum('i, ij -> ij', Bterm_diag, Dterm_mat)
-
-            #     deltaH = H_mat - H0_mat
-            #     deltaH *= 0.
-
-            #     # right-hand side
-            #     rhs = np.dot(deltaH, y) + (eps_l[istate] - eps_curr) * y0
-
-            #     # coefficient matrix
-            #     coeff_mat = eps_curr * np.eye(nb) - H0_mat
-            #     # G = np.linalg.inv(coeff_mat)
-
-            #     # solve for the correction to the wavefunction
-            #     # dlt = np.dot(G, rhs)
-            #     dlt = la.solve(coeff_mat, rhs)
-            #     y = y0 + dlt
-            #     norm = np.sqrt( np.dot(y, y) )
-            #     y /= norm
-            #     # vect_new = la.solve(coeff_mat, rhs)
-            #     # vect_new = np.dot(G, rhs)
-            #     # norm = np.sqrt( np.dot(vect_new, vect_new) )
-            #     # vect_new /= norm
-
-            #     # eps_curr = np.dot(vect_new, np.dot(H_mat, vect_new))
-            #     eps_curr = np.dot(y, np.dot(H_mat, y))
-            #     err = np.abs(eps_curr - eps_old)
-
-            #     print(f"l={l} state={istate} iter={it} eps={eps_curr:.8f} err={err:.2e}")
-
-            #     vect_T[istate, :] = y
-
-            eps[il, istate] = eps_curr
-
         psi_l = basis.get_psi(vect_T, cplx=False)
-        psi[il, :, :] = set_phase(psi_l)
+        psi_l = set_phase(psi_l)
 
-        exit()
+        psi[il, :nmax + 1, :] = psi_l
+        eps[il, :nmax + 1] = eps_l[:nmax + 1]
+
+        print(f"ZORA: l={l}, eps={eps_l[:nmax+1]}")
 
     return eps, psi
-
 #========================================================================================================
-def get_green_function(basis:FEDVR_Basis, Tmat:np.ndarray, Dmat:np.ndarray, Veff_grid:np.ndarray,
-                       l:int, eps:float) -> np.ndarray:
-    
-        c = 137.035999074  # Fine structure constant
-        alpha = 1. / c  # Fine structure constant
-        kappa = -1. # Kappa value for the radial equation
+def solve_schrodinger_kh(basis: FEDVR_Basis, Veff_grid: np.ndarray, lmax: int, nmax: int,
+                          Vconf: np.ndarray | None = None, lmin: int = 0,
+                          maxiter: int = 50, tol: float = 1.0e-8) -> tuple[np.ndarray, np.ndarray]:
+    """
+    Scalar-relativistic solver using the Koelling-Harmon (KH) fixed-point method.
 
+    The KH mass factor M_inv(eps_ref, r) = 1/(1 + (eps_ref - V(r))/(2c^2)) is
+    energy-dependent, making H_KH a nonlinear eigenvalue problem. The key to
+    preserving orthogonality is to use a single reference energy eps_ref for the
+    entire l-channel rather than a per-state energy:
 
-        M_inv_grid = 1./(1. - 0.5 * alpha**2 * (Veff_grid - eps))
-        Bterm_grid = 0.5 * alpha**2 * M_inv_grid**2 * dVeff_dr
-        lM_grid = l * (l + 1) / (2. * r_grid**2) * M_inv_grid
+      - All nmax+1 states are simultaneously solved from one Hermitian H_KH(eps_ref).
+      - Eigenstates of a common Hermitian operator are exactly orthogonal.
+      - eps_ref is updated (highest eigenvalue from previous iteration) and the
+        channel is re-diagonalized until convergence. Typically 3-10 iterations.
 
-        M_inv_diag = basis.get_potential_from_grid(M_inv_grid)
-        lM_diag = basis.get_potential_from_grid(lM_grid)
-        Bterm_diag = basis.get_potential_from_grid(Bterm_grid)
+    The kinetic energy D^T diag(M_inv) D / 2 is the exact DVR representation of
+    -d/dr[M_inv d/dr]/2. This automatically includes the Darwin correction that
+    arises from the spatial variation of M_inv (no separate Darwin term needed).
 
-        H_mat = np.einsum('i, ij -> ij', M_inv_diag, Tmat)
-        H_mat += np.diag(Veff_diag + lM_diag)
-        H_mat -= 0.5 * np.einsum('i, ij -> ij', Bterm_diag, Dterm_mat)
+    The scalar-relativistic kappa average is -1 for all l-channels (the spin-orbit
+    contributions from j=l+/-1/2 cancel exactly when averaged by degeneracy 2j+1).
+    This is already captured by the radial-only D matrix.
+    """
+    c = 137.035999074
 
+    r_grid = basis.get_gridpoints()
+    r_grid[0] = 1.0e-10  # avoid division by zero
 
-#========================================================================================================
+    lchannels = np.arange(lmin, lmax + 1, step=1, dtype=int)
+    num_channels = len(lchannels)
 
+    psi = np.zeros([num_channels, nmax + 1, len(r_grid)], dtype=np.float64)
+    eps = np.zeros([num_channels, nmax + 1], dtype=np.float64)
 
+    Veff_diag = basis.get_potential_from_grid(Veff_grid)
+    if Vconf is not None:
+        Veff_diag += basis.get_potential_from_grid(Vconf)
 
-#========================================================================================================
-# def solve_scalar_relativistic(basis:FEDVR_Basis, Vpot_fnc:callable, gradVpot_fnc:callable, lmax:int, nmax:int,
-#                               eps_guess:np.ndarray, lmin:int=0, maxiter:int=100, tol:float=1.0e-6) -> tuple[np.ndarray, np.ndarray]:
-#     """
-#     Solve the scalar-relativistic radial Schrödinger equation using finite element method
-#     """
-#     ne = basis.ne  # Number of elements
-#     ng = basis.ng  # Number of grid points per element
-#     nb = ne * ng - 1  # Total number of grid points
-#     r_grid = basis.get_gridpoints()
+    # Initial eigenvalues from NR to seed the fixed-point iteration
+    Tmat_NR = basis.get_kinetic_energy_matrix()
 
-#     lchannels = np.arange(lmin, lmax + 1, step=1, dtype=int)
-#     num_channels = len(lchannels)
+    for il, l in enumerate(lchannels):
 
-#     psi = np.zeros([num_channels, nmax, len(r_grid)], dtype=np.float64)
-#     eps_SR = np.zeros([num_channels, nmax], dtype=np.float64)
+        Vl_diag_NR = basis.get_potential_from_grid(get_centrifugal_potential(r_grid, l))
+        H0 = Tmat_NR + np.diag(Veff_diag + Vl_diag_NR)
+        eps_l, vect = la.eigh(H0, subset_by_index=[0, nmax])
 
-#     Tmat = basis.get_kinetic_matrix()
-#     Vvec = basis.get_potential_from_grid(Vpot_fnc(r_grid))
-#     V_mat = np.diag(Vvec)
+        for it in range(maxiter):
+            eps_old = eps_l.copy()
 
-#     r_fnc = lambda r: 1. / r
-#     r_vec = basis.get_potential_from_grid(r_fnc)
+            # Single reference energy for the whole channel → one Hermitian H → exact orthogonality
+            eps_ref = eps_l[nmax]
 
-#     Dmat = basis.get_derivative_matrix()
+            # KH mass factor from physical potential only (not confinement)
+            M_inv_grid = 1.0 / (1.0 + (eps_ref - Veff_grid) / (2.0 * c**2))
 
-#     for il, l in enumerate(lchannels):
+            # T_KH = -(1/2) d/dr[M_inv d/dr], built element-by-element
+            T_KH = basis.get_p_kinetic_matrix(M_inv_grid)
 
-#         kappa = l * (l + 1)
+            # Centrifugal term: l(l+1) M_inv(r) / (2r^2)
+            Vl_grid = np.zeros_like(r_grid)
+            if l > 0:
+                Vl_grid[1:] = l * (l + 1) * M_inv_grid[1:] / (2.0 * r_grid[1:]**2)
+            Vl_grid[0] = Vl_grid[1]
+            Vl_diag = basis.get_potential_from_grid(Vl_grid)
 
-#         for istate in range(nmax):
-#             eps = eps_guess[il, istate]
+            H_mat = T_KH + np.diag(Veff_diag + Vl_diag)
+            eps_l, vect = la.eigh(H_mat, subset_by_index=[0, nmax])
 
-#             for it in range(maxiter):
-#                 eps_old = eps
+            if np.max(np.abs(eps_l - eps_old)) < tol:
+                break
 
-#                 M_inv_vec = basis.get_potential_from_grid(lambda r: 1.0 / (1.0 + (eps + Vpot_fnc(r)) / (2.0 * c**2)))
-#                 M_inv_mat = np.diag(M_inv_vec)
-#                 lM_vec = basis.get_potential_from_grid(lambda r: (eps + Vpot_fnc(r)) / (2.0 * c**2))
-#                 V_mat_current = np.diag(lM_vec + Vvec)
+        vect_T = np.ascontiguousarray(vect.T)
+        psi_l = basis.get_psi(vect_T, cplx=False)
+        psi_l = set_phase(psi_l)
 
-#                 B_vec = basis.get_potential_from_grid(lambda r: (dVdr_fnc(r)) / (4.0 * c**2))
-#                 B_mat = np.diag(B_vec)
+        psi[il, :nmax + 1, :] = psi_l
+        eps[il, :nmax + 1] = eps_l
 
-#                 H_mat = M_inv_mat @ Tmat + V_mat_current -
-
+    return eps, psi
 #========================================================================================================\
 def get_centrifugal_potential(r_grid:np.ndarray, l:int) -> np.ndarray:
     """

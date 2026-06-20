@@ -82,7 +82,6 @@ class ElectronsInput(BaseModel):
     configuration: list[str] = Field(default_factory=lambda: ["1s1"])
 
 class SolverInput(BaseModel):
-    theory_level: Literal["non-relativistic", "zora", "scalar-relativistic"] = Field(default="non-relativistic")
     eigensolver: Literal["full", "banded"] = Field(default="full")
     h_min: float = Field(default=0.5, gt=0)
     h_max: float = Field(default=4.0, gt=0)
@@ -91,7 +90,7 @@ class SolverInput(BaseModel):
     ng: int = Field(default=8, ge=1)
     elem_tol: float = Field(default=1.0e-2, gt=0)
 
-    @field_validator("theory_level", "eigensolver", mode="before")
+    @field_validator("eigensolver", mode="before")
     @classmethod
     def make_lower(cls, v: str) -> str:
         """Convert to lower case to make the input case-insensitive."""
@@ -108,6 +107,7 @@ def solver_input_factory(default_hmin: float, default_hmax: float) -> type[Solve
     return model
 
 class DFTInput(BaseModel):
+    theory_level: Literal["non-relativistic", "zora", "scalar-relativistic"] = Field(default="non-relativistic")
     driver: str = "internal"
     xc_functional: str = "PBE"
     x_functional: str | None = "gga_x_pbe"
@@ -119,11 +119,19 @@ class DFTInput(BaseModel):
     max_iter: int = 100
     conv_tol: float = 1.0e-6
 
-    @field_validator("mixing_scheme", mode="before")
+    @field_validator("theory_level", "mixing_scheme", mode="before")
     @classmethod
     def make_lower(cls, v: str) -> str:
         """Convert to lower case to make the input case-insensitive."""
         return v.lower()
+
+class PhotoemissionInput(BaseModel):
+    energy_min: float = Field(default=0.1, gt=0)
+    energy_max: float = Field(default=3.0, gt=0)
+    n_energies: int = Field(default=50, ge=2)
+    gauges: list[Literal["length", "velocity"]] = Field(default_factory=lambda: ["length"])
+    store_wavefunctions: bool = Field(default=False)
+    output_prefix: str = Field(default="photoemission")
 
 class PseudoConfigInput(BaseModel):
     storage_dir: Path = Field(default=Path())

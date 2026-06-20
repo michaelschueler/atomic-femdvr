@@ -1,0 +1,49 @@
+{
+
+    "control": {
+        "storage_dir": "./atomic_data",
+        "store_density": true
+    },
+
+    "sysparams": {
+        "element": "Si"
+    },
+
+    "solver": {
+        "h_min": 0.001,
+        "h_max": 10.0,
+        "Rmax": 100.0,
+        "elem_tol": 1.0e-3,
+        "ng": 16,
+        "eigensolver": "full"
+    },
+
+    "dft": {
+        "theory_level": "zora",
+        "driver": "pylibxc",
+        "xc_functional": "",
+        "x_functional": "lda_x",
+        "c_functional": "lda_c_vwn",
+        "mixing_scheme": "anderson",
+        "alpha_mix": 0.8,
+        "alpha_x": 1.0,
+        "max_iter": 100,
+        "conv_tol": 1.0e-8,
+        "diis_history": 3
+    },
+
+    "electrons": {
+        "Z": 14,
+        "configuration": ["1s2", "2s2", "2p6", "3s2", "3p2"]
+    },
+
+    "photoemission": {
+        "energy_min": 0.1,
+        "energy_max": 3.0,
+        "n_energies": 30,
+        "gauges": ["length", "velocity"],
+        "store_wavefunctions": false,
+        "output_prefix": "Si_photoemission"
+    }
+
+}
