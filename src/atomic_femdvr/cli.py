@@ -22,9 +22,6 @@ from atomic_femdvr.full_atomic import FullAtomicInput, solve_atomic
 from atomic_femdvr.pseudo_atomic import PseudoAtomicInput, solve_pseudo_atomic
 from atomic_femdvr.version import get_version
 
-from atomic_femdvr.solver_test import solver_test
-from atomic_femdvr.wavefunction_test import wfc_test
-from atomic_femdvr.vxc_test import vxc_benchmark
 
 __all__ = [
     "atomic",
@@ -43,8 +40,8 @@ def main() -> None:
 @click.argument("input_file", type=click.Path(exists=True))
 @click.option("-t", "--task", type=str, multiple=True, required=True)
 @click.option("--plot", is_flag=True, help="Plot the results")
-def atomic(input_file: str, task: tuple[str, ...], plot: bool) -> None:
-
+@click.argument("export_dir", type=click.Path(), required=False)
+def atomic(input_file: str, task: tuple[str, ...], plot: bool, export_dir: str | None) -> None:
 
     tic = perf_counter()
 
@@ -53,7 +50,7 @@ def atomic(input_file: str, task: tuple[str, ...], plot: bool) -> None:
     data.pop('photoemission', None)
     inp = FullAtomicInput(**data)
 
-    solve_atomic(inp, task, plot)
+    solve_atomic(inp, task, plot, export_dir)
 
 @main.command()
 @click.argument("input_file", type=click.Path(exists=True))
@@ -73,7 +70,7 @@ def pseudoatomic(input_file: str, task: tuple[str, ...], plot: bool, export_dir:
 @main.command()
 @click.argument("input_file", type=click.Path(exists=True))
 def photoemission(input_file: str) -> None:
-    """Compute photoemission matrix elements from a completed SCF calculation.
+    """Compute photoemission matrix elements from a completed all-electron SCF calculation.
 
     INPUT_FILE is the same JSON as used for 'atomic', with an additional
     'photoemission' section specifying the energy range and output options.
@@ -90,6 +87,28 @@ def photoemission(input_file: str) -> None:
 
     inp = FullAtomicInput(**data)
     solve_photoemission_atomic(inp, photo_inp)
+
+
+@main.command()
+@click.argument("input_file", type=click.Path(exists=True))
+def pseudophotoemission(input_file: str) -> None:
+    """Compute photoemission matrix elements from a completed pseudo-atomic SCF calculation.
+
+    INPUT_FILE is the same JSON as used for 'pseudoatomic', with an additional
+    'photoemission' section specifying the energy range and output options.
+    The KS potential must already be saved (run 'pseudoatomic -t scf' first).
+    """
+    from atomic_femdvr.input import PhotoemissionInput
+    from atomic_femdvr.photo_pseudo import solve_photoemission_pseudo
+
+    with open(input_file) as f:
+        data = json.load(f)
+
+    photo_data = data.pop('photoemission', {})
+    photo_inp = PhotoemissionInput(**photo_data)
+
+    inp = PseudoAtomicInput(**data)
+    solve_photoemission_pseudo(inp, photo_inp)
 
 
 @main.command()

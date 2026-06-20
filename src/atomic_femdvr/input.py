@@ -62,6 +62,7 @@ class OutputInput(BaseModel):
     output_wfc_qe : bool = Field(default=False)
     output_wfc_hdf5 : bool = Field(default=False)
     output_wfc_bessel : bool = Field(default=False)
+    output_wfc_pyimpurity : bool = Field(default=False)
     output_dipole_moments : bool = Field(default=False)
     bessel_quad_npoints : int = Field(default=41, ge=3)
     bessel_quad_method : Literal['simpson', 'lobatto'] = Field(default='simpson')
@@ -89,6 +90,7 @@ class SolverInput(BaseModel):
     tol: float = Field(default=1.0e-3, gt=0)
     ng: int = Field(default=8, ge=1)
     elem_tol: float = Field(default=1.0e-2, gt=0)
+    nuclear_sigma: float = Field(default=1.0e-3, gt=0)
 
     @field_validator("eigensolver", mode="before")
     @classmethod

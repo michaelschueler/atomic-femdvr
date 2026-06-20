@@ -9,9 +9,11 @@ from atomic_femdvr.input import (
     ControlInput,
     DFTInput,
     ElectronsInput,
+    OutputInput,
     SolverInput,
     SysParamsInput,
 )
+from atomic_femdvr.projector_output import write_wfc_pyimpurity
 from atomic_femdvr.utils import plot_wavefunctions, print_eigenvalues, print_time
 
 
@@ -21,6 +23,7 @@ class FullAtomicInput(BaseModel):
     solver: SolverInput
     dft: DFTInput = Field(default_factory=lambda: DFTInput())
     electrons: ElectronsInput = Field(default_factory=lambda: ElectronsInput())
+    output: OutputInput = Field(default_factory=lambda: OutputInput())
 
 #==================================================================
 def read_input(fname: str):
@@ -137,6 +140,11 @@ def solve_atomic(inp: FullAtomicInput, task_list: tuple[str, ...],
         print_eigenvalues(atom.lmax, eigenvalues)
 
         atom.save_density_potential()
+
+        if inp.output.output_wfc_pyimpurity:
+            out_dir = export_dir or str(atom.control.storage_dir)
+            write_wfc_pyimpurity(atom.basis, psi, eigenvalues, atom.element, out_dir)
+            print(f"Wavefunctions written to {out_dir}/{atom.element}_wfc_ae.h5")
 
         if plot:
             plot_wavefunctions(atom.grid, psi, atom.lmax, eigenvalues)

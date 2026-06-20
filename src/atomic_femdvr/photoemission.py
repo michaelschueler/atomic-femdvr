@@ -31,7 +31,9 @@ import numpy as np
 import h5py
 
 from atomic_femdvr.femdvr import FEDVR_Basis
-from atomic_femdvr.scattering import solve_scattering_local, solve_scattering_nonlocal, extract_phase
+from atomic_femdvr.scattering import (solve_scattering_kh, solve_scattering_local,
+                                       solve_scattering_nonlocal, solve_scattering_zora,
+                                       extract_phase)
 
 
 def _build_weight_grid(basis: FEDVR_Basis) -> np.ndarray:
@@ -95,6 +97,9 @@ def compute_photoemission(
     lll: np.ndarray | None = None,
     Dion: np.ndarray | None = None,
     beta_pp: np.ndarray | None = None,
+    theory_level: str = 'non-relativistic',
+    Z: float = 1.0,
+    nuclear_sigma: float = 1.0e-3,
 ) -> dict:
     """
     Compute photoemission matrix elements and scattering phase shifts over an energy grid.
@@ -127,6 +132,12 @@ def compute_photoemission(
         Path prefix for output files.
     lll, Dion, beta_pp : optional
         Non-local PP projectors. If provided, uses the non-local scattering solver.
+    theory_level : str
+        'non-relativistic', 'zora', or 'scalar-relativistic'.
+    Z : float
+        Nuclear charge (needed for ZORA/KH nuclear regularisation).
+    nuclear_sigma : float
+        Gaussian smearing width for the nuclear potential (Bohr).
 
     Returns
     -------
@@ -195,7 +206,11 @@ def compute_photoemission(
             k = np.sqrt(2.0 * Ek)
 
             # One scattering solve for this (l_f, E_k) — shared by all coupled shells
-            if use_nonlocal:
+            if theory_level == 'zora':
+                psi_f = solve_scattering_zora(basis, Veff_grid, k, l_f, Z, nuclear_sigma)
+            elif theory_level == 'scalar-relativistic':
+                psi_f = solve_scattering_kh(basis, Veff_grid, k, l_f, Z, nuclear_sigma)
+            elif use_nonlocal:
                 psi_f = solve_scattering_nonlocal(basis, Veff_grid, k, l_f,
                                                   lll, Dion, beta_pp)
             else:

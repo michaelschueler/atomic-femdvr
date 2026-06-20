@@ -1,6 +1,7 @@
 
 import numpy as np
 import scipy.linalg as la
+from scipy.special import erf
 
 from atomic_femdvr.femdvr import FEDVR_Basis
 
@@ -137,6 +138,7 @@ def solve_schrodinger_local(basis:FEDVR_Basis, Veff_grid:np.ndarray, lmax:int, n
     return eps, psi
 #========================================================================================================
 def solve_schrodinger_zora(basis: FEDVR_Basis, Veff_grid: np.ndarray, lmax: int, nmax: int,
+                           Z: float = 1.0, nuclear_sigma: float = 1.0e-3,
                            Vconf: np.ndarray | None = None, lmin: int = 0) -> tuple[np.ndarray, np.ndarray]:
     """
     Scalar-relativistic solver using ZORA (Zeroth Order Regular Approximation).
@@ -152,13 +154,17 @@ def solve_schrodinger_zora(basis: FEDVR_Basis, Veff_grid: np.ndarray, lmax: int,
 
     The centrifugal term picks up the same M factor: l(l+1)*M(r)/(2r^2).
 
-    Vconf is excluded from M (it is an artificial potential) but included in the
-    diagonal potential.
+    Model ZORA with Gaussian nuclear model: the ZORA mass uses a Gaussian-smoothed
+    nuclear potential V_nuc(r) = -Z/r * erf(r / (sqrt(2) * nuclear_sigma)) instead
+    of the singular -Z/r. This keeps M(r) finite and nonzero at r=0, removing the
+    pathological loss of kinetic repulsion that otherwise causes spurious core-state
+    behaviour. nuclear_sigma is a numerical parameter; any value << 1/Z gives
+    negligible error in physical observables.
+    Vconf is excluded from M and included only in the diagonal potential.
     """
-    c = 137.035999074 
+    c = 137.035999074
 
     r_grid = basis.get_gridpoints()
-    r_grid[0] = 1.0e-10  # avoid division by zero
 
     lchannels = np.arange(lmin, lmax + 1, step=1, dtype=int)
     num_channels = len(lchannels)
@@ -166,9 +172,16 @@ def solve_schrodinger_zora(basis: FEDVR_Basis, Veff_grid: np.ndarray, lmax: int,
     psi = np.zeros([num_channels, nmax + 1, len(r_grid)], dtype=np.float64)
     eps = np.zeros([num_channels, nmax + 1], dtype=np.float64)
 
-    # ZORA mass factor from physical potential only (not confinement)
-    M_grid = 1.0 / (1.0 - Veff_grid / (2.0 * c**2))
-
+    # Gaussian-smoothed nuclear potential for the ZORA mass only.
+    # V_nuc(r) = -Z/r * erf(r / (sqrt(2)*sigma)); at r=0 this has the analytic limit -Z*sqrt(2/pi)/sigma.
+    # Using this in M(r) keeps M finite and nonzero at the origin, regularising
+    # the otherwise pathological ZORA behaviour near the nucleus.
+    sig2 = np.sqrt(2.0) * nuclear_sigma
+    V_nuc_smooth = np.empty_like(r_grid)
+    V_nuc_smooth[1:] = -Z * erf(r_grid[1:] / sig2) / r_grid[1:]
+    V_nuc_smooth[0] = -Z * np.sqrt(2.0 / np.pi) / nuclear_sigma  # analytic r->0 limit
+    M_grid = 1.0 / (1.0 - V_nuc_smooth / (2.0 * c**2))
+   
     Veff_diag = basis.get_potential_from_grid(Veff_grid)
     if Vconf is not None:
         Veff_diag += basis.get_potential_from_grid(Vconf)
@@ -195,11 +208,10 @@ def solve_schrodinger_zora(basis: FEDVR_Basis, Veff_grid: np.ndarray, lmax: int,
         psi[il, :nmax + 1, :] = psi_l
         eps[il, :nmax + 1] = eps_l[:nmax + 1]
 
-        print(f"ZORA: l={l}, eps={eps_l[:nmax+1]}")
-
     return eps, psi
 #========================================================================================================
 def solve_schrodinger_kh(basis: FEDVR_Basis, Veff_grid: np.ndarray, lmax: int, nmax: int,
+                          Z: float = 1.0, nuclear_sigma: float = 1.0e-3,
                           Vconf: np.ndarray | None = None, lmin: int = 0,
                           maxiter: int = 50, tol: float = 1.0e-8) -> tuple[np.ndarray, np.ndarray]:
     """
@@ -222,6 +234,11 @@ def solve_schrodinger_kh(basis: FEDVR_Basis, Veff_grid: np.ndarray, lmax: int, n
     The scalar-relativistic kappa average is -1 for all l-channels (the spin-orbit
     contributions from j=l+/-1/2 cancel exactly when averaged by degeneracy 2j+1).
     This is already captured by the radial-only D matrix.
+
+    Gaussian nuclear model: the nuclear part of Veff used inside the KH mass is
+    replaced by a Gaussian-smoothed version V_nuc(r) = -Z/r * erf(r/(sqrt(2)*sigma)),
+    keeping M_inv finite and nonzero at r=0 (same regularisation as in ZORA).
+    The diagonal potential Veff_diag is unchanged (full Coulomb).
     """
     c = 137.035999074
 
@@ -238,6 +255,20 @@ def solve_schrodinger_kh(basis: FEDVR_Basis, Veff_grid: np.ndarray, lmax: int, n
     if Vconf is not None:
         Veff_diag += basis.get_potential_from_grid(Vconf)
 
+    # Reconstruct V_nuc_point with the same convention as V0_grid in full_atom_dft
+    # (V0_grid[0] = V0_grid[1]), then compute the Gaussian correction once.
+    V_nuc_point = np.empty_like(r_grid)
+    V_nuc_point[1:] = -Z / r_grid[1:]
+    V_nuc_point[0] = V_nuc_point[1]
+
+    sig2 = np.sqrt(2.0) * nuclear_sigma
+    V_nuc_smooth = np.empty_like(r_grid)
+    V_nuc_smooth[1:] = -Z * erf(r_grid[1:] / sig2) / r_grid[1:]
+    V_nuc_smooth[0] = -Z * np.sqrt(2.0 / np.pi) / nuclear_sigma  # analytic r->0 limit
+
+    # V_eff with nuclear part replaced by its Gaussian-smoothed version
+    Veff_for_M = Veff_grid + (V_nuc_smooth - V_nuc_point)
+
     # Initial eigenvalues from NR to seed the fixed-point iteration
     Tmat_NR = basis.get_kinetic_energy_matrix()
 
@@ -253,8 +284,8 @@ def solve_schrodinger_kh(basis: FEDVR_Basis, Veff_grid: np.ndarray, lmax: int, n
             # Single reference energy for the whole channel → one Hermitian H → exact orthogonality
             eps_ref = eps_l[nmax]
 
-            # KH mass factor from physical potential only (not confinement)
-            M_inv_grid = 1.0 / (1.0 + (eps_ref - Veff_grid) / (2.0 * c**2))
+            # KH mass factor using smoothed nuclear potential to regularise M_inv near origin
+            M_inv_grid = 1.0 / (1.0 + (eps_ref - Veff_for_M) / (2.0 * c**2))
 
             # T_KH = -(1/2) d/dr[M_inv d/dr], built element-by-element
             T_KH = basis.get_p_kinetic_matrix(M_inv_grid)

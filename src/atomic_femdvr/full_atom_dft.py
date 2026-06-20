@@ -5,7 +5,7 @@ import numpy as np
 
 import atomic_femdvr.density_potential as density_potential
 import atomic_femdvr.kohn_sham as kohn_sham
-from atomic_femdvr.adaptive_elements import optimize_elements
+from atomic_femdvr.adaptive_elements import optimize_elements, optimize_elements_ae
 from atomic_femdvr.anderson import AndersonMixing
 from atomic_femdvr.diis import DIIS
 from atomic_femdvr.femdvr import FEDVR_Basis
@@ -50,7 +50,7 @@ class FullAtomDFT:
         h_max = solver.h_max / (self.Z ** (1/3))
         Rmax = solver.Rmax / (self.Z ** (1/3))
 
-        self.r_elements = optimize_elements(self.Z, h_min, h_max, Rmax, solver.elem_tol)
+        self.r_elements = optimize_elements_ae(self.Z, h_min, h_max, Rmax, solver.elem_tol)
 
         # set up the basis
         ne = len(self.r_elements) - 1
@@ -153,10 +153,12 @@ class FullAtomDFT:
 
         elif theory_level == 'zora':
             eps, psi = kohn_sham.solve_schrodinger_zora(self.basis, Veff, lmax, nmax,
+                                                        Z=self.Z, nuclear_sigma=self.solver.nuclear_sigma,
                                                         Vconf=Vconf, lmin=lmin)
 
         elif theory_level == 'scalar-relativistic':
             eps, psi = kohn_sham.solve_schrodinger_kh(self.basis, Veff, lmax, nmax,
+                                                      Z=self.Z, nuclear_sigma=self.solver.nuclear_sigma,
                                                       Vconf=Vconf, lmin=lmin)
 
         else:
