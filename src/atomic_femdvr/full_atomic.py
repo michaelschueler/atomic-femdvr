@@ -109,27 +109,39 @@ def solve_atomic(inp: FullAtomicInput, task_list: tuple[str, ...],
 
         # For energy-dependent theory levels (KH), warm up with NR to give the
         # fixed-point iteration a good starting density.
-        if theory_level == 'scalar-relativistic' and inp.dft.max_iter > 0:
+        if theory_level in ['zora', 'scalar-relativistic'] and inp.dft.max_iter > 0:
             print("Warm-up: NR SCF before scalar-relativistic ...\n")
             tic = perf_counter()
             atom.dft.theory_level = 'non-relativistic'
             atom.ks_self_consistency()
+            num_iter, err = atom.ks_self_consistency()
+
+            if err < inp.dft.conv_tol:
+                print(f"NR Self-consistency converged in {num_iter} iterations with error: {err:.2e}")
+            else:
+                print(f"NR Self-consistency did not converge within {inp.dft.max_iter} iterations. Final error: {err:.2e}")
+
             atom.dft.theory_level = theory_level
             toc = perf_counter()
             print_time(tic, toc, "NR warm-up SCF")
 
-        print(f"Starting Kohn-Sham self-consistency: {theory_level} ...\n")
+        if (atom.dft.relativistic_scf and theory_level in ['zora', 'scalar-relativistic']) or theory_level == 'non-relativistic':
 
-        tic = perf_counter()
-        if inp.dft.max_iter > 0:
-            num_iter, err = atom.ks_self_consistency()
+            print(f"Starting Kohn-Sham self-consistency: {theory_level} ...\n")
+            tic = perf_counter()
+            if inp.dft.max_iter > 0:
+                num_iter, err = atom.ks_self_consistency()
 
-            if err < inp.dft.conv_tol:
-                print(f"Self-consistency converged in {num_iter} iterations with error: {err:.2e}")
+                if err < inp.dft.conv_tol:
+                    print(f"Self-consistency converged in {num_iter} iterations with error: {err:.2e}")
+                else:
+                    print(f"Self-consistency did not converge within {inp.dft.max_iter} iterations. Final error: {err:.2e}")
             else:
-                print(f"Self-consistency did not converge within {inp.dft.max_iter} iterations. Final error: {err:.2e}")
-        else:
-            print("Skipping self-consistency loop as max_iter is set to 0.")
+                print("Skipping self-consistency loop as max_iter is set to 0.")
+
+        elif not atom.dft.relativistic_scf and theory_level in ['zora', 'scalar-relativistic']:
+            print("Skipping relativistic SCF.")
+            num_iter, err = atom.ks_self_consistency(one_shot=True)
 
         toc = perf_counter()
         print_time(tic, toc, "SCF")

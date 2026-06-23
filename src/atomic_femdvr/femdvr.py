@@ -581,17 +581,6 @@ def lobatto_shape_derivatives(nodes):
     return df
 
 #=================================================================
-# Assemble first derivative matrix for one element
-def local_first_derivative_matrix(nodes, weights):
-    df = lobatto_shape_derivatives(nodes)
-    ng = len(nodes)
-    D = np.zeros((ng, ng))
-    for m1 in range(ng):
-        for m2 in range(ng):
-            for j in range(ng):
-                D[m1, m2] += df[m2, j] * weights[j] * (1.0 if j == m1 else 0.0)
-    return D
-#=================================================================
 def dtilde(leg,L):
 	D_ii = leg.D_ii
 	w_i = leg.w_i

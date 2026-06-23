@@ -25,9 +25,9 @@ from atomic_femdvr.version import get_version
 
 __all__ = [
     "atomic",
-    "debug",
     "photoemission",
     "pseudoatomic",
+    "pseudophotoemission",
 ]
 
 @click.group()
@@ -110,18 +110,6 @@ def pseudophotoemission(input_file: str) -> None:
     inp = PseudoAtomicInput(**data)
     solve_photoemission_pseudo(inp, photo_inp)
 
-
-@main.command()
-@click.argument("file_rho", type=click.Path(exists=True))
-@click.argument("file_vh", type=click.Path(exists=True))
-@click.option("--plot", is_flag=True, help="Plot the results")
-def debug(file_rho: str, file_vh: str, plot: bool) -> None:
-
-
-    # wfc_test(plot)
-    # hartree_test(plot)
-    # hartree_benchmark(file_rho, file_vh)
-    vxc_benchmark(file_rho, file_vh)
 
 
 if __name__ == "__main__":

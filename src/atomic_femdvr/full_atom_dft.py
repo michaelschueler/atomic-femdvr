@@ -183,7 +183,7 @@ class FullAtomDFT:
 
 
     #.......................................................
-    def ks_self_consistency(self) -> tuple[int, float]:
+    def ks_self_consistency(self, one_shot: bool = False) -> tuple[int, float]:
         """
         Performs Kohn-Sham self-consistency to find the ground state density.
         """
@@ -203,6 +203,21 @@ class FullAtomDFT:
 
         # Initial guess for the wavefunctions
         eps, psi = self.solve_schrodinger(V_eff, self.lmax, self.nmax)
+
+        if one_shot:
+            return 1, 0.0
+
+        # Quadrature weights for the grid-invariant L2 density norm.
+        # Bridge points accumulate contributions from both adjacent elements.
+        ne, ng = self.basis.ne, self.basis.ng
+        w_i = self.basis.leg.w_i
+        quad_w = np.zeros(ne * ng + 1)
+        for ie in range(ne):
+            h_e = 0.5 * (self.basis.xp[ie + 1] - self.basis.xp[ie])
+            quad_w[ie * ng : ie * ng + ng + 1] += h_e * w_i
+
+        def _rho_err(delta: np.ndarray) -> float:
+            return np.sqrt(np.dot(quad_w, delta**2))
 
         rho = self.rho_grid.copy()
 
@@ -224,7 +239,7 @@ class FullAtomDFT:
                 else:
                     rho = rho_out
 
-                err = np.linalg.norm(r)
+                err = _rho_err(r)
 
             elif mixing_scheme.lower() == 'anderson':
                 r = rho_out - rho
@@ -236,12 +251,12 @@ class FullAtomDFT:
                 else:
                     rho = rho_out
 
-                err = np.linalg.norm(r)
+                err = _rho_err(r)
 
             else:
                 # linear mixing of the density
                 rho = alpha_mix * rho_out + (1 - alpha_mix) * rho
-                err = np.linalg.norm(rho - rho_out)
+                err = _rho_err(rho - rho_out)
 
             # regularize density to be non-negative
             rho[rho < 0.0] = 0.0

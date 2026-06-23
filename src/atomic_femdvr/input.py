@@ -110,6 +110,7 @@ def solver_input_factory(default_hmin: float, default_hmax: float) -> type[Solve
 
 class DFTInput(BaseModel):
     theory_level: Literal["non-relativistic", "zora", "scalar-relativistic"] = Field(default="non-relativistic")
+    relativistic_scf: bool = Field(default=True)
     driver: str = "internal"
     xc_functional: str = "PBE"
     x_functional: str | None = "gga_x_pbe"

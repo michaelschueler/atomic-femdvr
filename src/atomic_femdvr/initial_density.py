@@ -67,8 +67,6 @@ def get_slater_density(r: np.ndarray, Z: float, n_vals: np.ndarray, l_vals: np.n
         S = slater_shielding(n_vals, l_vals, occ_vals, n, l)
         Z_eff = Z - S
 
-        print(f"n = {n}, l = {l}, occ = {occ}, Zeff = {Z_eff}")
-
         radial_wavefunction = hydrogenic_orbital(r, Z_eff, n, l)
         density += occ * radial_wavefunction**2
 
