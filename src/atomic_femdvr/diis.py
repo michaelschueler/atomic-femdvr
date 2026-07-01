@@ -1,11 +1,21 @@
+"""DIIS (Pulay) extrapolation for SCF iterations."""
+
+import logging
+from collections.abc import Callable
+
 import numpy as np
+
+logger = logging.getLogger(__name__)
 
 
 class DIIS:
-    def __init__(self, max_history:int=6) -> None:
+    """DIIS extrapolator: combines past iterates by minimising the residual norm."""
+
+    def __init__(self, max_history: int = 6) -> None:
+        """Create a DIIS extrapolator that keeps up to ``max_history`` iterates."""
         self.max_history = max_history
-        self.x_list = []  # stored iterates
-        self.e_list = []  # stored residuals
+        self.x_list: list[np.ndarray] = []  # stored iterates
+        self.e_list: list[np.ndarray] = []  # stored residuals
 
     def update(self, x: np.ndarray, e: np.ndarray) -> None:
         """Store a new pair (x, e)."""
@@ -17,11 +27,15 @@ class DIIS:
             self.x_list.pop(0)
             self.e_list.pop(0)
 
-    def extrapolate(self, dot_product: callable, beta: float = 1.0) -> np.ndarray:
+    def extrapolate(
+        self,
+        dot_product: Callable[[np.ndarray, np.ndarray], float],
+        beta: float = 1.0,
+    ) -> np.ndarray:
         """Return the DIIS-extrapolated x."""
         m = len(self.e_list)
 
-        print("DIIS: m = ", m)
+        logger.debug("DIIS: m = %d", m)
         if m < 2:
             # Not enough history — just return the last x
             return beta * self.x_list[-1] + (1.0 - beta) * self.x_list[-2]
@@ -42,11 +56,11 @@ class DIIS:
         # Solve for coefficients
         coeff = np.linalg.solve(B, rhs)[:-1]
 
-        print("DIIS: coeff = ", coeff, "sum = ", np.sum(coeff))
+        logger.debug("DIIS: coeff = %s, sum = %.6f", coeff, np.sum(coeff))
 
         # Extrapolate new x
         x_new = np.zeros_like(self.x_list[0])
-        for c, x in zip(coeff, self.x_list):
+        for c, x in zip(coeff, self.x_list, strict=False):
             x_new += c * x
 
         x_new = (1.0 - beta) * self.x_list[-1] + beta * x_new

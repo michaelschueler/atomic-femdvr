@@ -36,4 +36,4 @@ def get_version(with_git_hash: bool = False) -> str:
 
 
 if __name__ == "__main__":
-    print(get_version(with_git_hash=True))  # noqa:T201
+    print(get_version(with_git_hash=True))
