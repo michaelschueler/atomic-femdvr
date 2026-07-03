@@ -19,6 +19,7 @@
     },
 
     "dft": {
+        "theory_level": "non-relativistic",
         "driver": "pylibxc",
         "xc_functional": "",
         "x_functional": "lda_x",
@@ -34,6 +35,15 @@
     "electrons": {
         "Z": 10,
         "configuration": ["1s2", "2s2", "2p6"]
+    },
+
+    "photoemission": {
+        "energy_min": 0.1,
+        "energy_max": 5.0,
+        "n_energies": 50,
+        "gauges": ["length", "velocity"],
+        "store_wavefunctions": false,
+        "output_prefix": "Ne_photoemission"
     }
 
 }
