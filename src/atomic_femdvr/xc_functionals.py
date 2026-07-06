@@ -66,6 +66,7 @@ def gga_functional(name, rho, grad_rho, alpha):
 
             #dimensionless gradient
             t = grad_rho/(2.0*ks*rho)
+            t = np.minimum(t, 1.0e4)   # PBE correlation saturates for t >> 1/sqrt(b); prevents t^8 overflow
 
             ec_lda, ec_lda_rs = interpolate_LSD_energy(rrs, PW)
             b = -ec_lda/GAMMA
@@ -118,7 +119,9 @@ def gga_functional(name, rho, grad_rho, alpha):
             q[4] = tr / 32.0 + BETA * b * sigma * tr * tr / (512.0 * GAMMA)
 
             q[5] = BETA * BETA * q[1] / (GAMMA * GAMMA)
-            q[6] = b * q[4]/ (q[2] * q[2])
+            with np.errstate(over='ignore'):
+                q2sq = q[2] * q[2]
+            q[6] = np.where(np.isfinite(q2sq), b * q[4] / q2sq, 0.0)
 
             q[7] = BETA * q[4] / (q[2] * GAMMA) - q[5] * q[6]
 

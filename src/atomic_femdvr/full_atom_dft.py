@@ -79,7 +79,7 @@ class FullAtomDFT:
             # split into principal quantum number and angular momentum
             n_char = shell[0]
             l_char = shell[1].upper()
-            occ_str = shell[2]
+            occ_str = shell[2:]
 
             if l_char not in shell_labels:
                 raise ValueError(f"Invalid shell label {l_char} in configuration {shell}.")

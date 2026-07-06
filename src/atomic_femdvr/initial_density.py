@@ -1,7 +1,38 @@
 import numpy as np
 from scipy.special import factorial, genlaguerre
 
+#==========================================================================
+def factorial_fraction(n: int, k: int) -> float:
+    """
+    Compute the fraction of factorials n! / k! in a numerically stable way.
+    This is useful for large n and k where direct computation of factorials
+    can lead to overflow or loss of precision.
 
+    Parameters:
+    n : int
+        The numerator factorial.
+    k : int
+        The denominator factorial.
+
+    Returns:
+    float
+        The value of n! / k!.
+    """
+
+    if n == k:
+        return 1.0
+
+    if n < k:
+        result = 1.
+        for i in range(n + 1, k + 1):
+            result /= i
+
+    else:
+        result = 1.
+        for i in range(k + 1, n + 1):
+            result *= i
+
+    return result
 #==========================================================================
 def hydrogenic_orbital(r: np.ndarray, Z: float, n: int, l: int) -> np.ndarray:
     """
@@ -24,7 +55,10 @@ def hydrogenic_orbital(r: np.ndarray, Z: float, n: int, l: int) -> np.ndarray:
     # Normalization constant
     a0 = 1.0  # Bohr radius in atomic units
     rho = 2 * Z * r / (n * a0)
-    prefactor = np.sqrt((2 * Z / (n * a0))**3 * factorial(n - l - 1) / (2 * n * factorial(n + l)))
+    # prefactor = np.sqrt((2 * Z / (n * a0))**3 * factorial(n - l - 1) / (2 * n * factorial(n + l)))
+    
+    fac = factorial_fraction(n - l - 1, n + l)
+    prefactor = np.sqrt((2 * Z / (n * a0))**3 * fac / (2 * n))
 
     # Radial part
     radial_part = prefactor * (rho ** l) * np.exp(-rho / 2) * genlaguerre(n - l - 1, 2 * l + 1)(rho)
@@ -65,7 +99,7 @@ def get_slater_density(r: np.ndarray, Z: float, n_vals: np.ndarray, l_vals: np.n
     for n, l, occ in zip(n_vals, l_vals, occ_vals):
 
         S = slater_shielding(n_vals, l_vals, occ_vals, n, l)
-        Z_eff = Z - S
+        Z_eff = max(Z - S, 1.0)  # Slater shielding can over-screen for outer shells
 
         radial_wavefunction = hydrogenic_orbital(r, Z_eff, n, l)
         density += occ * radial_wavefunction**2
