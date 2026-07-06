@@ -99,43 +99,57 @@ def exchange_correlation_potential(basis:FEDVR_Basis, rho:np.ndarray,
             raise ValueError(f"Unsupported exchange-correlation functional: {xc_functional}. "
                              f"Available functionals: {available_functionals}")
 
-        # Use internal GGA functional implementation
-
         exc, xc_data = gga_functional(xc_functional, rho_, drho_dr, alpha_x)
         V_xc_grid = xc_data[0]
-        # V_xc_grid *= 0.5  # Convert to Hartree units
+        vsigma = xc_data[1]
 
     elif driver == 'pylibxc':
-        # try importing libxc
         try:
             import pylibxc
         except ImportError:
             raise ImportError("pylibxc is not installed. Please install it to use the libxc driver.")
 
-        # rho_ /= 4.0 * np.pi
-
         rho_libxc = np.reshape(rho_, [len(rho_), 1])
         sigma_libxc = np.reshape(sigma, [len(sigma), 1])
         input_data = {"rho": rho_libxc, "sigma": sigma_libxc}
-
-        
 
         if len(xc_functional) > 0:
             xc_func = pylibxc.LibXCFunctional(xc_functional.lower(), "unpolarized")
             output = xc_func.compute(input_data)
             V_xc_grid = output["vrho"].reshape(-1)
+            vsigma = output.get("vsigma", np.zeros_like(V_xc_grid)).reshape(-1)
         else:
             x_func = pylibxc.LibXCFunctional(x_functional.lower(), "unpolarized")
             output_x = x_func.compute(input_data)
             V_x = output_x["vrho"].reshape(-1)
+            vsigma_x = output_x.get("vsigma", np.zeros_like(V_x)).reshape(-1)
 
             c_func = pylibxc.LibXCFunctional(c_functional.lower(), "unpolarized")
             output_c = c_func.compute(input_data)
             V_c = np.array(output_c["vrho"]).flatten()
+            vsigma_c = np.array(output_c.get("vsigma", np.zeros_like(V_c))).flatten()
 
             V_xc_grid = alpha_x * V_x + V_c
+            vsigma = alpha_x * vsigma_x + vsigma_c
+
     else:
         raise ValueError(f"Unsupported driver: {driver}. Available drivers: 'internal', 'pylibxc'.")
+
+    # GGA sigma correction: V_xc += -(2/r²) d/dr(r² vsigma dn/dr)
+    # Both drivers return vsigma = ∂e_xc/∂σ (σ = |∇n|²); the divergence term
+    # is not included in vrho and must be applied here. f = r² vsigma dn/dr
+    # absorbs the 1/r² to keep the boundary at r=0 well-behaved.
+    if np.any(vsigma != 0.0):
+        f = np.zeros(len(grid))
+        f[1:] = grid[1:]**2 * vsigma[1:] * drho_dr[1:]
+        df_dr = np.zeros_like(f)
+        for i in range(ne):
+            h = 0.5 * (basis.xp[i+1] - basis.xp[i])
+            f_elem = f[i*ng : i*ng + ng + 1]
+            df_dr_elem = np.dot(basis.leg.D_ii, f_elem) / h
+            df_dr[i*ng : i*ng + ng + 1] = df_dr_elem
+        V_xc_grid[1:] -= 2.0 * df_dr[1:] / grid[1:]**2
+        V_xc_grid[0] = V_xc_grid[1]
 
     return V_xc_grid
 #===================================================================

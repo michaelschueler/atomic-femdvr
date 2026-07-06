@@ -37,6 +37,7 @@ class PseudoAtomDFT:
 
         self._upf: UPFInterface | None = None
         self.rho_grid = None
+        self.rho_nlcc = None
         self._Vloc_grid: np.ndarray | None = None
 
         self.Zval = 1.0  # Default value, can be set later
@@ -81,6 +82,18 @@ class PseudoAtomDFT:
         self.upf = UPFInterface.from_upf(self.sysparams.file_upf)
 
         self.Zval = self.upf.zp
+
+        # Rebuild grid now that Zval is known. __init__ used Zval=1 as a placeholder;
+        # the correct Zval is needed so that optimize_elements places a fine first
+        # element near the nucleus where compact orbitals (e.g. 3d) have large amplitude.
+        self.r_elements = optimize_elements(self.Zval, self.solver.h_min, self.solver.h_max,
+                                            self.solver.Rmax, self.solver.elem_tol)
+        ne = len(self.r_elements) - 1
+        self.basis = FEDVR_Basis(ne, self.solver.ng, self.r_elements,
+                                 build_derivatives=True, build_integrals=True)
+        self.grid = self.basis.get_gridpoints()
+        self.num_grid = len(self.grid)
+
         self.lmax_pseudo = np.amax(self.upf.lchi)
         self.nmax_pseudo = np.amax(self.upf.nnodes_chi)
 
