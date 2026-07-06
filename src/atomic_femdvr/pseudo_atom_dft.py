@@ -356,6 +356,18 @@ class PseudoAtomDFT:
         lmax = np.amax(self.upf.lchi)
         nmax = np.amax(self.upf.nnodes_chi)
 
+        # Quadrature weights for the grid-invariant L2 density norm.
+        # Bridge points accumulate contributions from both adjacent elements.
+        ne, ng = self.basis.ne, self.basis.ng
+        w_i = self.basis.leg.w_i
+        quad_w = np.zeros(ne * ng + 1)
+        for ie in range(ne):
+            h_e = 0.5 * (self.basis.xp[ie + 1] - self.basis.xp[ie])
+            quad_w[ie * ng : ie * ng + ng + 1] += h_e * w_i
+
+        def _rho_err(delta: np.ndarray) -> float:
+            return np.sqrt(np.dot(quad_w, delta**2))
+
         # Initial guess for the wavefunctions
         eps, psi = self.solve_schrodinger(V_eff, lmax, nmax)
 
@@ -377,7 +389,7 @@ class PseudoAtomDFT:
             V_eff = self.get_effective_potential(rho_grid=rho_new)
 
             # Compute error
-            err = np.linalg.norm(rho_new - rho_old)
+            err = _rho_err(rho_new - rho_old)
 
             # Solve Schrödinger equation with new potential
             eps, psi = self.solve_schrodinger(V_eff, lmax, nmax)

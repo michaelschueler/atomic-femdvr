@@ -27,7 +27,6 @@ def charge_density(basis:FEDVR_Basis, nnodes_chi:np.ndarray, lchi:np.ndarray,
         rho[1:] += occ[iwf] * np.abs(psi[l, n, 1:])**2 / grid[1:]**2
         rho[0] += occ[iwf] * dpsi_dr_elem[l, n, 0]**2
 
-
     return rho
 #===================================================================
 
@@ -75,12 +74,13 @@ def exchange_correlation_potential(basis:FEDVR_Basis, rho:np.ndarray,
     ne = basis.ne
     ng = basis.ng
 
+    # Our rho is in the radial convention: ∫ rho r² dr = N.
+    # The 3D density is n = rho / (4π).
+    # rho_nlcc from UPF is already the 3D core density (electrons/Bohr³),
+    # so it must be added AFTER dividing rho by 4π, not before.
+    rho_ = rho.copy() / (4.0 * np.pi)
     if rho_nlcc is not None and len(rho_nlcc) == len(rho):
-        rho_ = rho.copy() + rho_nlcc.copy()
-    else:
-        rho_ = rho.copy()
-
-    rho_ /= 4.0 * np.pi
+        rho_ += rho_nlcc.copy()
 
     drho_dr = np.zeros_like(rho_)
     for i in range(ne):

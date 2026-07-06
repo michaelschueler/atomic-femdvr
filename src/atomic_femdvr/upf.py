@@ -4,6 +4,7 @@ from pathlib import Path
 
 import numpy as np
 import numpy.typing as npt
+from scipy.interpolate import UnivariateSpline
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 from typing_extensions import Self
 from upf_tools import UPFDict
@@ -111,13 +112,21 @@ class UPFInterface(BaseModel):
         return np.array([np.sum(self.lchi[:i] == l) for i, l in enumerate(self.lchi)])
 
     def get_charge_density(self) -> npt.NDArray[np.float64]:
-        """Compute the charge density from the wavefunctions."""
+        """Return charge density in the convention rho(r) = Σ occ |u(r)|²/r²,
+        satisfying ∫ rho(r) r² dr = Zval (matches density_potential.charge_density).
 
+        UPF rho_atom stores Σ occ |u|² (QE convention: ∫ rho_atom dr = Zval),
+        so we divide by r² to convert to our convention."""
+
+        rho = np.zeros(self.mesh, dtype=np.float64)
         if self.rho_atom is not None:
-            return self.rho_atom
+            rho[1:] = self.rho_atom[1:] / self.r[1:]**2
+            rho[0] = rho[1]
         else:
-            rho = np.zeros(self.mesh, dtype=np.float64)
+            spline = UnivariateSpline(self.r, self.chi, s=0, k=3, axis=0)
+            der_spline = spline.derivative()
             for iwf in range(self.nwfc):
                 rho[1:] += self.oc[iwf] * np.abs(self.chi[1:, iwf])**2 / self.r[1:]**2
-            rho[0] = rho[1]
-            return rho
+                dchi_dr = der_spline(self.r[0])
+                rho[0] += self.oc[iwf] * np.abs(dchi_dr[iwf])**2
+        return rho
