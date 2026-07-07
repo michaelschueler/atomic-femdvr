@@ -55,6 +55,8 @@ class UPFInterface(BaseModel):
         }
 
         for array_name, desired_shape in desired_shapes.items():
+            if desired_shape is None:
+                continue
             array_value = getattr(self, array_name)
             if array_value.shape != desired_shape:
                 raise ValueError(f"Array '{array_name}' has incorrect shape: {array_value.shape}, expected {desired_shape}")
@@ -73,8 +75,16 @@ class UPFInterface(BaseModel):
         return np.array(v, dtype=np.int32)
 
     @classmethod
-    def from_upf(cls, filename: Path) -> Self:
+    def from_upf(cls, filename: Path,
+                 oc_override: list[float] | None = None) -> Self:
+        """Read a UPF v2 file.
 
+        oc_override : list of float, optional
+            Replacement occupations for the pseudo-wavefunctions, in the same
+            order as the chi entries.  Use this when the UPF file contains
+            wrong occupations (e.g. spin-majority values written by cpmd2upf
+            for GTH pseudopotentials).
+        """
         upf_dict = UPFDict.from_upf(filename)
 
         dij_1d = upf_dict['nonlocal']['dij']
@@ -82,8 +92,21 @@ class UPFInterface(BaseModel):
         assert dij_1d.size == nbeta**2
         dij = dij_1d.reshape((nbeta, nbeta))
 
+        zp   = upf_dict['header']['z_valence']
+        oc   = (oc_override if oc_override is not None
+                else [chi['occupation'] for chi in upf_dict['pswfc']['chi']])
+        oc_sum = float(np.sum(oc))
+        if abs(oc_sum - zp) > 0.01:
+            import warnings
+            warnings.warn(
+                f"UPF occupation sum ({oc_sum}) does not match z_valence ({zp}). "
+                "Pass oc_override=[...] to from_upf() to correct the occupations "
+                "(common for GTH pseudopotentials converted by cpmd2upf).",
+                stacklevel=2,
+            )
+
         return cls(
-            zp = upf_dict['header']['z_valence'],
+            zp = zp,
             etotps = upf_dict['header']['total_psenergy'],
             ecutrho = upf_dict['header']['rho_cutoff'],
             lmax = upf_dict['header']['l_max'],
@@ -96,7 +119,7 @@ class UPFInterface(BaseModel):
             r = upf_dict['mesh']['r'],
             nchi = [chi['n'] for chi in upf_dict['pswfc']['chi']],
             lchi = [chi['l'] for chi in upf_dict['pswfc']['chi']],
-            oc = [chi['occupation'] for chi in upf_dict['pswfc']['chi']],
+            oc = oc,
             chi = np.transpose([chi['content'] for chi in upf_dict['pswfc']['chi']]),
             lll = [beta['angular_momentum'] for beta in upf_dict['nonlocal']['beta']],
             dion = dij,

@@ -79,7 +79,8 @@ class PseudoAtomDFT:
 
     def read_upf(self, read_density: bool = True, read_potential: bool = True):
         assert self.sysparams.file_upf is not None
-        self.upf = UPFInterface.from_upf(self.sysparams.file_upf)
+        self.upf = UPFInterface.from_upf(self.sysparams.file_upf,
+                                         oc_override=self.sysparams.oc_override)
 
         self.Zval = self.upf.zp
 
