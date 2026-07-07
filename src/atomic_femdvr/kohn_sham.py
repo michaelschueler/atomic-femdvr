@@ -213,7 +213,8 @@ def solve_schrodinger_zora(basis: FEDVR_Basis, Veff_grid: np.ndarray, lmax: int,
 def solve_schrodinger_kh(basis: FEDVR_Basis, Veff_grid: np.ndarray, lmax: int, nmax: int,
                           Z: float = 1.0, nuclear_sigma: float = 1.0e-3,
                           Vconf: np.ndarray | None = None, lmin: int = 0,
-                          maxiter: int = 50, tol: float = 1.0e-8) -> tuple[np.ndarray, np.ndarray]:
+                          maxiter: int = 50, tol: float = 1.0e-8,
+                          nmax_per_l: dict | None = None) -> tuple[np.ndarray, np.ndarray]:
     """
     Scalar-relativistic solver using the Koelling-Harmon (KH) fixed-point method.
 
@@ -278,11 +279,17 @@ def solve_schrodinger_kh(basis: FEDVR_Basis, Veff_grid: np.ndarray, lmax: int, n
         H0 = Tmat_NR + np.diag(Veff_diag + Vl_diag_NR)
         eps_l, vect = la.eigh(H0, subset_by_index=[0, nmax])
 
+        # Index of the highest occupied state for this l-channel.
+        # Using the valence eigenvalue as eps_ref gives the correct relativistic
+        # correction; using a global nmax points to an unbound excited state for
+        # l-channels with fewer occupied shells (e.g. d-channel in Se).
+        nref = nmax_per_l.get(l, nmax) if nmax_per_l else nmax
+
         for it in range(maxiter):
             eps_old = eps_l.copy()
 
             # Single reference energy for the whole channel → one Hermitian H → exact orthogonality
-            eps_ref = eps_l[nmax]
+            eps_ref = eps_l[nref]
 
             # KH mass factor using smoothed nuclear potential to regularise M_inv near origin
             M_inv_grid = 1.0 / (1.0 + (eps_ref - Veff_for_M) / (2.0 * c**2))

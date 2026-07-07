@@ -113,7 +113,6 @@ def solve_atomic(inp: FullAtomicInput, task_list: tuple[str, ...],
             print("Warm-up: NR SCF before scalar-relativistic ...\n")
             tic = perf_counter()
             atom.dft.theory_level = 'non-relativistic'
-            atom.ks_self_consistency()
             num_iter, err = atom.ks_self_consistency()
 
             if err < inp.dft.conv_tol:

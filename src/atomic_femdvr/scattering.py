@@ -1,31 +1,29 @@
 """
 Radial scattering solvers and phase-shift extraction for photoemission calculations.
 
-Asymptotic BC consistency
---------------------------
-The FEM-DVR asymptotic BC imposes, at the last two grid points r_{N-1} and r_N = r_{N-1}+h:
+Asymptotic BC
+-------------
+The FEM-DVR asymptotic BC encodes the condition
 
     u_l(r_N) = alpha * u_l(r_{N-1}) + beta
-    alpha = exp(ikh),  beta = 2i*cn*exp(-ikr_{N-1})*sin(kh)
 
-At large r, the outgoing Hankel function h^+_l(kr) ~ (-i)^{l+1}*exp(ikr)/(kr), so
-r*h^+_l(kr) ~ (-i)^{l+1}/k * exp(ikr). The ratio for consecutive grid points is:
+at the last two grid points r_{N-1} and r_N.  The asymptotic solution is
 
-    r_N*h^+_l(kr_N) / [r_{N-1}*h^+_l(kr_{N-1})] -> exp(ikh)   (for r >> l/k)
+    u_l(r) = r * [h^+_l(kr) + S_l * h^-_l(kr)],   S_l = exp(2i*delta_l)
 
-The outgoing component is therefore transparent to alpha = exp(ikh). For the incoming
-component r*h^-_l ~ (i)^{l+1}/k * exp(-ikr):
+where h^+_l = j_l + i*y_l (outgoing) and h^-_l = j_l - i*y_l (incoming).
 
-    r_N*h^-_l(kr_N) - alpha*r_{N-1}*h^-_l(kr_{N-1})
-    ≈ (i)^{l+1}/k * exp(-ikr_{N-1}) * (-2i*sin(kh))
+alpha is chosen to be transparent to the outgoing Hankel component:
 
-So beta encodes the INCOMING wave amplitude only. For V=0 with cn=1, the solution is
-u_l(r) = cn*(exp(ikr) - exp(-ikr)), which for l=0 is 2i*sin(kr). For general l with
-potential V, the solution asymptotically satisfies:
+    alpha = u_out(r_N) / u_out(r_{N-1}),   u_out(r) = r * h^+_l(kr)
 
-    psi_l(r) = h^+_l(kr) + S_l * h^-_l(kr),  S_l = exp(2i*delta_l)
+beta drives the incoming Hankel component with amplitude cn:
 
-and delta_l is extracted via extract_phase().
+    beta = cn * [u_in(r_N) - alpha * u_in(r_{N-1})],   u_in(r) = r * h^-_l(kr)
+
+Using the exact Hankel functions (via _hankel_bc) makes the BC correct at any r,
+not just in the large-r plane-wave limit.  For V=0 with cn=1 the interior solution
+converges to u_l(r) = 2*r*j_l(kr) (the regular free-particle reduced wavefunction).
 """
 
 import numpy as np
@@ -35,6 +33,35 @@ from atomic_femdvr.femdvr import FEDVR_Basis
 from atomic_femdvr.kohn_sham import get_centrifugal_potential
 
 _C_LIGHT = 137.035999084  # speed of light in atomic units
+
+
+def _hankel_bc(l: int, k: float, r_last: float, r_next: float,
+               cn: float = 1.0) -> tuple[complex, complex]:
+    """
+    Compute exact Hankel boundary-condition parameters (alpha, beta).
+
+    alpha is the ratio of the outgoing reduced Hankel wavefunction at r_next
+    to that at r_last; it is transparent to the outgoing component:
+
+        u_out(r) = r * h^+_l(kr) = r * (j_l(kr) + i*y_l(kr))
+        alpha = u_out(r_next) / u_out(r_last)
+
+    beta drives the incoming Hankel component with amplitude cn:
+
+        u_in(r) = r * h^-_l(kr) = r * (j_l(kr) - i*y_l(kr))
+        beta = cn * (u_in(r_next) - alpha * u_in(r_last))
+
+    For r >> l/k this reduces to alpha -> exp(ik*h) and
+    beta -> cn*(i)^l * 2*sin(kh)*exp(-ikr_last)/k.
+    """
+    u_out_last = r_last * (spherical_jn(l, k * r_last) + 1j * spherical_yn(l, k * r_last))
+    u_out_next = r_next * (spherical_jn(l, k * r_next) + 1j * spherical_yn(l, k * r_next))
+    u_in_last  = r_last * (spherical_jn(l, k * r_last) - 1j * spherical_yn(l, k * r_last))
+    u_in_next  = r_next * (spherical_jn(l, k * r_next) - 1j * spherical_yn(l, k * r_next))
+
+    alpha = u_out_next / u_out_last
+    beta  = cn * (u_in_next - alpha * u_in_last)
+    return alpha, beta
 
 
 def solve_scattering_local(basis: FEDVR_Basis, Veff_grid: np.ndarray, k: float, l: int,
@@ -63,11 +90,7 @@ def solve_scattering_local(basis: FEDVR_Basis, Veff_grid: np.ndarray, k: float, 
     """
     Ek = 0.5 * k**2
     r_grid = basis.get_gridpoints()
-    h = r_grid[-1] - r_grid[-2]
-    r_last = r_grid[-2]
-
-    alpha = np.exp(1j * k * h)
-    beta = 2j * cn * np.exp(-1j * k * r_last) * np.sin(k * h)
+    alpha, beta = _hankel_bc(l, k, r_grid[-2], r_grid[-1], cn)
 
     Tmat, Rvec = basis.get_kinetic_energy_matrix(alpha, beta)
 
@@ -113,11 +136,7 @@ def solve_scattering_nonlocal(basis: FEDVR_Basis, Veff_grid: np.ndarray, k: floa
     nb = ne * ng - 1
 
     r_grid = basis.get_gridpoints()
-    h = r_grid[-1] - r_grid[-2]
-    r_last = r_grid[-2]
-
-    alpha = np.exp(1j * k * h)
-    beta_bc = 2j * cn * np.exp(-1j * k * r_last) * np.sin(k * h)
+    alpha, beta_bc = _hankel_bc(l, k, r_grid[-2], r_grid[-1], cn)
 
     Tmat, Rvec = basis.get_kinetic_energy_matrix(alpha, beta_bc)
 
@@ -172,8 +191,6 @@ def solve_scattering_zora(basis: FEDVR_Basis, Veff_grid: np.ndarray, k: float, l
     """
     Ek = 0.5 * k**2
     r_grid = basis.get_gridpoints()
-    h = r_grid[-1] - r_grid[-2]
-    r_last = r_grid[-2]
 
     sig2 = np.sqrt(2.0) * nuclear_sigma
     V_nuc_smooth = np.empty_like(r_grid)
@@ -181,8 +198,7 @@ def solve_scattering_zora(basis: FEDVR_Basis, Veff_grid: np.ndarray, k: float, l
     V_nuc_smooth[0] = -Z * np.sqrt(2.0 / np.pi) / nuclear_sigma
     M_grid = 1.0 / (1.0 - V_nuc_smooth / (2.0 * _C_LIGHT**2))
 
-    alpha = np.exp(1j * k * h)
-    beta = 2j * cn * np.exp(-1j * k * r_last) * np.sin(k * h)
+    alpha, beta = _hankel_bc(l, k, r_grid[-2], r_grid[-1], cn)
 
     T_rel = basis.get_p_kinetic_matrix(M_grid)
     T_NR_bc, Rvec = basis.get_kinetic_energy_matrix(alpha, beta)
@@ -223,8 +239,6 @@ def solve_scattering_kh(basis: FEDVR_Basis, Veff_grid: np.ndarray, k: float, l: 
     """
     Ek = 0.5 * k**2
     r_grid = basis.get_gridpoints()
-    h = r_grid[-1] - r_grid[-2]
-    r_last = r_grid[-2]
 
     sig2 = np.sqrt(2.0) * nuclear_sigma
     V_nuc_point = np.empty_like(r_grid)
@@ -236,8 +250,7 @@ def solve_scattering_kh(basis: FEDVR_Basis, Veff_grid: np.ndarray, k: float, l: 
     Veff_for_M = Veff_grid + (V_nuc_smooth - V_nuc_point)
     M_inv_grid = 1.0 / (1.0 + (Ek - Veff_for_M) / (2.0 * _C_LIGHT**2))
 
-    alpha = np.exp(1j * k * h)
-    beta = 2j * cn * np.exp(-1j * k * r_last) * np.sin(k * h)
+    alpha, beta = _hankel_bc(l, k, r_grid[-2], r_grid[-1], cn)
 
     T_rel = basis.get_p_kinetic_matrix(M_inv_grid)
     T_NR_bc, Rvec = basis.get_kinetic_energy_matrix(alpha, beta)

@@ -157,9 +157,14 @@ class FullAtomDFT:
                                                         Vconf=Vconf, lmin=lmin)
 
         elif theory_level == 'scalar-relativistic':
+            # Build l-specific highest-occupied nrad so the KH reference energy
+            # is the valence eigenvalue for each channel, not a spurious unbound state.
+            nmax_per_l = {l: int(np.max(self.nrad[self.ll == l]))
+                          for l in range(lmin, lmax + 1) if np.any(self.ll == l)}
             eps, psi = kohn_sham.solve_schrodinger_kh(self.basis, Veff, lmax, nmax,
                                                       Z=self.Z, nuclear_sigma=self.solver.nuclear_sigma,
-                                                      Vconf=Vconf, lmin=lmin)
+                                                      Vconf=Vconf, lmin=lmin,
+                                                      nmax_per_l=nmax_per_l)
 
         else:
             raise ValueError(f"Unknown theory_level: '{theory_level}'")
