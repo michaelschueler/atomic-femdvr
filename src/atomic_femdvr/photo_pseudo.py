@@ -99,6 +99,7 @@ def solve_photoemission_pseudo(inp: PseudoAtomicInput, photo_inp: PhotoemissionI
         Dion=atom.upf.dion,
         beta_pp=atom.beta_grid,
         theory_level=inp.dft.theory_level,
+        lmax_scatter=photo_inp.lmax_scatter,
     )
     toc = perf_counter()
     print_time(tic, toc, "Computing photoemission matrix elements")

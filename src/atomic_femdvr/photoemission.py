@@ -100,6 +100,7 @@ def compute_photoemission(
     theory_level: str = 'non-relativistic',
     Z: float = 1.0,
     nuclear_sigma: float = 1.0e-3,
+    lmax_scatter: int | None = None,
 ) -> dict:
     """
     Compute photoemission matrix elements and scattering phase shifts over an energy grid.
@@ -163,11 +164,15 @@ def compute_photoemission(
         if occ[ishell] > 0.0 and eps[l_i, n_i] < 0.0:
             occupied_shells.append((l_i, n_i))
 
-    # All unique final-state angular momenta required by the dipole selection rule
-    unique_lf = sorted({l_i + dl
-                        for (l_i, _) in occupied_shells
-                        for dl in (-1, +1)
-                        if l_i + dl >= 0})
+    # Final-state angular momenta: full range when lmax_scatter is set,
+    # otherwise only those required by the dipole selection rule.
+    if lmax_scatter is not None:
+        unique_lf = list(range(lmax_scatter + 1))
+    else:
+        unique_lf = sorted({l_i + dl
+                            for (l_i, _) in occupied_shells
+                            for dl in (-1, +1)
+                            if l_i + dl >= 0})
 
     results = {
         'energies': energies,

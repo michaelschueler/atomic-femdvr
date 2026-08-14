@@ -139,6 +139,9 @@ class PhotoemissionInput(BaseModel):
     gauges: list[Literal["length", "velocity"]] = Field(default_factory=lambda: ["length"])
     store_wavefunctions: bool = Field(default=False)
     output_prefix: str = Field(default="photoemission")
+    lmax_scatter: int | None = Field(default=None, ge=0,
+        description="Maximum l for scattering final states. "
+                    "Defaults to None (all l_f required by dipole selection rule).")
 
 class PseudoConfigInput(BaseModel):
     storage_dir: Path = Field(default=Path())
