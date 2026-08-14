@@ -90,6 +90,7 @@ def solve_photoemission_atomic(inp: FullAtomicInput, photo_inp: PhotoemissionInp
         theory_level=inp.dft.theory_level,
         Z=atom.Z,
         nuclear_sigma=inp.solver.nuclear_sigma,
+        lmax_scatter=photo_inp.lmax_scatter,
     )
     toc = perf_counter()
     print_time(tic, toc, "Computing photoemission matrix elements")

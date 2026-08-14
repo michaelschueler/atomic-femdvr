@@ -20,7 +20,7 @@ def charge_density(basis:FEDVR_Basis, nnodes_chi:np.ndarray, lchi:np.ndarray,
     h = 0.5 * (basis.xp[1] - basis.xp[0])
     psi_elem = psi[:, :, :basis.ng + 1]
     dpsi_dr_elem = np.einsum('ij,lnj->lni', basis.leg.D_ii, psi_elem) / h
-
+    
     for iwf in range(nwf):
         l = lchi[iwf]
         n = nnodes_chi[iwf]
