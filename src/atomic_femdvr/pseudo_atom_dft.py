@@ -251,17 +251,24 @@ class PseudoAtomDFT:
         return Q_opt
     #.......................................................
     def get_states_energy_shift(self, lmax:int, nmax:int, confinement: ConfinementInput):
-        eigenvalues_bounds, psi_bound = self.get_bound_states()
+        V_eff = self.get_effective_potential()
+        eps_unconf, _ = self.solve_schrodinger(V_eff, self.lmax_pseudo, self.nmax_pseudo)
+
         eigenvalues_all, psi_all = self.get_all_states(lmax, nmax, confinement=confinement)
 
         energy_shifts = np.zeros(self.lmax_pseudo + 1, dtype=np.float64)
 
         for l in range(self.lmax_pseudo + 1):
             tag = f'{l}'
-            epsl_bound = np.array(eigenvalues_bounds[tag])
+            l_mask = self.upf.lchi == l
+            occ_mask = l_mask & (self.upf.oc > 0)
+            # fall back to the highest pseudo-orbital for this l if none is occupied
+            # (e.g. an unoccupied polarization/scattering channel in the UPF)
+            mask = occ_mask if np.any(occ_mask) else l_mask
+            n = int(np.amax(self.upf.nnodes_chi[mask]))
+
             epsl_all = np.array(eigenvalues_all[tag])
-            n = np.argmax(epsl_bound)
-            energy_shifts[l] = epsl_all[n] - epsl_bound[n]
+            energy_shifts[l] = epsl_all[n] - eps_unconf[l, n]
 
         return energy_shifts, eigenvalues_all, psi_all
     #.......................................................
