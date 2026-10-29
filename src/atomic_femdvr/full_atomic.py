@@ -9,9 +9,11 @@ from atomic_femdvr.input import (
     ControlInput,
     DFTInput,
     ElectronsInput,
+    OutputInput,
     SolverInput,
     SysParamsInput,
 )
+from atomic_femdvr.projector_output import write_wfc_pyimpurity
 from atomic_femdvr.utils import plot_wavefunctions, print_eigenvalues, print_time
 
 
@@ -21,6 +23,7 @@ class FullAtomicInput(BaseModel):
     solver: SolverInput
     dft: DFTInput = Field(default_factory=lambda: DFTInput())
     electrons: ElectronsInput = Field(default_factory=lambda: ElectronsInput())
+    output: OutputInput = Field(default_factory=lambda: OutputInput())
 
 #==================================================================
 def read_input(fname: str):
@@ -102,44 +105,57 @@ def solve_atomic(inp: FullAtomicInput, task_list: tuple[str, ...],
     all_eigenvalues = {}
     if 'scf' in task_list:
 
-        print("Starting Kohn-Sham self-consistency: non-relativistic ...\n")
+        theory_level = inp.dft.theory_level
 
-        tic = perf_counter()
-        if inp.dft.max_iter > 0:
-            num_iter, err = atom.ks_self_consistency(theory_level='non-relativistic')
+        # For energy-dependent theory levels (KH), warm up with NR to give the
+        # fixed-point iteration a good starting density.
+        if theory_level in ['zora', 'scalar-relativistic'] and inp.dft.max_iter > 0:
+            print("Warm-up: NR SCF before scalar-relativistic ...\n")
+            tic = perf_counter()
+            atom.dft.theory_level = 'non-relativistic'
+            num_iter, err = atom.ks_self_consistency()
 
             if err < inp.dft.conv_tol:
-                print(f"Self-consistency converged in {num_iter} iterations with error: {err:.2e}")
+                print(f"NR Self-consistency converged in {num_iter} iterations with error: {err:.2e}")
             else:
-                print(f"Self-consistency did not converge within {inp.dft.max_iter} iterations. Final error: {err:.2e}")
-        else:
-            print("Skipping self-consistency loop as max_iter is set to 0.")
+                print(f"NR Self-consistency did not converge within {inp.dft.max_iter} iterations. Final error: {err:.2e}")
+
+            atom.dft.theory_level = theory_level
+            toc = perf_counter()
+            print_time(tic, toc, "NR warm-up SCF")
+
+        if (atom.dft.relativistic_scf and theory_level in ['zora', 'scalar-relativistic']) or theory_level == 'non-relativistic':
+
+            print(f"Starting Kohn-Sham self-consistency: {theory_level} ...\n")
+            tic = perf_counter()
+            if inp.dft.max_iter > 0:
+                num_iter, err = atom.ks_self_consistency()
+
+                if err < inp.dft.conv_tol:
+                    print(f"Self-consistency converged in {num_iter} iterations with error: {err:.2e}")
+                else:
+                    print(f"Self-consistency did not converge within {inp.dft.max_iter} iterations. Final error: {err:.2e}")
+            else:
+                print("Skipping self-consistency loop as max_iter is set to 0.")
+
+        elif not atom.dft.relativistic_scf and theory_level in ['zora', 'scalar-relativistic']:
+            print("Skipping relativistic SCF.")
+            num_iter, err = atom.ks_self_consistency(one_shot=True)
 
         toc = perf_counter()
         print_time(tic, toc, "SCF")
 
-        eigenvalues, psi = atom.get_bound_states(theory_level='non-relativistic')
+        eigenvalues, psi = atom.get_bound_states()
         all_eigenvalues['scf'] = eigenvalues
 
         print_eigenvalues(atom.lmax, eigenvalues)
 
-        if inp.solver.theory_level.lower() == 'scalar-relativistic':
-
-            print("Starting Kohn-Sham self-consistency: scalar-relativistic ...\n")
-
-            tic = perf_counter()
-            num_iter, err = atom.ks_self_consistency(theory_level='scalar-relativistic')
-
-            toc = perf_counter()
-            print_time(tic, toc, "SCF")
-
-            eigenvalues, psi = atom.get_bound_states(theory_level='scalar-relativistic')
-            all_eigenvalues['scf'] = eigenvalues
-
-            print_eigenvalues(atom.lmax, eigenvalues)
-
-
         atom.save_density_potential()
+
+        if inp.output.output_wfc_pyimpurity:
+            out_dir = export_dir or str(atom.control.storage_dir)
+            write_wfc_pyimpurity(atom.basis, psi, eigenvalues, atom.element, out_dir)
+            print(f"Wavefunctions written to {out_dir}/{atom.element}_wfc_ae.h5")
 
         if plot:
             plot_wavefunctions(atom.grid, psi, atom.lmax, eigenvalues)

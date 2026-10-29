@@ -28,6 +28,13 @@ class SysParamsInput(BaseModel):
     lmax: int = Field(default=0, ge=0)
     nmax: int = Field(default=4, ge=0)
     element: str | None = None
+    oc_override: list[float] | None = Field(default=None,
+        description="Override UPF pseudo-wavefunction occupations (one value per chi entry, "
+                    "same order as the UPF PP_PSWFC block). Two uses: (1) fixing UPF files "
+                    "with wrong occupations, e.g. GTH pseudopotentials converted by cpmd2upf, "
+                    "which write spin-majority occupations instead of total occupations; "
+                    "(2) setting up a charged/ionized pseudo-atom by giving occupations that "
+                    "sum to z_valence minus the desired charge.")
 
     @field_validator("pot_energy_unit", mode="before")
     @classmethod
@@ -62,6 +69,7 @@ class OutputInput(BaseModel):
     output_wfc_qe : bool = Field(default=False)
     output_wfc_hdf5 : bool = Field(default=False)
     output_wfc_bessel : bool = Field(default=False)
+    output_wfc_pyimpurity : bool = Field(default=False)
     output_dipole_moments : bool = Field(default=False)
     bessel_quad_npoints : int = Field(default=41, ge=3)
     bessel_quad_method : Literal['simpson', 'lobatto'] = Field(default='simpson')
@@ -82,7 +90,6 @@ class ElectronsInput(BaseModel):
     configuration: list[str] = Field(default_factory=lambda: ["1s1"])
 
 class SolverInput(BaseModel):
-    theory_level: Literal["non-relativistic", "zora", "scalar-relativistic"] = Field(default="non-relativistic")
     eigensolver: Literal["full", "banded"] = Field(default="full")
     h_min: float = Field(default=0.5, gt=0)
     h_max: float = Field(default=4.0, gt=0)
@@ -90,8 +97,9 @@ class SolverInput(BaseModel):
     tol: float = Field(default=1.0e-3, gt=0)
     ng: int = Field(default=8, ge=1)
     elem_tol: float = Field(default=1.0e-2, gt=0)
+    nuclear_sigma: float = Field(default=1.0e-3, gt=0)
 
-    @field_validator("theory_level", "eigensolver", mode="before")
+    @field_validator("eigensolver", mode="before")
     @classmethod
     def make_lower(cls, v: str) -> str:
         """Convert to lower case to make the input case-insensitive."""
@@ -108,6 +116,8 @@ def solver_input_factory(default_hmin: float, default_hmax: float) -> type[Solve
     return model
 
 class DFTInput(BaseModel):
+    theory_level: Literal["non-relativistic", "zora", "scalar-relativistic"] = Field(default="non-relativistic")
+    relativistic_scf: bool = Field(default=True)
     driver: str = "internal"
     xc_functional: str = "PBE"
     x_functional: str | None = "gga_x_pbe"
@@ -119,11 +129,22 @@ class DFTInput(BaseModel):
     max_iter: int = 100
     conv_tol: float = 1.0e-6
 
-    @field_validator("mixing_scheme", mode="before")
+    @field_validator("theory_level", "mixing_scheme", mode="before")
     @classmethod
     def make_lower(cls, v: str) -> str:
         """Convert to lower case to make the input case-insensitive."""
         return v.lower()
+
+class PhotoemissionInput(BaseModel):
+    energy_min: float = Field(default=0.1, gt=0)
+    energy_max: float = Field(default=3.0, gt=0)
+    n_energies: int = Field(default=50, ge=2)
+    gauges: list[Literal["length", "velocity"]] = Field(default_factory=lambda: ["length"])
+    store_wavefunctions: bool = Field(default=False)
+    output_prefix: str = Field(default="photoemission")
+    lmax_scatter: int | None = Field(default=None, ge=0,
+        description="Maximum l for scattering final states. "
+                    "Defaults to None (all l_f required by dipole selection rule).")
 
 class PseudoConfigInput(BaseModel):
     storage_dir: Path = Field(default=Path())

@@ -5,7 +5,7 @@ import numpy as np
 
 import atomic_femdvr.density_potential as density_potential
 import atomic_femdvr.kohn_sham as kohn_sham
-from atomic_femdvr.adaptive_elements import optimize_elements
+from atomic_femdvr.adaptive_elements import optimize_elements, optimize_elements_ae
 from atomic_femdvr.anderson import AndersonMixing
 from atomic_femdvr.diis import DIIS
 from atomic_femdvr.femdvr import FEDVR_Basis
@@ -50,7 +50,7 @@ class FullAtomDFT:
         h_max = solver.h_max / (self.Z ** (1/3))
         Rmax = solver.Rmax / (self.Z ** (1/3))
 
-        self.r_elements = optimize_elements(self.Z, h_min, h_max, Rmax, solver.elem_tol)
+        self.r_elements = optimize_elements_ae(self.Z, h_min, h_max, Rmax, solver.elem_tol)
 
         # set up the basis
         ne = len(self.r_elements) - 1
@@ -79,7 +79,7 @@ class FullAtomDFT:
             # split into principal quantum number and angular momentum
             n_char = shell[0]
             l_char = shell[1].upper()
-            occ_str = shell[2]
+            occ_str = shell[2:]
 
             if l_char not in shell_labels:
                 raise ValueError(f"Invalid shell label {l_char} in configuration {shell}.")
@@ -142,33 +142,39 @@ class FullAtomDFT:
         return V_eff
     #.......................................................
     def solve_schrodinger(self, Veff: np.ndarray, lmax: int, nmax: int,
-                          Vconf: np.ndarray | None = None, lmin: int = 0,
-                          theory_level: str | None = None) -> tuple[np.ndarray, np.ndarray]:
+                          Vconf: np.ndarray | None = None, lmin: int = 0) -> tuple[np.ndarray, np.ndarray]:
 
-        if theory_level is None:
-            theory_flag = 'non-relativistic'
-        else:
-            theory_flag = theory_level.lower()
+        theory_level = self.dft.theory_level
 
-        if theory_flag == 'non-relativistic':
-
+        if theory_level == 'non-relativistic':
             eps, psi = kohn_sham.solve_schrodinger_local(self.basis, Veff, lmax, nmax,
                                                          Vconf=Vconf, lmin=lmin,
                                                          solver=self.solver.eigensolver)
 
-            return eps, psi
+        elif theory_level == 'zora':
+            eps, psi = kohn_sham.solve_schrodinger_zora(self.basis, Veff, lmax, nmax,
+                                                        Z=self.Z, nuclear_sigma=self.solver.nuclear_sigma,
+                                                        Vconf=Vconf, lmin=lmin)
 
-        elif theory_flag == 'scalar-relativistic':
+        elif theory_level == 'scalar-relativistic':
+            # Build l-specific highest-occupied nrad so the KH reference energy
+            # is the valence eigenvalue for each channel, not a spurious unbound state.
+            nmax_per_l = {l: int(np.max(self.nrad[self.ll == l]))
+                          for l in range(lmin, lmax + 1) if np.any(self.ll == l)}
+            eps, psi = kohn_sham.solve_schrodinger_kh(self.basis, Veff, lmax, nmax,
+                                                      Z=self.Z, nuclear_sigma=self.solver.nuclear_sigma,
+                                                      Vconf=Vconf, lmin=lmin,
+                                                      nmax_per_l=nmax_per_l)
 
-            eps, psi = kohn_sham.solve_scalar_relativistic(self.basis, Veff, lmax, nmax,
-                                                           Vconf=Vconf, lmin=lmin)
+        else:
+            raise ValueError(f"Unknown theory_level: '{theory_level}'")
 
         return eps, psi
     #.......................................................
-    def get_bound_states(self, theory_level: str | None = None) -> tuple[dict[str, list[float]], np.ndarray]:
+    def get_bound_states(self) -> tuple[dict[str, list[float]], np.ndarray]:
 
         V_eff = self.get_effective_potential()
-        eps, psi = self.solve_schrodinger(V_eff, self.lmax, self.nmax, theory_level=theory_level)
+        eps, psi = self.solve_schrodinger(V_eff, self.lmax, self.nmax)
 
         eigenvalues = {}
         for l in range(self.lmax + 1):
@@ -182,7 +188,7 @@ class FullAtomDFT:
 
 
     #.......................................................
-    def ks_self_consistency(self, theory_level: str | None = None) -> tuple[int, float]:
+    def ks_self_consistency(self, one_shot: bool = False) -> tuple[int, float]:
         """
         Performs Kohn-Sham self-consistency to find the ground state density.
         """
@@ -202,6 +208,21 @@ class FullAtomDFT:
 
         # Initial guess for the wavefunctions
         eps, psi = self.solve_schrodinger(V_eff, self.lmax, self.nmax)
+
+        if one_shot:
+            return 1, 0.0
+
+        # Quadrature weights for the grid-invariant L2 density norm.
+        # Bridge points accumulate contributions from both adjacent elements.
+        ne, ng = self.basis.ne, self.basis.ng
+        w_i = self.basis.leg.w_i
+        quad_w = np.zeros(ne * ng + 1)
+        for ie in range(ne):
+            h_e = 0.5 * (self.basis.xp[ie + 1] - self.basis.xp[ie])
+            quad_w[ie * ng : ie * ng + ng + 1] += h_e * w_i
+
+        def _rho_err(delta: np.ndarray) -> float:
+            return np.sqrt(np.dot(quad_w, delta**2))
 
         rho = self.rho_grid.copy()
 
@@ -223,7 +244,7 @@ class FullAtomDFT:
                 else:
                     rho = rho_out
 
-                err = np.linalg.norm(r)
+                err = _rho_err(r)
 
             elif mixing_scheme.lower() == 'anderson':
                 r = rho_out - rho
@@ -235,12 +256,12 @@ class FullAtomDFT:
                 else:
                     rho = rho_out
 
-                err = np.linalg.norm(r)
+                err = _rho_err(r)
 
             else:
                 # linear mixing of the density
                 rho = alpha_mix * rho_out + (1 - alpha_mix) * rho
-                err = np.linalg.norm(rho - rho_out)
+                err = _rho_err(rho - rho_out)
 
             # regularize density to be non-negative
             rho[rho < 0.0] = 0.0
@@ -253,7 +274,7 @@ class FullAtomDFT:
             V_eff = self.get_effective_potential(rho_grid=rho)
 
             # Solve Schrödinger equation with new potential
-            eps, psi = self.solve_schrodinger(V_eff, self.lmax, self.nmax, theory_level=theory_level)
+            eps, psi = self.solve_schrodinger(V_eff, self.lmax, self.nmax)
 
         self.rho_grid = rho.copy()
 

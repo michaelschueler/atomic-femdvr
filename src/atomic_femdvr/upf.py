@@ -4,6 +4,7 @@ from pathlib import Path
 
 import numpy as np
 import numpy.typing as npt
+from scipy.interpolate import UnivariateSpline
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
 from typing_extensions import Self
 from upf_tools import UPFDict
@@ -54,6 +55,8 @@ class UPFInterface(BaseModel):
         }
 
         for array_name, desired_shape in desired_shapes.items():
+            if desired_shape is None:
+                continue
             array_value = getattr(self, array_name)
             if array_value.shape != desired_shape:
                 raise ValueError(f"Array '{array_name}' has incorrect shape: {array_value.shape}, expected {desired_shape}")
@@ -72,8 +75,18 @@ class UPFInterface(BaseModel):
         return np.array(v, dtype=np.int32)
 
     @classmethod
-    def from_upf(cls, filename: Path) -> Self:
+    def from_upf(cls, filename: Path,
+                 oc_override: list[float] | None = None) -> Self:
+        """Read a UPF v2 file.
 
+        oc_override : list of float, optional
+            Replacement occupations for the pseudo-wavefunctions, in the same
+            order as the chi entries. Two uses:
+            (1) fixing UPF files with wrong occupations, e.g. spin-majority
+            values written by cpmd2upf for GTH pseudopotentials;
+            (2) setting up a charged/ionized pseudo-atom by passing
+            occupations that sum to z_valence minus the desired charge.
+        """
         upf_dict = UPFDict.from_upf(filename)
 
         dij_1d = upf_dict['nonlocal']['dij']
@@ -81,8 +94,21 @@ class UPFInterface(BaseModel):
         assert dij_1d.size == nbeta**2
         dij = dij_1d.reshape((nbeta, nbeta))
 
+        zp   = upf_dict['header']['z_valence']
+        oc   = (oc_override if oc_override is not None
+                else [chi['occupation'] for chi in upf_dict['pswfc']['chi']])
+        oc_sum = float(np.sum(oc))
+        if oc_override is None and abs(oc_sum - zp) > 0.01:
+            import warnings
+            warnings.warn(
+                f"UPF occupation sum ({oc_sum}) does not match z_valence ({zp}). "
+                "Pass oc_override=[...] to from_upf() to correct the occupations "
+                "(common for GTH pseudopotentials converted by cpmd2upf).",
+                stacklevel=2,
+            )
+
         return cls(
-            zp = upf_dict['header']['z_valence'],
+            zp = zp,
             etotps = upf_dict['header']['total_psenergy'],
             ecutrho = upf_dict['header']['rho_cutoff'],
             lmax = upf_dict['header']['l_max'],
@@ -95,7 +121,7 @@ class UPFInterface(BaseModel):
             r = upf_dict['mesh']['r'],
             nchi = [chi['n'] for chi in upf_dict['pswfc']['chi']],
             lchi = [chi['l'] for chi in upf_dict['pswfc']['chi']],
-            oc = [chi['occupation'] for chi in upf_dict['pswfc']['chi']],
+            oc = oc,
             chi = np.transpose([chi['content'] for chi in upf_dict['pswfc']['chi']]),
             lll = [beta['angular_momentum'] for beta in upf_dict['nonlocal']['beta']],
             dion = dij,
@@ -111,13 +137,21 @@ class UPFInterface(BaseModel):
         return np.array([np.sum(self.lchi[:i] == l) for i, l in enumerate(self.lchi)])
 
     def get_charge_density(self) -> npt.NDArray[np.float64]:
-        """Compute the charge density from the wavefunctions."""
+        """Return charge density in the convention rho(r) = Σ occ |u(r)|²/r²,
+        satisfying ∫ rho(r) r² dr = Zval (matches density_potential.charge_density).
 
+        UPF rho_atom stores Σ occ |u|² (QE convention: ∫ rho_atom dr = Zval),
+        so we divide by r² to convert to our convention."""
+
+        rho = np.zeros(self.mesh, dtype=np.float64)
         if self.rho_atom is not None:
-            return self.rho_atom
+            rho[1:] = self.rho_atom[1:] / self.r[1:]**2
+            rho[0] = rho[1]
         else:
-            rho = np.zeros(self.mesh, dtype=np.float64)
+            spline = UnivariateSpline(self.r, self.chi, s=0, k=3, axis=0)
+            der_spline = spline.derivative()
             for iwf in range(self.nwfc):
                 rho[1:] += self.oc[iwf] * np.abs(self.chi[1:, iwf])**2 / self.r[1:]**2
-            rho[0] = rho[1]
-            return rho
+                dchi_dr = der_spline(self.r[0])
+                rho[0] += self.oc[iwf] * np.abs(dchi_dr[iwf])**2
+        return rho

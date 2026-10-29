@@ -1,7 +1,8 @@
 {
 
     "control": {
-        "storage_dir": "./C_full"
+        "storage_dir": "./atomic_data",
+        "store_density": true
     },
 
     "sysparams": {
@@ -18,11 +19,10 @@
     },
 
     "dft": {
-        "driver": "pylibxc",
-        "xc_functional": "",
-        "x_functional": "LDA_X",
-        "c_functional": "LDA_C_VWN_4",
-        "mixing_scheme": "linear",
+        "driver": "internal",
+        "xc_functional": "PBE",
+        "x_functional": "GGA_X_PBE",
+        "c_functional": "GGA_C_PBE",
         "alpha_mix": 0.4,
         "alpha_x": 1.0,
         "max_iter": 100,
@@ -33,6 +33,15 @@
     "electrons": {
         "Z": 6,
         "configuration": ["1s2", "2s2", "2p2"]
+    },
+
+    "photoemission": {
+        "energy_min": 0.1,
+        "energy_max": 5.0,
+        "n_energies": 50,
+        "gauges": ["length", "velocity"],
+        "store_wavefunctions": false,
+        "output_prefix": "C_full_photoemission"
     }
 
 }

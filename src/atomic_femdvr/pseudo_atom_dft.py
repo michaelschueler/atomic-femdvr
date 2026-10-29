@@ -37,6 +37,7 @@ class PseudoAtomDFT:
 
         self._upf: UPFInterface | None = None
         self.rho_grid = None
+        self.rho_nlcc = None
         self._Vloc_grid: np.ndarray | None = None
 
         self.Zval = 1.0  # Default value, can be set later
@@ -78,9 +79,22 @@ class PseudoAtomDFT:
 
     def read_upf(self, read_density: bool = True, read_potential: bool = True):
         assert self.sysparams.file_upf is not None
-        self.upf = UPFInterface.from_upf(self.sysparams.file_upf)
+        self.upf = UPFInterface.from_upf(self.sysparams.file_upf,
+                                         oc_override=self.sysparams.oc_override)
 
         self.Zval = self.upf.zp
+
+        # Rebuild grid now that Zval is known. __init__ used Zval=1 as a placeholder;
+        # the correct Zval is needed so that optimize_elements places a fine first
+        # element near the nucleus where compact orbitals (e.g. 3d) have large amplitude.
+        self.r_elements = optimize_elements(self.Zval, self.solver.h_min, self.solver.h_max,
+                                            self.solver.Rmax, self.solver.elem_tol)
+        ne = len(self.r_elements) - 1
+        self.basis = FEDVR_Basis(ne, self.solver.ng, self.r_elements,
+                                 build_derivatives=True, build_integrals=True)
+        self.grid = self.basis.get_gridpoints()
+        self.num_grid = len(self.grid)
+
         self.lmax_pseudo = np.amax(self.upf.lchi)
         self.nmax_pseudo = np.amax(self.upf.nnodes_chi)
 
@@ -350,6 +364,18 @@ class PseudoAtomDFT:
         lmax = np.amax(self.upf.lchi)
         nmax = np.amax(self.upf.nnodes_chi)
 
+        # Quadrature weights for the grid-invariant L2 density norm.
+        # Bridge points accumulate contributions from both adjacent elements.
+        ne, ng = self.basis.ne, self.basis.ng
+        w_i = self.basis.leg.w_i
+        quad_w = np.zeros(ne * ng + 1)
+        for ie in range(ne):
+            h_e = 0.5 * (self.basis.xp[ie + 1] - self.basis.xp[ie])
+            quad_w[ie * ng : ie * ng + ng + 1] += h_e * w_i
+
+        def _rho_err(delta: np.ndarray) -> float:
+            return np.sqrt(np.dot(quad_w, delta**2))
+
         # Initial guess for the wavefunctions
         eps, psi = self.solve_schrodinger(V_eff, lmax, nmax)
 
@@ -371,7 +397,7 @@ class PseudoAtomDFT:
             V_eff = self.get_effective_potential(rho_grid=rho_new)
 
             # Compute error
-            err = np.linalg.norm(rho_new - rho_old)
+            err = _rho_err(rho_new - rho_old)
 
             # Solve Schrödinger equation with new potential
             eps, psi = self.solve_schrodinger(V_eff, lmax, nmax)
