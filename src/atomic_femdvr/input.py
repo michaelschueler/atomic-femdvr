@@ -29,9 +29,12 @@ class SysParamsInput(BaseModel):
     nmax: int = Field(default=4, ge=0)
     element: str | None = None
     oc_override: list[float] | None = Field(default=None,
-        description="Override UPF pseudo-wavefunction occupations (one value per chi entry). "
-                    "Needed for GTH pseudopotentials converted by cpmd2upf, which writes "
-                    "spin-majority occupations instead of total occupations.")
+        description="Override UPF pseudo-wavefunction occupations (one value per chi entry, "
+                    "same order as the UPF PP_PSWFC block). Two uses: (1) fixing UPF files "
+                    "with wrong occupations, e.g. GTH pseudopotentials converted by cpmd2upf, "
+                    "which write spin-majority occupations instead of total occupations; "
+                    "(2) setting up a charged/ionized pseudo-atom by giving occupations that "
+                    "sum to z_valence minus the desired charge.")
 
     @field_validator("pot_energy_unit", mode="before")
     @classmethod
