@@ -81,9 +81,11 @@ class UPFInterface(BaseModel):
 
         oc_override : list of float, optional
             Replacement occupations for the pseudo-wavefunctions, in the same
-            order as the chi entries.  Use this when the UPF file contains
-            wrong occupations (e.g. spin-majority values written by cpmd2upf
-            for GTH pseudopotentials).
+            order as the chi entries. Two uses:
+            (1) fixing UPF files with wrong occupations, e.g. spin-majority
+            values written by cpmd2upf for GTH pseudopotentials;
+            (2) setting up a charged/ionized pseudo-atom by passing
+            occupations that sum to z_valence minus the desired charge.
         """
         upf_dict = UPFDict.from_upf(filename)
 
@@ -96,7 +98,7 @@ class UPFInterface(BaseModel):
         oc   = (oc_override if oc_override is not None
                 else [chi['occupation'] for chi in upf_dict['pswfc']['chi']])
         oc_sum = float(np.sum(oc))
-        if abs(oc_sum - zp) > 0.01:
+        if oc_override is None and abs(oc_sum - zp) > 0.01:
             import warnings
             warnings.warn(
                 f"UPF occupation sum ({oc_sum}) does not match z_valence ({zp}). "
