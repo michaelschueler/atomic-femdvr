@@ -37,6 +37,9 @@ def solve_photoemission_pseudo(inp: PseudoAtomicInput, photo_inp: PhotoemissionI
 
     tic = perf_counter()
     atom.read_upf(read_density=True, read_potential=True)
+    if not atom.upf.has_paos:
+        raise ValueError("Photoemission needs the occupied orbitals, but the UPF file contains "
+                         "no pseudo-atomic orbitals (PP_PSWFC).")
     toc = perf_counter()
     print_time(tic, toc, "Reading UPF file")
     print(f"element: {atom.element},  Z_val = {atom.Zval:.0f}")

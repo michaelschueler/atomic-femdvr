@@ -81,8 +81,14 @@ class PseudoAtomDFT(AtomDFT):
         self.set_basis(optimize_elements(self.Zval, self.solver.h_min, self.solver.h_max,
                                          self.solver.Rmax, self.solver.elem_tol), self.solver.ng)
 
-        self.lmax_pseudo = np.amax(self.upf.lchi)
-        self.nmax_pseudo = np.amax(self.upf.nnodes_chi)
+        # Valence channels: from the pseudo-atomic orbitals if present, otherwise the
+        # angular momenta of the projectors (lowest state per channel).
+        if self.upf.has_paos:
+            self.lmax_pseudo = int(np.amax(self.upf.lchi))
+            self.nmax_pseudo = int(np.amax(self.upf.nnodes_chi))
+        else:
+            self.lmax_pseudo = int(np.amax(self.upf.lll)) if self.upf.nbeta > 0 else 0
+            self.nmax_pseudo = 0
 
         if read_density:
             rho_upf = self.upf.get_charge_density()
@@ -106,6 +112,10 @@ class PseudoAtomDFT(AtomDFT):
 
     #.......................................................
     def occupied_states(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        if not self.upf.has_paos:
+            raise ValueError("The UPF file contains no pseudo-atomic orbitals (PP_PSWFC), so the "
+                             "occupations needed for self-consistency are unknown. Use the 'nscf' "
+                             "task, which takes the density from PP_RHOATOM.")
         return self.upf.nnodes_chi, self.upf.lchi, self.upf.oc
     #.......................................................
     def principal_quantum_numbers(self) -> dict[int, int]:
@@ -271,8 +281,9 @@ class PseudoAtomDFT(AtomDFT):
             occ_mask = l_mask & (self.upf.oc > 0)
             # fall back to the highest pseudo-orbital for this l if none is occupied
             # (e.g. an unoccupied polarization/scattering channel in the UPF)
+            # and to the lowest state if the UPF has no orbital for this l (or none at all)
             mask = occ_mask if np.any(occ_mask) else l_mask
-            n = int(np.amax(self.upf.nnodes_chi[mask]))
+            n = int(np.amax(self.upf.nnodes_chi[mask])) if np.any(mask) else 0
 
             epsl_all = np.array(eigenvalues_all[tag])
             energy_shifts[l] = epsl_all[n] - eps_unconf[l, n]
@@ -286,8 +297,7 @@ class PseudoAtomDFT(AtomDFT):
         zeta_tag = f"{prefs[nmax]}Z" if nmax < len(prefs) else f"{nmax}Z"
 
         assert self.upf is not None
-        lmax_upf = np.amax(self.upf.lchi)
-        extra_l = lmax - lmax_upf
+        extra_l = lmax - self.lmax_pseudo
         p_tag = 'P' * extra_l if extra_l > 0 else ''
 
         tag = zeta_tag + p_tag

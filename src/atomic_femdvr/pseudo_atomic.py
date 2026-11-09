@@ -68,11 +68,20 @@ def solve_pseudo_atomic(inp: PseudoAtomicInput, task_list: tuple[str, ...],
     print(f"number of elements: {len(pseudo_atom.r_elements) - 1}")
     print(f"number of grid points: {pseudo_atom.num_grid}\n")
 
-    restart_success = pseudo_atom.read_density_potential()
-    if restart_success:
-        print("Restarting from saved density and potential.\n")
+    if not pseudo_atom.upf.has_paos:
+        # Without orbitals the occupations are unknown: no SCF, the density is taken as is.
+        if 'scf' in tasks:
+            raise ValueError("The UPF file contains no pseudo-atomic orbitals (PP_PSWFC), so it "
+                             "cannot be solved self-consistently. Use the 'nscf' task, which "
+                             "takes the density from PP_RHOATOM.")
+        print("No pseudo-atomic orbitals in the UPF file: using the density from PP_RHOATOM.\n")
+        restart_success = True
     else:
-        print("No saved density and potential found. Starting from scratch.\n")
+        restart_success = pseudo_atom.read_density_potential()
+        if restart_success:
+            print("Restarting from saved density and potential.\n")
+        else:
+            print("No saved density and potential found. Starting from scratch.\n")
 
     n_lowest = pseudo_atom.principal_quantum_numbers()
     all_eigenvalues = {}

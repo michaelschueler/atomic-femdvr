@@ -7,6 +7,9 @@ Grid-converged results agree to about 2e-5 Ha (0.5 meV); the remainder comes fro
 interpolating the UPF data and from differences between the PBE implementations.
 """
 
+import re
+from pathlib import Path
+
 import pytest
 
 from atomic_femdvr.pseudo_atomic import PseudoAtomicInput, solve_pseudo_atomic
@@ -66,3 +69,36 @@ def test_unknown_task(silicon_input_dict: dict) -> None:
     inp = PseudoAtomicInput(**silicon_input_dict)
     with pytest.raises(ValueError, match="Unknown task"):
         solve_pseudo_atomic(inp, task_list=('scf,nsfc',))
+
+
+def _strip_paos(upf: Path, out: Path, empty_block: bool) -> Path:
+    """Write a copy of a UPF file without pseudo-atomic orbitals (PP_PSWFC)."""
+    text = re.sub(r'number_of_wfc="\s*\d+"', 'number_of_wfc="0"', upf.read_text())
+    replacement = "<PP_PSWFC>\n</PP_PSWFC>" if empty_block else ""
+    out.write_text(re.sub(r"<PP_PSWFC>.*?</PP_PSWFC>", replacement, text, flags=re.S))
+    return out
+
+
+@pytest.mark.parametrize("empty_block", [False, True])
+def test_nscf_without_paos(silicon_input_dict: dict, tmp_path: Path, empty_block: bool) -> None:
+    """Without PP_PSWFC, nscf uses PP_RHOATOM and reproduces the SCF results."""
+    reference = solve_pseudo_atomic(PseudoAtomicInput(**silicon_input_dict), ('scf', 'nscf'))['nscf']
+
+    upf = _strip_paos(silicon_input_dict["sysparams"]["file_upf"], tmp_path / "Si_nopao.upf", empty_block)
+    silicon_input_dict["sysparams"]["file_upf"] = upf
+    silicon_input_dict["control"]["storage_dir"] = tmp_path / "nopao"
+    export_dir = tmp_path / "export"
+    eigenvalues = solve_pseudo_atomic(PseudoAtomicInput(**silicon_input_dict), ('nscf',),
+                                      export_dir=str(export_dir))['nscf']
+
+    for l, eps in reference.items():
+        assert eigenvalues[l] == pytest.approx(eps, abs=1.0e-5)
+    assert (export_dir / "Si_DZP_eigenvalues.dat").exists()
+
+
+def test_scf_without_paos(silicon_input_dict: dict, tmp_path: Path) -> None:
+    """SCF needs the occupations of the pseudo-atomic orbitals."""
+    silicon_input_dict["sysparams"]["file_upf"] = _strip_paos(
+        silicon_input_dict["sysparams"]["file_upf"], tmp_path / "Si_nopao.upf", empty_block=False)
+    with pytest.raises(ValueError, match="PP_PSWFC"):
+        solve_pseudo_atomic(PseudoAtomicInput(**silicon_input_dict), ('scf',))
