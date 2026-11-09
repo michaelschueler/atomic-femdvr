@@ -1,17 +1,16 @@
-
+"""Input models (JSON sections) for the atomic solvers."""
 
 from enum import Enum
 from pathlib import Path
-from typing import Literal
+from typing import Any, Literal
 
+from pydantic import AliasChoices, ConfigDict, Field, FilePath, create_model, field_validator
 from pydantic import BaseModel as PydanticBaseModel
-from pydantic import ConfigDict, Field, FilePath, create_model, field_validator
 
 
-class EnergyUnit(str, Enum):
-    RYDBERG = "Ry"
-    ELECTRONVOLTS = "eV"
-    HARTREE = "Ha"
+def _lower(v: Any) -> Any:
+    """Lower-case strings so that string options are case-insensitive."""
+    return v.lower() if isinstance(v, str) else v
 
 
 class BaseModel(PydanticBaseModel):
@@ -19,12 +18,7 @@ class BaseModel(PydanticBaseModel):
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
 class SysParamsInput(BaseModel):
-    file_pot: FilePath | None = None
     file_upf: FilePath | None = None
-    file_vhx: FilePath | None = None
-    file_rho: FilePath | None = None
-    pot_columns: tuple[int, int] = Field(default=(0, 4))
-    pot_energy_unit: EnergyUnit = Field(default=EnergyUnit.RYDBERG)
     lmax: int = Field(default=0, ge=0)
     nmax: int = Field(default=4, ge=0)
     element: str | None = None
@@ -36,22 +30,9 @@ class SysParamsInput(BaseModel):
                     "(2) setting up a charged/ionized pseudo-atom by giving occupations that "
                     "sum to z_valence minus the desired charge.")
 
-    @field_validator("pot_energy_unit", mode="before")
-    @classmethod
-    def map_assume_isolated(cls, v: str) -> str:
-        """Map equivalent values for assume_isolated to the same string so that comparisons work as expected."""
-        if v.lower() in ["ry", "rydberg"]:
-            return "Ry"
-        elif v.lower() in ["ev"]:
-            return "eV"
-        elif v.lower() in ["ha", "hartree"]:
-            return "Ha"
-        else:
-            raise ValueError(f"Invalid value for pot_energy_unit: {v}")
-        
     @field_validator("element", mode="before")
     @classmethod
-    def validate_element(cls, v: str | None) -> None:
+    def validate_element(cls, v: str | None) -> str:
         if v is None:
             raise ValueError("Element must be specified in sysparams.")
         if len(v.strip()) == 0:
@@ -62,8 +43,8 @@ class SysParamsInput(BaseModel):
 
 class ControlInput(BaseModel):
     storage_dir: Path = Field(default=Path())
-    restart: bool = Field(default=False)
-    store_density: bool = Field(default=True)
+    store_density: bool = Field(default=True,
+        description="Save the converged density and potential to storage_dir for later restarts.")
 
 class OutputInput(BaseModel):
     output_wfc_qe : bool = Field(default=False)
@@ -81,9 +62,9 @@ class OutputInput(BaseModel):
 
     @field_validator("bessel_quad_method", mode="before")
     @classmethod
-    def make_lower(cls, v: str) -> str:
-        """Convert to lower case to make the input case-insensitive."""
-        return v.lower()
+    def make_lower(cls, v: Any) -> Any:
+        """Make string options case-insensitive."""
+        return _lower(v)
 
 class ElectronsInput(BaseModel):
     Z: float = Field(default=0.0, ge=0)
@@ -101,9 +82,9 @@ class SolverInput(BaseModel):
 
     @field_validator("eigensolver", mode="before")
     @classmethod
-    def make_lower(cls, v: str) -> str:
-        """Convert to lower case to make the input case-insensitive."""
-        return v.lower()
+    def make_lower(cls, v: Any) -> Any:
+        """Make string options case-insensitive."""
+        return _lower(v)
 
 def solver_input_factory(default_hmin: float, default_hmax: float) -> type[SolverInput]:
     model = create_model(
@@ -118,22 +99,30 @@ def solver_input_factory(default_hmin: float, default_hmax: float) -> type[Solve
 class DFTInput(BaseModel):
     theory_level: Literal["non-relativistic", "zora", "scalar-relativistic"] = Field(default="non-relativistic")
     relativistic_scf: bool = Field(default=True)
-    driver: str = "internal"
+    driver: Literal["internal", "pylibxc"] = "internal"
     xc_functional: str = "PBE"
     x_functional: str | None = "gga_x_pbe"
     c_functional: str | None = "gga_c_pbe"
-    mixing_scheme: Literal["linear", "diis", "anderson"] = Field(default="linear")
-    diis_history: int = Field(default=5, ge=2)
+    mixing_scheme: Literal["linear", "anderson"] = Field(default="linear",
+        description="Density mixing. 'diis' (Pulay) is accepted as an alias for 'anderson'.")
+    mixing_history: int = Field(default=5, ge=2,
+        validation_alias=AliasChoices("mixing_history", "diis_history"))
     alpha_mix: float = 0.6
     alpha_x: float = 1.0
     max_iter: int = 100
     conv_tol: float = 1.0e-6
 
-    @field_validator("theory_level", "mixing_scheme", mode="before")
+    @field_validator("theory_level", "driver", mode="before")
     @classmethod
-    def make_lower(cls, v: str) -> str:
-        """Convert to lower case to make the input case-insensitive."""
-        return v.lower()
+    def make_lower(cls, v: Any) -> Any:
+        """Make string options case-insensitive."""
+        return _lower(v)
+
+    @field_validator("mixing_scheme", mode="before")
+    @classmethod
+    def map_diis(cls, v: Any) -> Any:
+        v = _lower(v)
+        return "anderson" if v in ("diis", "pulay") else v
 
 class PhotoemissionInput(BaseModel):
     energy_min: float = Field(default=0.1, gt=0)
@@ -146,14 +135,11 @@ class PhotoemissionInput(BaseModel):
         description="Maximum l for scattering final states. "
                     "Defaults to None (all l_f required by dipole selection rule).")
 
-class PseudoConfigInput(BaseModel):
-    storage_dir: Path = Field(default=Path())
-
 
 class ConfinementType(str, Enum):
+    NONE = "none"
     SOFTSTEP = "softstep"
     HARMONIC = "harmonic"
-    NONE = None
 
 class ConfinementInput(BaseModel):
     type: ConfinementType = ConfinementType.NONE
@@ -164,8 +150,13 @@ class ConfinementInput(BaseModel):
     softcoul_delta: float = 0.1
     softcoul_charge: float = 1.0
 
-    @field_validator("type", "polarization_mode", mode="before")
+    @field_validator("type", mode="before")
     @classmethod
-    def make_lower(cls, v: str) -> str:
-        """Convert to lower case to make the input case-insensitive."""
-        return v.lower()
+    def map_type(cls, v: Any) -> Any:
+        return "none" if v is None else _lower(v)
+
+    @field_validator("polarization_mode", mode="before")
+    @classmethod
+    def make_lower(cls, v: Any) -> Any:
+        """Make string options case-insensitive."""
+        return _lower(v)

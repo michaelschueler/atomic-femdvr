@@ -1,5 +1,4 @@
 import numpy as np
-from scipy.integrate import simpson
 
 from atomic_femdvr.femdvr import FEDVR_Basis
 from atomic_femdvr.xc_functionals import gga_functional
@@ -9,8 +8,6 @@ from atomic_femdvr.xc_functionals import gga_functional
 def charge_density(basis:FEDVR_Basis, nnodes_chi:np.ndarray, lchi:np.ndarray,
                   occ:np.ndarray, psi:np.ndarray) -> np.ndarray:
     """Computes the charge density from given wave-functions"""
-    lmax = np.amax(lchi)
-    nmax = np.amax(nnodes_chi)
     nwf = len(occ)
 
     grid = basis.get_gridpoints()
@@ -20,7 +17,7 @@ def charge_density(basis:FEDVR_Basis, nnodes_chi:np.ndarray, lchi:np.ndarray,
     h = 0.5 * (basis.xp[1] - basis.xp[0])
     psi_elem = psi[:, :, :basis.ng + 1]
     dpsi_dr_elem = np.einsum('ij,lnj->lni', basis.leg.D_ii, psi_elem) / h
-    
+
     for iwf in range(nwf):
         l = lchi[iwf]
         n = nnodes_chi[iwf]
@@ -65,7 +62,7 @@ def hartree_potential(basis:FEDVR_Basis, rho:np.ndarray) -> np.ndarray:
     return V_Ha
 #===================================================================
 def exchange_correlation_potential(basis:FEDVR_Basis, rho:np.ndarray,
-                                   rho_nlcc:np.ndarray=np.array([]),
+                                   rho_nlcc:np.ndarray | None=None,
                                    xc_functional:str='', x_functional:str='gga_x_pbe',
                                    c_functional:str='gga_c_pbe',
                                    alpha_x:float=1.0, driver='internal') -> np.ndarray:
@@ -99,15 +96,16 @@ def exchange_correlation_potential(basis:FEDVR_Basis, rho:np.ndarray,
             raise ValueError(f"Unsupported exchange-correlation functional: {xc_functional}. "
                              f"Available functionals: {available_functionals}")
 
-        exc, xc_data = gga_functional(xc_functional, rho_, drho_dr, alpha_x)
+        _, xc_data = gga_functional(xc_functional, rho_, drho_dr, alpha_x)
         V_xc_grid = xc_data[0]
         vsigma = xc_data[1]
 
     elif driver == 'pylibxc':
         try:
             import pylibxc
-        except ImportError:
-            raise ImportError("pylibxc is not installed. Please install it to use the libxc driver.")
+        except ImportError as err:
+            raise ImportError("The 'pylibxc' driver requires the libxc Python bindings "
+                              "(see https://libxc.gitlab.io/installation/).") from err
 
         rho_libxc = np.reshape(rho_, [len(rho_), 1])
         sigma_libxc = np.reshape(sigma, [len(sigma), 1])

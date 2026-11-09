@@ -1,37 +1,34 @@
 {
     "control": {
-        "storage_dir": "./atomic_data",
-        "store_density": true
+        "storage_dir": "./Si_pseudo"
     },
 
     "sysparams": {
-        "element": "S",
-        "file_upf": "/home/michael/PP/nc-sr-04_pbe_standard_upf/S.upf",
-        "lmax": 3,
-        "nmax": 2
+        "element": "Si",
+        "file_upf": "../tests/data/Si/Si.oncvpsp.upf",
+        "lmax": 2,
+        "nmax": 1
     },
 
     "solver": {
         "h_min": 0.5,
         "h_max": 4.0,
         "Rmax": 30.0,
-        "elem_tol": 1.0e-2,
         "ng": 8
     },
 
     "dft": {
-        "driver": "pylibxc",
-        "xc_functional": "",
-        "x_functional": "GGA_X_PBE",
-        "c_functional": "GGA_C_PBE",
-        "alpha_x": 1.0,
+        "driver": "internal",
+        "xc_functional": "PBE",
+        "mixing_scheme": "anderson",
+        "alpha_mix": 0.5,
         "max_iter": 100,
-        "conv_tol": 1.0e-6
+        "conv_tol": 1.0e-8
     },
 
     "confinement": {
         "type": "SoftStep",
-        "rc": 30.0,
+        "rc": 20.0,
         "ri_factor": 0.5,
         "Vbarrier": 1.0,
         "polarization_mode": "SoftCoul",
@@ -47,5 +44,4 @@
         "bessel_qmax": 20.0,
         "bessel_nq": 200
     }
-
 }

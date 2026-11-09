@@ -3,9 +3,11 @@ from scipy.integrate import simpson
 from scipy.special import spherical_jn
 
 from atomic_femdvr.femdvr import FEDVR_Basis
+
+
 #=================================================================
 def bessel_integral(basis: FEDVR_Basis, l: int, rpow: int, qgrid: np.ndarray,
-                     phi: np.ndarray, npoints: int = 41, 
+                     phi: np.ndarray, npoints: int = 41,
                      method: str = 'simpson') -> np.ndarray:
     """
     Perform the spherical Bessel transform of the wavefunction.
@@ -19,7 +21,7 @@ def bessel_integral(basis: FEDVR_Basis, l: int, rpow: int, qgrid: np.ndarray,
     Returns:
         np.ndarray: The Bessel-transformed wavefunction.
     """
-    
+
     ne = basis.ne
     ng = basis.ng
     xp = basis.xp

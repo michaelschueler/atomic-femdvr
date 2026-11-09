@@ -6,15 +6,14 @@ re-solves for bound states, then computes photoemission matrix elements and
 scattering phase shifts over an energy grid using the non-local PP scattering solver.
 """
 
-from pathlib import Path
 from time import perf_counter
 
 import numpy as np
 
-from atomic_femdvr.pseudo_atom_dft import PseudoAtomDFT
-from atomic_femdvr.pseudo_atomic import PseudoAtomicInput
 from atomic_femdvr.input import PhotoemissionInput
 from atomic_femdvr.photoemission import compute_photoemission, save_photoemission
+from atomic_femdvr.pseudo_atom_dft import PseudoAtomDFT
+from atomic_femdvr.pseudo_atomic import PseudoAtomicInput
 from atomic_femdvr.utils import print_time
 
 

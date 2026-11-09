@@ -1,5 +1,4 @@
 import os
-import h5py
 
 import numpy as np
 from scipy.interpolate import interp1d
@@ -8,27 +7,27 @@ from scipy.optimize import OptimizeResult, minimize_scalar
 import atomic_femdvr.density_potential as density_potential
 import atomic_femdvr.kohn_sham as kohn_sham
 from atomic_femdvr.adaptive_elements import optimize_elements
+from atomic_femdvr.atom_dft import AtomDFT
 from atomic_femdvr.confinement import parabolic_confinement, soft_coulomb_potential, soft_step
-from atomic_femdvr.femdvr import FEDVR_Basis
+from atomic_femdvr.dipoles import dipole_moments, save_dipole_moments
 from atomic_femdvr.input import (
-    ControlInput,
     ConfinementInput,
     ConfinementType,
+    ControlInput,
     DFTInput,
+    OutputInput,
     SolverInput,
     SysParamsInput,
-    OutputInput
 )
 from atomic_femdvr.interp_tools import interpolate_density, interpolate_potential
 from atomic_femdvr.projector_output import write_projector_file
 from atomic_femdvr.upf import UPFInterface
-from atomic_femdvr.dipoles import dipole_moments, save_dipole_moments
 
 
 #==========================================================================
-class PseudoAtomDFT:
+class PseudoAtomDFT(AtomDFT):
     #.......................................................
-    def __init__(self, control: ControlInput, sysparams: SysParamsInput, 
+    def __init__(self, control: ControlInput, sysparams: SysParamsInput,
                  solver: SolverInput, dft: DFTInput):
         self.control = control
         self.sysparams = sysparams
@@ -43,18 +42,10 @@ class PseudoAtomDFT:
         self.Zval = 1.0  # Default value, can be set later
         self.element = self.sysparams.element
 
-        # optimize elements
+        # placeholder grid; rebuilt in read_upf() once the valence charge is known
         solver.Rmax = solver.Rmax or 30.0
-        self.r_elements = optimize_elements(self.Zval, solver.h_min, solver.h_max, solver.Rmax, solver.elem_tol)
-
-        # set up the basis
-        ne = len(self.r_elements) - 1
-        self.basis = FEDVR_Basis(ne, solver.ng, self.r_elements,
-                                build_derivatives=True, build_integrals=True)
-
-        self.grid = self.basis.get_gridpoints()
-
-        self.num_grid = len(self.grid)
+        self.set_basis(optimize_elements(self.Zval, solver.h_min, solver.h_max, solver.Rmax,
+                                         solver.elem_tol), solver.ng)
     #.......................................................
 
     @property
@@ -87,13 +78,8 @@ class PseudoAtomDFT:
         # Rebuild grid now that Zval is known. __init__ used Zval=1 as a placeholder;
         # the correct Zval is needed so that optimize_elements places a fine first
         # element near the nucleus where compact orbitals (e.g. 3d) have large amplitude.
-        self.r_elements = optimize_elements(self.Zval, self.solver.h_min, self.solver.h_max,
-                                            self.solver.Rmax, self.solver.elem_tol)
-        ne = len(self.r_elements) - 1
-        self.basis = FEDVR_Basis(ne, self.solver.ng, self.r_elements,
-                                 build_derivatives=True, build_integrals=True)
-        self.grid = self.basis.get_gridpoints()
-        self.num_grid = len(self.grid)
+        self.set_basis(optimize_elements(self.Zval, self.solver.h_min, self.solver.h_max,
+                                         self.solver.Rmax, self.solver.elem_tol), self.solver.ng)
 
         self.lmax_pseudo = np.amax(self.upf.lchi)
         self.nmax_pseudo = np.amax(self.upf.nnodes_chi)
@@ -118,6 +104,17 @@ class PseudoAtomDFT:
                           kind='cubic', bounds_error=False, fill_value=0.0)
         self.beta_grid = interp(self.grid)
 
+    #.......................................................
+    def occupied_states(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        return self.upf.nnodes_chi, self.upf.lchi, self.upf.oc
+    #.......................................................
+    def principal_quantum_numbers(self) -> dict[int, int]:
+        """Principal quantum number of the lowest pseudo-orbital per l (e.g. {0: 4} for Mo 4s)."""
+        n_lowest: dict[int, int] = {}
+        for n, l in zip(self.upf.nchi, self.upf.lchi, strict=True):
+            if n > l:  # skip missing/invalid labels in the UPF file
+                n_lowest[int(l)] = min(n_lowest.get(int(l), int(n)), int(n))
+        return n_lowest
     #.......................................................
     def get_effective_potential(self, rho_grid:np.ndarray | None=None) -> np.ndarray:
         if rho_grid is None:
@@ -162,7 +159,7 @@ class PseudoAtomDFT:
 
         return eigenvalues, psi
     #.......................................................
-    def get_confinement(self, confinement: ConfinementInput):
+    def get_confinement(self, confinement: ConfinementInput) -> np.ndarray | None:
         """
         Returns the confinement potential based on the specified type.
         """
@@ -172,8 +169,7 @@ class PseudoAtomDFT:
             return soft_step(self.grid, ri, confinement.rc, Vbarrier=confinement.Vbarrier)
         elif confinement.type == ConfinementType.HARMONIC:
             return parabolic_confinement(self.grid, ri, confinement.rc)
-        else:
-            raise ValueError(f"Unknown confinement type: {confinement.type}")
+        return None
     #.......................................................
     def get_all_states(self, lmax: int, nmax: int, confinement: ConfinementInput | None = None):
         """
@@ -182,9 +178,6 @@ class PseudoAtomDFT:
         V_eff = self.get_effective_potential()
 
         if confinement:
-            ri = confinement.ri_factor * confinement.rc
-            # Vconf = SoftConfinement(self.grid, ri, rc)
-
             Vconf = self.get_confinement(confinement)
 
             if confinement.polarization_mode is None:
@@ -199,11 +192,11 @@ class PseudoAtomDFT:
                 Vsoftcoul = soft_coulomb_potential(self.grid, confinement.softcoul_charge,
                                                   confinement.softcoul_delta)
 
-                eps_unbound, psi_unbound = self.solve_schrodinger(V_eff, lmax, nmax,
+                eps_unbound, _ = self.solve_schrodinger(V_eff, lmax, nmax,
                                                                  Vconf=Vconf, lmin=self.lmax_pseudo + 1)
 
                 print("Solving for unbound states with soft Coulomb potential...")
-                eps_softcoul, psi_softcoul = self.solve_schrodinger(Vsoftcoul, lmax, nmax,
+                _, psi_softcoul = self.solve_schrodinger(Vsoftcoul, lmax, nmax,
                                                                  Vconf=Vconf, lmin=self.lmax_pseudo + 1)
 
                 # combine bound and unbound states
@@ -217,7 +210,7 @@ class PseudoAtomDFT:
                 raise ValueError(f"Unknown polarization mode: {confinement.polarization_mode}")
 
         else:
-            eps, psi = self.SolveSchrodinger(V_eff, lmax, nmax)
+            eps, psi = self.solve_schrodinger(V_eff, lmax, nmax)
 
         eigenvalues = {}
         for l in range(lmax + 1):
@@ -330,9 +323,9 @@ class PseudoAtomDFT:
                                  out_dir=out_dir, output_format='qe')
 
         if output.output_wfc_hdf5:
-            write_projector_file(self.basis, psi, elem, tag, 
+            write_projector_file(self.basis, psi, elem, tag,
                                  out_dir=out_dir, output_format='hdf5')
-            
+
         if output.output_wfc_bessel:
             npoints = output.bessel_quad_npoints
             method = output.bessel_quad_method
@@ -342,7 +335,7 @@ class PseudoAtomDFT:
 
             qgrid = np.linspace(0.0, qmax, nq)
 
-            write_projector_file(self.basis, psi, elem, tag, 
+            write_projector_file(self.basis, psi, elem, tag,
                                  bessel_method=method, bessel_npoints=npoints,
                                  qgrid=qgrid, rpow=rpow,
                                  out_dir=out_dir, output_format='bessel')
@@ -354,99 +347,3 @@ class PseudoAtomDFT:
         file_dipoles = os.path.join(out_dir, f"{elem}_dipole_moments.h5")
 
         save_dipole_moments(file_dipoles, orb_indx, D_matrix)
-
-    #.......................................................
-    def ks_self_consistency(self, max_iter:int=100, tol:float=1.0e-6, alpha_mix:float=0.6):
-        """
-        Performs Kohn-Sham self-consistency to find the ground state density.
-        """
-        V_eff = self.get_effective_potential()
-        lmax = np.amax(self.upf.lchi)
-        nmax = np.amax(self.upf.nnodes_chi)
-
-        # Quadrature weights for the grid-invariant L2 density norm.
-        # Bridge points accumulate contributions from both adjacent elements.
-        ne, ng = self.basis.ne, self.basis.ng
-        w_i = self.basis.leg.w_i
-        quad_w = np.zeros(ne * ng + 1)
-        for ie in range(ne):
-            h_e = 0.5 * (self.basis.xp[ie + 1] - self.basis.xp[ie])
-            quad_w[ie * ng : ie * ng + ng + 1] += h_e * w_i
-
-        def _rho_err(delta: np.ndarray) -> float:
-            return np.sqrt(np.dot(quad_w, delta**2))
-
-        # Initial guess for the wavefunctions
-        eps, psi = self.solve_schrodinger(V_eff, lmax, nmax)
-
-        rho_old = self.rho_grid.copy()
-
-        err = 1.0e8
-        iter_count = 0
-        while err > tol and iter_count < max_iter:
-            iter_count += 1
-
-            # Compute charge density
-            rho_new = density_potential.charge_density(self.basis, self.upf.nnodes_chi,
-                                                      self.upf.lchi, self.upf.oc, psi)
-
-            # linear mixing of the density
-            rho_new = alpha_mix * rho_new + (1 - alpha_mix) * rho_old
-
-            # Update effective potential
-            V_eff = self.get_effective_potential(rho_grid=rho_new)
-
-            # Compute error
-            err = _rho_err(rho_new - rho_old)
-
-            # Solve Schrödinger equation with new potential
-            eps, psi = self.solve_schrodinger(V_eff, lmax, nmax)
-
-            rho_old = rho_new.copy()
-
-
-        self.rho_grid = rho_new.copy()
-
-        return iter_count, err
-
-    #.......................................................
-    def save_density_potential(self):
-        """
-        Saves the charge density and potential to a file.
-        """
-        V_eff = self.get_effective_potential()
-
-        if not os.path.exists(self.control.storage_dir):
-            os.makedirs(self.control.storage_dir)
-
-        filename = f'{self.element}_density_potential.h5'
-        with h5py.File(self.control.storage_dir / filename, 'w') as f:
-            f.create_dataset('grid', data=self.grid)
-            f.create_dataset('rho', data=self.rho_grid)
-            f.create_dataset('Veff', data=V_eff)
-    #.......................................................
-    def read_density_potential(self):
-        """
-        Reads the charge density and potential from a file.
-        """
-        storage_dir = self.control.storage_dir
-        filename = f'{self.element}_density_potential.h5'
-        filepath = os.path.join(storage_dir, filename)
-
-        if not os.path.isfile(filepath):
-            return False
-
-        with h5py.File(filepath, 'r') as f:
-            grid = f['grid'][:]
-            rho_grid = f['rho'][:]
-            Veff_grid = f['Veff'][:]
-
-        if len(grid) != self.num_grid:
-            restart_success = False
-        else:
-            restart_success = np.allclose(grid, self.grid)
-
-        if restart_success:
-            self.rho_grid = rho_grid.copy()
-
-        return restart_success

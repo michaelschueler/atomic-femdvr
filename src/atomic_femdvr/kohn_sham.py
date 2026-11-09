@@ -89,9 +89,6 @@ def solve_schrodinger_local(basis:FEDVR_Basis, Veff_grid:np.ndarray, lmax:int, n
     """
     Solve the radial Schrödinger equation using finite element method
     """
-    ne = basis.ne  # Number of elements
-    ng = basis.ng  # Number of grid points per element
-    nb = ne * ng - 1  # Total number of grid points
     r_grid = basis.get_gridpoints()
 
     lchannels = np.arange(lmin, lmax + 1, step=1, dtype=int)
@@ -126,7 +123,7 @@ def solve_schrodinger_local(basis:FEDVR_Basis, Veff_grid:np.ndarray, lmax:int, n
             H_mat_banded[-1, :] += Veff_diag + Vl_diag
             eps_l, vect = la.eig_banded(H_mat_banded, lower=False, select='i',
                                          select_range=[0, nmax])
-            
+
 
         vect_T = np.ascontiguousarray(vect.T)
         psi_l = basis.get_psi(vect_T, cplx=False)
@@ -181,7 +178,7 @@ def solve_schrodinger_zora(basis: FEDVR_Basis, Veff_grid: np.ndarray, lmax: int,
     V_nuc_smooth[1:] = -Z * erf(r_grid[1:] / sig2) / r_grid[1:]
     V_nuc_smooth[0] = -Z * np.sqrt(2.0 / np.pi) / nuclear_sigma  # analytic r->0 limit
     M_grid = 1.0 / (1.0 - V_nuc_smooth / (2.0 * c**2))
-   
+
     Veff_diag = basis.get_potential_from_grid(Veff_grid)
     if Vconf is not None:
         Veff_diag += basis.get_potential_from_grid(Vconf)
@@ -285,7 +282,7 @@ def solve_schrodinger_kh(basis: FEDVR_Basis, Veff_grid: np.ndarray, lmax: int, n
         # l-channels with fewer occupied shells (e.g. d-channel in Se).
         nref = nmax_per_l.get(l, nmax) if nmax_per_l else nmax
 
-        for it in range(maxiter):
+        for _ in range(maxiter):
             eps_old = eps_l.copy()
 
             # Single reference energy for the whole channel → one Hermitian H → exact orthogonality

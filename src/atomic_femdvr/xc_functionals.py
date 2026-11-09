@@ -102,7 +102,7 @@ def gga_functional(name, rho, grad_rho, alpha):
             rrs = np.sqrt(rs)
 
             #get interpolated LDA correlation
-            ec_lda, ec_lda_rs = interpolate_LSD_energy(rrs, PW)
+            ec_lda, _ = interpolate_LSD_energy(rrs, PW)
 
             b = -ec_lda/ GAMMA
             b = 1.0 / ((np.exp(b) - 1.0) + epsilon)
@@ -158,7 +158,7 @@ def gga_functional(name, rho, grad_rho, alpha):
         def becke_88_exchange(rho, sigma, ex_lda, vx_lda):
             #Becke 88 exchange functional
 
-            beta = 0.0042 ;  gamma = 6
+            beta, gamma = 0.0042, 6
 
             #helper intermediates
             q = []
@@ -184,7 +184,7 @@ def gga_functional(name, rho, grad_rho, alpha):
             #The Vosko, Wilk and Nusair 3 functional
 
             #VWN3 parameterisation
-            A= 0.0310907 ; x0=-0.409286 ; b= 13.0720 ; c = 42.7198
+            A, x0, b, c = 0.0310907, -0.409286, 13.0720, 42.7198
 
             #helper intermediates
             q = []
@@ -206,7 +206,7 @@ def gga_functional(name, rho, grad_rho, alpha):
         def lyp_correlation(rho, sigma):
             #The Lee, Yang and Parr correlation functional
 
-            a = 0.04918 ; b = 0.132 ; c = 0.2533 ; d = 0.349
+            a, b, c, d = 0.04918, 0.132, 0.2533, 0.349
 
             #helper intermediates
             q = []

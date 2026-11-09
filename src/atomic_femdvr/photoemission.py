@@ -27,13 +27,17 @@ Combined velocity-gauge radial ME: M_Vd - M_Vr
 Integration uses DVR quadrature; bridge points accumulate weights from both elements.
 """
 
-import numpy as np
 import h5py
+import numpy as np
 
 from atomic_femdvr.femdvr import FEDVR_Basis
-from atomic_femdvr.scattering import (solve_scattering_kh, solve_scattering_local,
-                                       solve_scattering_nonlocal, solve_scattering_zora,
-                                       extract_phase)
+from atomic_femdvr.scattering import (
+    extract_phase,
+    solve_scattering_kh,
+    solve_scattering_local,
+    solve_scattering_nonlocal,
+    solve_scattering_zora,
+)
 
 
 def _build_weight_grid(basis: FEDVR_Basis) -> np.ndarray:
@@ -75,7 +79,7 @@ def _radial_matrix_elements(basis: FEDVR_Basis, psi_f: np.ndarray, psi_i: np.nda
         result['velocity_r'] = np.dot(w_grid, psi_f.conj() * inv_r * psi_i)
 
         D = basis.get_deriv_matrix()
-        cff_i = basis.get_coeffs(psi_i.real if np.isrealobj(psi_i) else psi_i.real, cplx=False)
+        cff_i = basis.get_coeffs(psi_i.real, cplx=False)
         cff_f = basis.get_coeffs(psi_f, cplx=True)
         result['velocity_d'] = np.dot(cff_f.conj(), D @ cff_i)
 

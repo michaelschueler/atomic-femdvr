@@ -4,8 +4,8 @@ from pathlib import Path
 
 import numpy as np
 import numpy.typing as npt
-from scipy.interpolate import UnivariateSpline
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+from scipy.interpolate import UnivariateSpline
 from typing_extensions import Self
 from upf_tools import UPFDict
 

@@ -8,7 +8,6 @@ from atomic_femdvr.legendre import Legendre
 #===================================================================
 def gen_btensor_ode(N:int) -> np.ndarray:
 
-    B_inn = np.zeros([N, N, N])
 
     leg = Legendre(N)
     x_i = leg.x_i
@@ -28,7 +27,6 @@ def gen_btensor_ode(N:int) -> np.ndarray:
 #===================================================================
 def gen_bvector_ode(N:int) -> np.ndarray:
 
-    B_in = np.zeros([N, N])
 
     leg = Legendre(N)
     x_i = leg.x_i
