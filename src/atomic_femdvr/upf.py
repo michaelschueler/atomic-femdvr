@@ -95,10 +95,19 @@ class UPFInterface(BaseModel):
         if isinstance(chis, dict):  # a single orbital
             chis = [chis]
 
-        dij_1d = upf_dict['nonlocal']['dij']
         nbeta = upf_dict['header']['number_of_proj']
-        assert dij_1d.size == nbeta**2
-        dij = dij_1d.reshape((nbeta, nbeta))
+        if nbeta == 0:
+            # A local-only pseudopotential (e.g. a regularized all-electron
+            # potential): QE itself omits PP_NONLOCAL entirely in this case
+            # (upflib/read_upf_new.f90's read_pp_nonlocal returns before even
+            # opening the tag), so there is nothing to read here.
+            dij = np.zeros((0, 0), dtype=np.float64)
+            betas = []
+        else:
+            dij_1d = upf_dict['nonlocal']['dij']
+            assert dij_1d.size == nbeta**2
+            dij = dij_1d.reshape((nbeta, nbeta))
+            betas = upf_dict['nonlocal']['beta']
 
         zp   = upf_dict['header']['z_valence']
         if not chis and upf_dict.get('rhoatom') is None:
@@ -136,11 +145,12 @@ class UPFInterface(BaseModel):
             oc = oc,
             chi = (np.transpose([chi['content'] for chi in chis]) if chis
                    else np.zeros((upf_dict['header']['mesh_size'], 0))),
-            lll = [beta['angular_momentum'] for beta in upf_dict['nonlocal']['beta']],
+            lll = [beta['angular_momentum'] for beta in betas],
             dion = dij,
             vloc = upf_dict['local'],
-            kbeta = [beta['cutoff_radius_index'] for beta in upf_dict['nonlocal']['beta']],
-            beta = np.transpose([beta['content'] for beta in upf_dict['nonlocal']['beta']]),
+            kbeta = [beta['cutoff_radius_index'] for beta in betas],
+            beta = (np.transpose([beta['content'] for beta in betas]) if betas
+                    else np.zeros((upf_dict['header']['mesh_size'], 0))),
             rho_nlcc = upf_dict.get('nlcc', None),
             rho_atom = upf_dict.get('rhoatom', None)
         )

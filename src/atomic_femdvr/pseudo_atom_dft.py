@@ -104,11 +104,14 @@ class PseudoAtomDFT(AtomDFT):
 
         # interpolate beta projectors to new grid
         self.nbeta = self.upf.nbeta
-        beta = np.ascontiguousarray(self.upf.beta.T)
-        kbeta_max = np.max(self.upf.kbeta)
-        interp = interp1d(self.upf.r[0:kbeta_max], beta[:, 0:kbeta_max], axis=1,
-                          kind='cubic', bounds_error=False, fill_value=0.0)
-        self.beta_grid = interp(self.grid)
+        if self.nbeta == 0:
+            self.beta_grid = np.zeros((0, len(self.grid)), dtype=np.float64)
+        else:
+            beta = np.ascontiguousarray(self.upf.beta.T)
+            kbeta_max = np.max(self.upf.kbeta)
+            interp = interp1d(self.upf.r[0:kbeta_max], beta[:, 0:kbeta_max], axis=1,
+                              kind='cubic', bounds_error=False, fill_value=0.0)
+            self.beta_grid = interp(self.grid)
 
     #.......................................................
     def occupied_states(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
