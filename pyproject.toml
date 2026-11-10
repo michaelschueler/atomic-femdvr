@@ -7,6 +7,7 @@ name = "atomic_femdvr"
 version = "0.1.0"
 description = "Kohn-Sham solver for isolated atoms (all-electron and norm-conserving pseudopotentials) using the finite-element discrete variable representation"
 readme = "README.md"
+license = "MIT"
 authors = [
     { name = "Michael Schüler", email = "michael.schueler@psi.ch" }
 ]
@@ -20,7 +21,6 @@ classifiers = [
     "Development Status :: 3 - Alpha",
     "Environment :: Console",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: MIT License",
     "Operating System :: OS Independent",
     "Natural Language :: English",
     "Topic :: Scientific/Engineering :: Physics",
