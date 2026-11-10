@@ -140,7 +140,6 @@ plot = [
 Homepage = "https://github.com/michaelschueler/atomic-femdvr"
 Repository = "https://github.com/michaelschueler/atomic-femdvr.git"
 Documentation = "https://atomic-femdvr.readthedocs.io"
-Funding = "https://github.com/sponsors/michaelschueler"
 
 [project.scripts]
 atomic_femdvr = "atomic_femdvr.cli:main"

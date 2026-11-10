@@ -76,7 +76,8 @@ class SolverInput(BaseModel):
     h_max: float = Field(default=4.0, gt=0)
     Rmax: float | None = Field(default=None, gt=0)
     tol: float = Field(default=1.0e-3, gt=0)
-    ng: int = Field(default=8, ge=1)
+    ng: int = Field(default=12, ge=1,
+        description="Gauss-Lobatto points per finite element. 12 converges eigenvalues to ~1e-7 Ha.")
     elem_tol: float = Field(default=1.0e-2, gt=0)
     nuclear_sigma: float = Field(default=1.0e-3, gt=0)
 
