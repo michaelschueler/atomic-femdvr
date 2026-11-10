@@ -31,7 +31,7 @@ def test_neon_lda_nist(tmp_path: Path) -> None:
 
     eigenvalues = solve_atomic(inp, ("scf",))["scf"]
 
-    nist = {"0": [-30.305855, -1.322637], "1": [-0.498034]}
+    nist = {"0": [-30.305855, -1.322809], "1": [-0.498034]}
     for l, reference in nist.items():
         assert eigenvalues[l] == pytest.approx(reference, abs=2.0e-6)
 
