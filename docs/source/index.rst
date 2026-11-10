@@ -1,52 +1,37 @@
-atomic-femdvr |release| Documentation
-=====================================
+atomic-femdvr |release|
+=======================
 
-Cookiecutter
-------------
+``atomic-femdvr`` solves the radial Kohn-Sham equations of an isolated atom with the
+finite-element discrete variable representation (FE-DVR). It handles
 
-This package was created with the `cookiecutter <https://github.com/cookiecutter/cookiecutter>`_
-package using `cookiecutter-snekpack <https://github.com/cthoyt/cookiecutter-snekpack>`_ template.
-It comes with the following:
+- **pseudo-atoms** with norm-conserving pseudopotentials in UPF format (the main use case),
+  including pseudopotentials without pseudo-atomic orbitals such as the SG15 set;
+- **all-electron atoms** (non-relativistic; validated against the NIST atomic reference data);
+- approximate **scalar-relativistic** (Koelling-Harmon) and **ZORA** treatments of the
+  all-electron atom.
 
-- Standard ``src/`` layout
-- Declarative setup with `pyproject.toml` (following `PEP 621 <https://peps.python.org/pep-0621/>`_)
-- Reproducible workflows configured with ``tox``
-  - Reproducible tests with ``pytest``
-  - A command line interface with ``click``
-  - Reproducible notebooks with `treon <https://github.com/reviewNB/treon>`_
-  - Documentation build with ``sphinx`` 8.0 and ``sphinx-rtd-theme`` 3.0
-  - Testing of code quality with ``ruff``
-  - Testing of documentation coverage with ``docstr-coverage``
-  - Testing of documentation format
-  - Testing of package metadata completeness with ``pyroma``
-  - Testing of MANIFEST correctness with ``check-manifest``
-  - Testing of optional static typing with ``mypy``
-  - Version management with `bump-my-version <https://github.com/callowayproject/bump-my-version>`_
-  - Building with `uv build <https://docs.astral.sh/uv/guides/publish/#building-your-package>`_
-  - Releasing to PyPI with `uv publish <https://docs.astral.sh/uv/guides/publish/#publishing-your-package>`_
-- A command line interface with ``click``
-- A vanity CLI via python entrypoints
-- A `py.typed` file so other packages can use your type hints
-- Automated running of tests on each push
-  with `GitHub Actions <https://docs.github.com/en/actions/learn-github-actions/understanding-github-actions>`_
-- Configuration for `ReadTheDocs <https://readthedocs.org>`_
-- A good base `.gitignore` generated from `gitignore.io <https://gitignore.io>`_.
-- A pre-formatted README with badges
-- A pre-formatted LICENSE file with the MIT License (you can change this to whatever you want, though)
-- A pre-formatted CONTRIBUTING guide
-- A copy of the `Contributor Covenant <https://www.contributor-covenant.org>`_ as a basic code of conduct
-
+For pseudo-atoms it generates confined, numerically exact atomic orbitals (including
+polarization orbitals) that can be exported for use as localized basis functions or
+projectors, e.g. in Quantum ESPRESSO format or as spherical Bessel transforms.
 
 .. toctree::
     :maxdepth: 2
-    :caption: Getting Started
-    :name: start
+    :caption: Getting started
 
     installation
     usage
-    cli
 
-Indices and Tables
+.. toctree::
+    :maxdepth: 2
+    :caption: Reference
+
+    input
+    cli
+    method
+    validation
+    api
+
+Indices and tables
 ------------------
 
 - :ref:`genindex`
