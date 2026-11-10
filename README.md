@@ -99,9 +99,10 @@ If you use atomic-femdvr in your work, please cite it as described in
 
 ## ⚖️ License
 
-The code is licensed under the MIT License. The pseudopotential files in
-`tests/data` were generated with ONCVPSP (D. R. Hamann, Phys. Rev. B **88**,
-085117 (2013)).
+The code is licensed under the MIT License. The test pseudopotentials in
+`tests/data` are taken from [PseudoDojo](http://www.pseudo-dojo.org) (M. J. van
+Setten et al., Comput. Phys. Commun. **226**, 39 (2018)) and distributed under
+CC BY 4.0; see [tests/data/README.md](tests/data/README.md).
 
 ## 👐 Contributing
 
