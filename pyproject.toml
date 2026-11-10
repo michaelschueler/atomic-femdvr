@@ -259,8 +259,3 @@ replace = "release = \"{new_version}\""
 filename = "src/atomic_femdvr/version.py"
 search = "VERSION = \"{current_version}\""
 replace = "VERSION = \"{new_version}\""
-
-[[tool.bumpversion.files]]
-filename = "CITATION.cff"
-search = "version: {current_version}"
-replace = "version: {new_version}"

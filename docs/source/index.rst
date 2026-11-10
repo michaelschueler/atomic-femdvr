@@ -14,6 +14,9 @@ For pseudo-atoms it generates confined, numerically exact atomic orbitals (inclu
 polarization orbitals) that can be exported for use as localized basis functions or
 projectors, e.g. in Quantum ESPRESSO format or as spherical Bessel transforms.
 
+If you use the code, please cite the archived release,
+`doi:10.24435/materialscloud:xt-zm <https://doi.org/10.24435/materialscloud:xt-zm>`_.
+
 .. toctree::
     :maxdepth: 2
     :caption: Getting started

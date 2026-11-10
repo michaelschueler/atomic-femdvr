@@ -11,6 +11,8 @@
         <img alt="PyPI - Python Version" src="https://img.shields.io/pypi/pyversions/atomic_femdvr" /></a>
     <a href="https://github.com/michaelschueler/atomic-femdvr/blob/main/LICENSE">
         <img alt="License" src="https://img.shields.io/pypi/l/atomic_femdvr" /></a>
+    <a href="https://doi.org/10.24435/materialscloud:xt-zm">
+        <img alt="DOI" src="https://img.shields.io/badge/DOI-10.24435%2Fmaterialscloud%3Axt--zm-blue" /></a>
     <a href="https://atomic-femdvr.readthedocs.io/en/latest/?badge=latest">
         <img alt="Documentation Status" src="https://readthedocs.org/projects/atomic-femdvr/badge/?version=latest" /></a>
 </p>
@@ -94,8 +96,24 @@ benchmarked. Details are in the
 
 ## 📖 Citation
 
-If you use atomic-femdvr in your work, please cite it as described in
-[CITATION.cff](CITATION.cff).
+If you use atomic-femdvr in your work, please cite the archived release:
+
+> M. Schüler, _atomic-femdvr_, Materials Cloud Archive (2026),
+> [doi:10.24435/materialscloud:xt-zm](https://doi.org/10.24435/materialscloud:xt-zm)
+
+```bibtex
+@software{atomic_femdvr,
+  author    = {Schüler, Michael},
+  title     = {atomic-femdvr},
+  version   = {0.1.0},
+  year      = {2026},
+  publisher = {Materials Cloud Archive},
+  doi       = {10.24435/materialscloud:xt-zm},
+  url       = {https://github.com/michaelschueler/atomic-femdvr}
+}
+```
+
+See also [CITATION.cff](CITATION.cff).
 
 ## ⚖️ License
 
