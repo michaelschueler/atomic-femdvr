@@ -6,15 +6,14 @@ re-solves for bound states, then computes photoemission matrix elements and
 scattering phase shifts over an energy grid using the non-local PP scattering solver.
 """
 
-from pathlib import Path
 from time import perf_counter
 
 import numpy as np
 
-from atomic_femdvr.pseudo_atom_dft import PseudoAtomDFT
-from atomic_femdvr.pseudo_atomic import PseudoAtomicInput
 from atomic_femdvr.input import PhotoemissionInput
 from atomic_femdvr.photoemission import compute_photoemission, save_photoemission
+from atomic_femdvr.pseudo_atom_dft import PseudoAtomDFT
+from atomic_femdvr.pseudo_atomic import PseudoAtomicInput
 from atomic_femdvr.utils import print_time
 
 
@@ -38,6 +37,9 @@ def solve_photoemission_pseudo(inp: PseudoAtomicInput, photo_inp: PhotoemissionI
 
     tic = perf_counter()
     atom.read_upf(read_density=True, read_potential=True)
+    if not atom.upf.has_paos:
+        raise ValueError("Photoemission needs the occupied orbitals, but the UPF file contains "
+                         "no pseudo-atomic orbitals (PP_PSWFC).")
     toc = perf_counter()
     print_time(tic, toc, "Reading UPF file")
     print(f"element: {atom.element},  Z_val = {atom.Zval:.0f}")

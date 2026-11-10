@@ -9,10 +9,10 @@ model for code contributions. Follow these steps:
 
 1. [Create a fork](https://help.github.com/articles/fork-a-repo) of the upstream
    repository at
-   [`elinscott/wannier90-input`](https://github.com/elinscott/wannier90-input)
+   [`michaelschueler/atomic-femdvr`](https://github.com/michaelschueler/atomic-femdvr)
    on your GitHub account (or in one of your organizations)
 2. [Clone your fork](https://docs.github.com/en/repositories/creating-and-managing-repositories/cloning-a-repository)
-   with `git clone https://github.com/<your namespace here>/wannier90-input.git`
+   with `git clone https://github.com/<your namespace here>/atomic-femdvr.git`
 3. Make and commit changes to your fork with `git commit`
 4. Push changes to your fork with `git push`
 5. Repeat steps 3 and 4 as needed
@@ -39,14 +39,9 @@ This project encourages the use of optional static typing. It uses
 [`mypy`](http://mypy-lang.org/) as a type checker. You can check if your code
 passes `mypy` with `tox -e mypy`.
 
-This project uses [`ruff`](https://docs.astral.sh/ruff/) to automatically
-enforce a consistent code style. You can apply `ruff format` and other
-pre-configured formatters with `tox -e format`.
-
-This project uses [`ruff`](https://docs.astral.sh/ruff/) and several plugins for
-additional checks of documentation style, security issues, good variable
-nomenclature, and more (see `pyproject.toml` for a list of Ruff plugins). You
-can check if your code passes `ruff check` with `tox -e lint`.
+This project uses [`ruff`](https://docs.astral.sh/ruff/) for linting (see
+`pyproject.toml` for the selected rules). You can check if your code passes
+`ruff check` with `tox -e lint`.
 
 Each of these checks are run on each commit using GitHub Actions as a continuous
 integration service. Passing all of them is required for accepting a
@@ -79,11 +74,10 @@ build it locally with `tox -e docs`.
 
 ### Testing
 
-Functions in this repository should be unit tested. These can either be written
-using the `unittest` framework in the `tests/` directory or as embedded
-doctests. You can check that the unit tests pass with `tox -e py` and that the
-doctests pass with `tox -e doctests`. These tests are required to pass for
-accepting a contribution.
+Functions in this repository should be tested with `pytest` in the `tests/`
+directory. Physics changes should be checked against reference data (see the
+NIST and ONCVPSP benchmarks in `tests/`). You can check that the tests pass with
+`tox -e py`. These tests are required to pass for accepting a contribution.
 
 ### Syncing your fork
 
@@ -92,7 +86,7 @@ resolve conflicts against the main branch. After cloning, you should add the
 upstream repository with
 
 ```shell
-$ git remote add elinscott https://github.com/elinscott/wannier90-input.git
+$ git remote add upstream https://github.com/michaelschueler/atomic-femdvr.git
 ```
 
 Then, you can merge upstream code into your branch. You can also use the GitHub

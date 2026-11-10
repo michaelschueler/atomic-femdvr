@@ -1,9 +1,10 @@
-import numpy as np
 import h5py
+import numpy as np
 from sympy.physics.wigner import gaunt
 
-
 from atomic_femdvr.femdvr import FEDVR_Basis
+
+
 #=================================================================
 def radial_integrals(basis: FEDVR_Basis, psi: np.ndarray,
                      r_pow: int) -> np.ndarray:
@@ -13,7 +14,7 @@ def radial_integrals(basis: FEDVR_Basis, psi: np.ndarray,
     """
     lmax = psi.shape[0] - 1
     nmax = psi.shape[1] - 1
-    
+
     # integrals = np.zeros([lmax+1, nmax+1, lmax+1, nmax+1], dtype=np.float64)
 
     nx = (lmax + 1) * (nmax + 1)
@@ -63,7 +64,7 @@ def dipole_moments(basis: FEDVR_Basis, psi: np.ndarray) -> np.ndarray:
         for n in range(nmax + 1):
             for m in range(-l, l + 1):
                 Indices.append( (l, n, m) )
-    
+
     Indices = np.array(Indices)
     norbs_tot = Indices.shape[0]
 

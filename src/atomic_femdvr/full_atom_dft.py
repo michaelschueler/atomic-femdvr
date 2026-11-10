@@ -1,21 +1,16 @@
-import os
-
-import h5py
 import numpy as np
 
 import atomic_femdvr.density_potential as density_potential
 import atomic_femdvr.kohn_sham as kohn_sham
-from atomic_femdvr.adaptive_elements import optimize_elements, optimize_elements_ae
-from atomic_femdvr.anderson import AndersonMixing
-from atomic_femdvr.diis import DIIS
-from atomic_femdvr.femdvr import FEDVR_Basis
+from atomic_femdvr.adaptive_elements import optimize_elements_ae
+from atomic_femdvr.atom_dft import AtomDFT
 from atomic_femdvr.initial_density import get_slater_density
 from atomic_femdvr.input import ControlInput, DFTInput, ElectronsInput, SolverInput, SysParamsInput
 from atomic_femdvr.periodic_table import PeriodicTable
 
 
 #==========================================================================
-class FullAtomDFT:
+class FullAtomDFT(AtomDFT):
     #.......................................................
     def __init__(self, control: ControlInput, sysparams: SysParamsInput,
                  electrons: ElectronsInput, solver: SolverInput, dft: DFTInput):
@@ -50,15 +45,7 @@ class FullAtomDFT:
         h_max = solver.h_max / (self.Z ** (1/3))
         Rmax = solver.Rmax / (self.Z ** (1/3))
 
-        self.r_elements = optimize_elements_ae(self.Z, h_min, h_max, Rmax, solver.elem_tol)
-
-        # set up the basis
-        ne = len(self.r_elements) - 1
-        self.basis = FEDVR_Basis(ne, solver.ng, self.r_elements,
-                                build_derivatives=True, build_integrals=True)
-
-        self.grid = self.basis.get_gridpoints()
-        self.num_grid = len(self.grid)
+        self.set_basis(optimize_elements_ae(self.Z, h_min, h_max, Rmax, solver.elem_tol), solver.ng)
 
         self.V0_grid = np.zeros(self.num_grid, dtype=np.float64)
         self.V0_grid[1:] = -self.Z / self.grid[1:]
@@ -87,12 +74,12 @@ class FullAtomDFT:
             try:
                 n = int(n_char)
             except ValueError:
-                raise ValueError(f"Invalid principal quantum number {n_char} in configuration {shell}.")
+                raise ValueError(f"Invalid principal quantum number {n_char} in configuration {shell}.") from None
 
             try:
                 occ = float(occ_str)
             except ValueError:
-                raise ValueError(f"Invalid occupation number {occ_str} in configuration {shell}.")
+                raise ValueError(f"Invalid occupation number {occ_str} in configuration {shell}.") from None
 
             l = shell_labels.index(l_char)
             self.ll.append(l)
@@ -117,6 +104,9 @@ class FullAtomDFT:
         self.nmax = np.amax(self.nrad)
         self.lmax = np.amax(self.ll)
         self.num_electrons = np.sum(self.occ)
+    #.......................................................
+    def occupied_states(self) -> tuple[np.ndarray, np.ndarray, np.ndarray]:
+        return self.nrad, self.ll, self.occ
     #.......................................................
     def initialize_density(self) -> None:
 
@@ -185,140 +175,3 @@ class FullAtomDFT:
 
         return eigenvalues, psi
     #.......................................................
-
-
-    #.......................................................
-    def ks_self_consistency(self, one_shot: bool = False) -> tuple[int, float]:
-        """
-        Performs Kohn-Sham self-consistency to find the ground state density.
-        """
-        max_iter = self.dft.max_iter
-        tol = self.dft.conv_tol
-        alpha_mix = self.dft.alpha_mix
-
-        mixing_scheme = self.dft.mixing_scheme.lower()
-        if mixing_scheme.lower() == 'diis':
-            diis_history = self.dft.diis_history
-            diis = DIIS(max_history=diis_history)
-        elif mixing_scheme.lower() == 'anderson':
-            diis_history = self.dft.diis_history
-            anderson = AndersonMixing(max_history=diis_history)
-
-        V_eff = self.get_effective_potential()
-
-        # Initial guess for the wavefunctions
-        eps, psi = self.solve_schrodinger(V_eff, self.lmax, self.nmax)
-
-        if one_shot:
-            return 1, 0.0
-
-        # Quadrature weights for the grid-invariant L2 density norm.
-        # Bridge points accumulate contributions from both adjacent elements.
-        ne, ng = self.basis.ne, self.basis.ng
-        w_i = self.basis.leg.w_i
-        quad_w = np.zeros(ne * ng + 1)
-        for ie in range(ne):
-            h_e = 0.5 * (self.basis.xp[ie + 1] - self.basis.xp[ie])
-            quad_w[ie * ng : ie * ng + ng + 1] += h_e * w_i
-
-        def _rho_err(delta: np.ndarray) -> float:
-            return np.sqrt(np.dot(quad_w, delta**2))
-
-        rho = self.rho_grid.copy()
-
-        err = 1.0e8
-        iter_count = 0
-        while err > tol and iter_count < max_iter:
-            iter_count += 1
-
-            # Compute charge density
-            rho_out = density_potential.charge_density(self.basis, self.nrad, self.ll, self.occ, psi)
-
-            if mixing_scheme.lower() == 'diis':
-                r = rho_out - rho
-                diis.update(rho, r)
-
-                if iter_count > 1:
-                    rho = diis.extrapolate(dot_product=lambda a, b: np.dot(a, b),
-                                           beta=alpha_mix)
-                else:
-                    rho = rho_out
-
-                err = _rho_err(r)
-
-            elif mixing_scheme.lower() == 'anderson':
-                r = rho_out - rho
-                anderson.update(rho, rho_out, r)
-
-                if iter_count > 1:
-                    rho = anderson.extrapolate(dot_product=lambda a, b: np.dot(a, b),
-                                              beta=alpha_mix)
-                else:
-                    rho = rho_out
-
-                err = _rho_err(r)
-
-            else:
-                # linear mixing of the density
-                rho = alpha_mix * rho_out + (1 - alpha_mix) * rho
-                err = _rho_err(rho - rho_out)
-
-            # regularize density to be non-negative
-            rho[rho < 0.0] = 0.0
-
-            # print("max(rho) = {:.3e}".format(np.amax(rho)), "min(rho) = {:.3e}".format(np.amin(rho)))
-
-            # print(f"iter = {iter_count}, err = {err:.3e}")
-
-            # Update effective potential
-            V_eff = self.get_effective_potential(rho_grid=rho)
-
-            # Solve Schrödinger equation with new potential
-            eps, psi = self.solve_schrodinger(V_eff, self.lmax, self.nmax)
-
-        self.rho_grid = rho.copy()
-
-        return iter_count, err
-    #.......................................................
-
-    #.......................................................
-    def save_density_potential(self):
-        """
-        Saves the charge density and potential to a file.
-        """
-        V_eff = self.get_effective_potential()
-
-        if not os.path.exists(self.control.storage_dir):
-            os.makedirs(self.control.storage_dir)
-
-        filename = f'{self.element}_density_potential.h5'
-        with h5py.File(self.control.storage_dir / filename, 'w') as f:
-            f.create_dataset('grid', data=self.grid)
-            f.create_dataset('rho', data=self.rho_grid)
-            f.create_dataset('Veff', data=V_eff)
-    #.......................................................
-    def read_density_potential(self):
-        """
-        Reads the charge density and potential from a file.
-        """
-        storage_dir = self.control.storage_dir
-        filename = f'{self.element}_density_potential.h5'
-        filepath = os.path.join(storage_dir, filename)
-
-        if not os.path.isfile(filepath):
-            return False
-
-        with h5py.File(filepath, 'r') as f:
-            grid = f['grid'][:]
-            rho_grid = f['rho'][:]
-            Veff_grid = f['Veff'][:]
-
-        if len(grid) != self.num_grid:
-            restart_success = False
-        else:
-            restart_success = np.allclose(grid, self.grid)
-
-        if restart_success:
-            self.rho_grid = rho_grid.copy()
-
-        return restart_success

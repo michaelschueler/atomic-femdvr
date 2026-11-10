@@ -70,6 +70,20 @@ def hydrogen_setup():
     return basis, r_grid, potential, lll, dion_zero, beta_dummy
 
 
+@pytest.fixture(scope="module")
+def local_gs(hydrogen_setup):
+    """Solve the local problem once; return ε and ψ for l=0."""
+    basis, r_grid, potential, *_ = hydrogen_setup
+    eps, psi = solve_schrodinger_local(basis, potential, lmax=0, nmax=3)
+    return basis, r_grid, potential, eps[0], psi[0]  # l=0 channel
+
+
+@pytest.fixture(scope="module")
+def log_basis():
+    """Provide a logarithmic radial basis."""
+    return _make_log_basis()
+
+
 # ── tests ─────────────────────────────────────────────────────────────────────
 
 
@@ -108,13 +122,6 @@ class TestRank1Projector:
     β = ψ₀ (DVR 1s state of H).  Adding D|β⟩⟨β| shifts ε₀ by exactly
     D·‖β‖²_DVR and leaves all other states untouched.
     """
-
-    @pytest.fixture(scope="class")
-    def local_gs(self, hydrogen_setup):
-        """Solve the local problem once; return ε and ψ for l=0."""
-        basis, r_grid, potential, *_ = hydrogen_setup
-        eps, psi = solve_schrodinger_local(basis, potential, lmax=0, nmax=3)
-        return basis, r_grid, potential, eps[0], psi[0]  # l=0 channel
 
     def test_ground_state_shift(self, hydrogen_setup, local_gs):
         """The rank-1 projector shifts the matching ground-state energy."""
@@ -193,11 +200,6 @@ class TestLogGridBasis:
     The weight in each element scales with its half-width, so this stresses
     the per-element weight computation in get_coeffs / get_psi.
     """
-
-    @pytest.fixture(scope="class")
-    def log_basis(self):
-        """Provide a logarithmic radial basis for the test class."""
-        return _make_log_basis()
 
     def test_get_psi_get_coeffs_inverse(self, log_basis):
         """get_coeffs(get_psi(v)) == v for a random coefficient vector."""

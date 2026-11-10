@@ -87,10 +87,9 @@ class Legendre:
 
         x_i = self.__x_i_guess()
 
-        if N % 2: x_i = x_i[:N//2]
-        else: x_i = x_i[:N//2 - 1]
+        x_i = x_i[:N//2] if N % 2 else x_i[:N//2 - 1]
 
-        x_i, rerr = self.__newton_iter(x_i)
+        x_i, _ = self.__newton_iter(x_i)
 
         x_i_out = np.zeros(N+1)
         x_i_out[0] = -1.
@@ -136,7 +135,7 @@ class Legendre:
         for i, x in enumerate(x_i_guess):
 
             converged = False
-            for iter in range(niter_max):
+            for _ in range(niter_max):
 
                 L_n = leg.legval(x, c_n)
                 dL_n = leg.legval(x, dc_n)

@@ -1,8 +1,17 @@
-cff-version: 1.0.2
+cff-version: 1.2.0
 message: "If you use this software, please cite it as below."
+type: software
 title: "atomic-femdvr"
+abstract: "Kohn-Sham solver for isolated atoms (all-electron and norm-conserving pseudopotentials) using the finite-element discrete variable representation."
 authors:
-  - name: "Michael Schüler"
+  - family-names: "Schüler"
+    given-names: "Michael"
+    affiliation: "Paul Scherrer Institute"
 version: 0.0.1-dev
-doi:
+license: MIT
+repository-code: "https://github.com/michaelschueler/atomic-femdvr"
 url: "https://github.com/michaelschueler/atomic-femdvr"
+keywords:
+  - density functional theory
+  - pseudopotentials
+  - finite element

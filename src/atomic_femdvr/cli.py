@@ -1,70 +1,63 @@
-"""Command line interface for :mod:`atomic_femdvr`.
-
-Why does this file exist, and why not put this in ``__main__``?
-You might be tempted to import things from ``__main__``
-later, but that will cause problems--the code will get executed twice:
-
-- When you run ``python3 -m atomic_femdvr`` python will
-  execute``__main__.py`` as a script. That means there won't be any
-  ``atomic_femdvr.__main__`` in ``sys.modules``.
-- When you import __main__ it will get executed again (as a module) because
-  there's no ``atomic_femdvr.__main__`` in ``sys.modules``.
-
-.. seealso:: https://click.palletsprojects.com/en/8.1.x/setuptools/#setuptools-integration
-"""
+"""Command line interface for :mod:`atomic_femdvr`."""
 
 import json
-from time import perf_counter
 
 import click
 
+from atomic_femdvr.full_atomic import TASKS as AE_TASKS
 from atomic_femdvr.full_atomic import FullAtomicInput, solve_atomic
+from atomic_femdvr.input import PhotoemissionInput
+from atomic_femdvr.pseudo_atomic import TASKS as PSEUDO_TASKS
 from atomic_femdvr.pseudo_atomic import PseudoAtomicInput, solve_pseudo_atomic
 from atomic_femdvr.version import get_version
 
-
 __all__ = [
     "atomic",
+    "main",
     "photoemission",
     "pseudoatomic",
     "pseudophotoemission",
 ]
 
-@click.group()
-@click.version_option(version=get_version(),message="atomic_femdvr %(version)s")
-def main() -> None:
-    pass
 
-# If you want to have a multi-command CLI, see https://click.palletsprojects.com/en/latest/commands/
+def _read_json(input_file: str) -> dict:
+    with open(input_file) as f:
+        return json.load(f)
+
+
+@click.group()
+@click.version_option(version=get_version(), message="atomic_femdvr %(version)s")
+def main() -> None:
+    """Kohn-Sham solver for isolated atoms (all-electron and pseudopotential) using FE-DVR."""
+
+
 @main.command()
 @click.argument("input_file", type=click.Path(exists=True))
-@click.option("-t", "--task", type=str, multiple=True, required=True)
-@click.option("--plot", is_flag=True, help="Plot the results")
+@click.option("-t", "--task", type=str, multiple=True, required=True,
+              help=f"Task(s) to run: {', '.join(AE_TASKS)}.")
+@click.option("--plot", is_flag=True, help="Plot the wavefunctions.")
 @click.argument("export_dir", type=click.Path(), required=False)
 def atomic(input_file: str, task: tuple[str, ...], plot: bool, export_dir: str | None) -> None:
-
-    tic = perf_counter()
-
-    with open(input_file) as f:
-        data = json.load(f)
+    """All-electron calculation defined by INPUT_FILE (JSON)."""
+    data = _read_json(input_file)
     data.pop('photoemission', None)
-    inp = FullAtomicInput(**data)
+    solve_atomic(FullAtomicInput(**data), task, plot, export_dir)
 
-    solve_atomic(inp, task, plot, export_dir)
 
 @main.command()
 @click.argument("input_file", type=click.Path(exists=True))
-@click.option("-t", "--task", type=str, multiple=True, required=True)
-@click.option("--plot", is_flag=True, help="Plot the results")
+@click.option("-t", "--task", type=str, multiple=True, required=True,
+              help=f"Task(s) to run, comma-separated or repeated: {', '.join(PSEUDO_TASKS)}.")
+@click.option("--plot", is_flag=True, help="Plot the wavefunctions.")
 @click.argument("export_dir", type=click.Path(), required=False)
 def pseudoatomic(input_file: str, task: tuple[str, ...], plot: bool, export_dir: str | None) -> None:
+    """Pseudo-atom calculation defined by INPUT_FILE (JSON) using a UPF pseudopotential.
 
-    with open(input_file) as f:
-        data = json.load(f)
-
-    inp = PseudoAtomicInput(**data)
-
-    solve_pseudo_atomic(inp, task, plot, export_dir)
+    If EXPORT_DIR is given, the orbitals from the 'nscf' task are written there.
+    """
+    data = _read_json(input_file)
+    data.pop('photoemission', None)
+    solve_pseudo_atomic(PseudoAtomicInput(**data), task, plot, export_dir)
 
 
 @main.command()
@@ -76,17 +69,11 @@ def photoemission(input_file: str) -> None:
     'photoemission' section specifying the energy range and output options.
     The KS potential must already be saved (run 'atomic -t scf' first).
     """
-    from atomic_femdvr.input import PhotoemissionInput
     from atomic_femdvr.photo_atomic import solve_photoemission_atomic
 
-    with open(input_file) as f:
-        data = json.load(f)
-
-    photo_data = data.pop('photoemission', {})
-    photo_inp = PhotoemissionInput(**photo_data)
-
-    inp = FullAtomicInput(**data)
-    solve_photoemission_atomic(inp, photo_inp)
+    data = _read_json(input_file)
+    photo_inp = PhotoemissionInput(**data.pop('photoemission', {}))
+    solve_photoemission_atomic(FullAtomicInput(**data), photo_inp)
 
 
 @main.command()
@@ -98,18 +85,11 @@ def pseudophotoemission(input_file: str) -> None:
     'photoemission' section specifying the energy range and output options.
     The KS potential must already be saved (run 'pseudoatomic -t scf' first).
     """
-    from atomic_femdvr.input import PhotoemissionInput
     from atomic_femdvr.photo_pseudo import solve_photoemission_pseudo
 
-    with open(input_file) as f:
-        data = json.load(f)
-
-    photo_data = data.pop('photoemission', {})
-    photo_inp = PhotoemissionInput(**photo_data)
-
-    inp = PseudoAtomicInput(**data)
-    solve_photoemission_pseudo(inp, photo_inp)
-
+    data = _read_json(input_file)
+    photo_inp = PhotoemissionInput(**data.pop('photoemission', {}))
+    solve_photoemission_pseudo(PseudoAtomicInput(**data), photo_inp)
 
 
 if __name__ == "__main__":

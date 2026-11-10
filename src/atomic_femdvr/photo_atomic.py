@@ -6,7 +6,6 @@ re-solves for bound states, then computes photoemission matrix elements
 and scattering phase shifts over an energy grid.
 """
 
-from pathlib import Path
 from time import perf_counter
 
 import numpy as np

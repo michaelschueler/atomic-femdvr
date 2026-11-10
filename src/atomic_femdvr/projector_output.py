@@ -1,8 +1,10 @@
 import os
-import numpy as np
+
 import h5py
-from atomic_femdvr.femdvr import FEDVR_Basis
+import numpy as np
+
 from atomic_femdvr.bessel_transform import bessel_integral
+from atomic_femdvr.femdvr import FEDVR_Basis
 
 _L_LETTERS = 'spdfgh'
 
@@ -83,8 +85,8 @@ def write_wfc_pyimpurity(basis: FEDVR_Basis, psi: np.ndarray,
                 grp.attrs['n'] = n
                 grp.attrs['l'] = l
 #----------------------------------------------------------
-def write_projector_file(basis: FEDVR_Basis, phi: np.ndarray, 
-                         elem:str, tag:str, nr:int = 1001, rmin:float=1.0e-8, 
+def write_projector_file(basis: FEDVR_Basis, phi: np.ndarray,
+                         elem:str, tag:str, nr:int = 1001, rmin:float=1.0e-8,
                          bessel_method:str = 'simpson', bessel_npoints:int = 41,
                          qgrid:np.ndarray | None = None, rpow:int = 1,
                          out_dir:str = './', output_format:str = 'qe') -> None:
@@ -94,7 +96,7 @@ def write_projector_file(basis: FEDVR_Basis, phi: np.ndarray,
         lmax = phi.shape[0] - 1
         nmax = phi.shape[1] - 1
 
-        # check if nr is odd 
+        # check if nr is odd
         if nr % 2 == 0:
             nr += 1
 
@@ -133,7 +135,7 @@ def write_projector_file(basis: FEDVR_Basis, phi: np.ndarray,
 
 
         write_bessel_hdf5(out_dir, elem, tag, phi_bessel, qgrid)
-        
+
     else:
         raise ValueError(f"Unknown output format: {output_format}. Supported formats are 'qe', 'hdf5', 'bessel'.")
 
@@ -157,9 +159,9 @@ def write_projector_qe(out_dir:str, elem:str, tag:str, proj_l:list,
                 s += f"{phi[j, i]} "
             f.write(s + "\n")
 #----------------------------------------------------------
-def write_projector_hdf5(out_dir:str, elem:str, tag:str, 
+def write_projector_hdf5(out_dir:str, elem:str, tag:str,
                          phi:np.ndarray, basis:FEDVR_Basis) -> None:
-    
+
     fname = os.path.join(out_dir, f"{elem}_{tag}_wfc.h5")
 
     with h5py.File(fname, 'w') as f:
@@ -172,7 +174,7 @@ def write_projector_hdf5(out_dir:str, elem:str, tag:str,
 #----------------------------------------------------------
 def write_bessel_hdf5(out_dir:str, elem:str, tag:str,
                        phi_bessel:np.ndarray, qgrid:np.ndarray) -> None:
-    
+
     fname = os.path.join(out_dir, f"{elem}_{tag}_bessel.h5")
 
     with h5py.File(fname, 'w') as f:

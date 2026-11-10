@@ -4,8 +4,8 @@ from pathlib import Path
 
 import numpy as np
 import numpy.typing as npt
-from scipy.interpolate import UnivariateSpline
 from pydantic import BaseModel, ConfigDict, field_validator, model_validator
+from scipy.interpolate import UnivariateSpline
 from typing_extensions import Self
 from upf_tools import UPFDict
 
@@ -86,8 +86,14 @@ class UPFInterface(BaseModel):
             values written by cpmd2upf for GTH pseudopotentials;
             (2) setting up a charged/ionized pseudo-atom by passing
             occupations that sum to z_valence minus the desired charge.
+
+        The pseudo-atomic orbitals (PP_PSWFC) are optional; without them the
+        density must be provided in PP_RHOATOM.
         """
         upf_dict = UPFDict.from_upf(filename)
+        chis = (upf_dict.get('pswfc') or {}).get('chi', [])
+        if isinstance(chis, dict):  # a single orbital
+            chis = [chis]
 
         dij_1d = upf_dict['nonlocal']['dij']
         nbeta = upf_dict['header']['number_of_proj']
@@ -95,10 +101,16 @@ class UPFInterface(BaseModel):
         dij = dij_1d.reshape((nbeta, nbeta))
 
         zp   = upf_dict['header']['z_valence']
+        if not chis and upf_dict.get('rhoatom') is None:
+            raise ValueError(f"{filename}: the UPF file contains neither pseudo-atomic orbitals "
+                             "(PP_PSWFC) nor an atomic density (PP_RHOATOM).")
+        if oc_override is not None and len(oc_override) != len(chis):
+            raise ValueError(f"oc_override has {len(oc_override)} entries, but the UPF file "
+                             f"contains {len(chis)} pseudo-atomic orbitals.")
         oc   = (oc_override if oc_override is not None
-                else [chi['occupation'] for chi in upf_dict['pswfc']['chi']])
+                else [chi['occupation'] for chi in chis])
         oc_sum = float(np.sum(oc))
-        if oc_override is None and abs(oc_sum - zp) > 0.01:
+        if chis and oc_override is None and abs(oc_sum - zp) > 0.01:
             import warnings
             warnings.warn(
                 f"UPF occupation sum ({oc_sum}) does not match z_valence ({zp}). "
@@ -112,17 +124,18 @@ class UPFInterface(BaseModel):
             etotps = upf_dict['header']['total_psenergy'],
             ecutrho = upf_dict['header']['rho_cutoff'],
             lmax = upf_dict['header']['l_max'],
-            nwfc = upf_dict['header']['number_of_wfc'],
+            nwfc = len(chis),
             nbeta = nbeta,
             mesh = upf_dict['header']['mesh_size'],
             xmin = upf_dict['mesh'].get('xmin', None),
             rmax = upf_dict['mesh'].get('rmax', None),
             dx = upf_dict['mesh'].get('dx', None),
             r = upf_dict['mesh']['r'],
-            nchi = [chi['n'] for chi in upf_dict['pswfc']['chi']],
-            lchi = [chi['l'] for chi in upf_dict['pswfc']['chi']],
+            nchi = [chi['n'] for chi in chis],
+            lchi = [chi['l'] for chi in chis],
             oc = oc,
-            chi = np.transpose([chi['content'] for chi in upf_dict['pswfc']['chi']]),
+            chi = (np.transpose([chi['content'] for chi in chis]) if chis
+                   else np.zeros((upf_dict['header']['mesh_size'], 0))),
             lll = [beta['angular_momentum'] for beta in upf_dict['nonlocal']['beta']],
             dion = dij,
             vloc = upf_dict['local'],
@@ -133,8 +146,13 @@ class UPFInterface(BaseModel):
         )
 
     @property
+    def has_paos(self) -> bool:
+        """Whether the file contains pseudo-atomic orbitals (PP_PSWFC)."""
+        return self.nwfc > 0
+
+    @property
     def nnodes_chi(self) -> npt.NDArray[np.int32]:
-        return np.array([np.sum(self.lchi[:i] == l) for i, l in enumerate(self.lchi)])
+        return np.array([np.sum(self.lchi[:i] == l) for i, l in enumerate(self.lchi)], dtype=np.int32)
 
     def get_charge_density(self) -> npt.NDArray[np.float64]:
         """Return charge density in the convention rho(r) = Σ occ |u(r)|²/r²,

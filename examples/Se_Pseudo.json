@@ -5,10 +5,10 @@
     },
 
     "sysparams": {
-        "element": "S",
-        "file_upf": "/home/michael/PP/nc-sr-04_pbe_standard_upf/S.upf",
+        "element": "Se",
+        "file_upf": "/Users/michael/PP/nc-sr-04_pbe_standard_upf/Se.upf",
         "lmax": 3,
-        "nmax": 2
+        "nmax": 1
     },
 
     "solver": {
@@ -26,12 +26,13 @@
         "c_functional": "GGA_C_PBE",
         "alpha_x": 1.0,
         "max_iter": 100,
-        "conv_tol": 1.0e-6
+        "conv_tol": 1.0e-6,
+	"alpha_mix": 0.2
     },
 
     "confinement": {
         "type": "SoftStep",
-        "rc": 30.0,
+        "rc": 8.0,
         "ri_factor": 0.5,
         "Vbarrier": 1.0,
         "polarization_mode": "SoftCoul",
@@ -40,7 +41,6 @@
 
     "output": {
         "output_wfc_qe": true,
-        "qe_num_points": 2001,
         "output_wfc_bessel": true,
         "bessel_quad_npoints": 81,
         "bessel_quad_method": "Simpson",

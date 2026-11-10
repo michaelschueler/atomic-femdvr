@@ -1,0 +1,46 @@
+{
+    "pseudo_config": {
+        "upflib_dir": "/Users/michael/opt/lib",
+        "lib_ext": "dylib",
+        "pseudo_dir": "/Users/michael/Downloads",
+        "storage_dir": "./Pr_Pseudo"
+    },
+
+    "sysparams": {
+        "element": "Pr",
+        "file_upf": "Pr.pz-sp-hgh.UPF",
+        "lmax": 4,
+        "nmax": 3
+    },
+
+    "solver": {
+        "h_min": 0.5,
+        "h_max": 4.0,
+        "Rmax": 30.0,
+        "elem_tol": 1.0e-2,
+        "ng": 16
+    },
+
+    "dft": {
+        "driver": "pylibxc",
+        "xc_functional": "",
+        "x_functional": "GGA_X_PBE",
+        "c_functional": "GGA_C_PBE",
+        "alpha_x": 1.0,
+        "max_iter": 100,
+        "conv_tol": 1.0e-6
+    },
+
+    "confinement": {
+        "type": "SoftStep",
+        "rc": 20.0,
+        "ri_factor": 0.5,
+        "Vbarrier": 1.0
+    },
+
+    "projector": {
+        "nr": 1001,
+        "rmin": 1.0e-8
+    }
+
+}

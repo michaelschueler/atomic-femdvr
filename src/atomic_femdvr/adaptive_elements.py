@@ -156,7 +156,7 @@ def optimize_elements(Zc: float, h_min: float, h_max: float, Rmax: float,
         raise ValueError(f"Unknown method '{method}' for optimizing elements.")
 
     wght_fnc_r = lambda r, y, L: wght_fnc(Rmax - r)
-    xk, wk = adaptive_runge_kutta_23(wght_fnc_r, 0.0, 0.0, Rmax,
+    xk, _ = adaptive_runge_kutta_23(wght_fnc_r, 0.0, 0.0, Rmax,
                                     h_min, h_max, tol, arg=Rmax)
     grid = np.flip(Rmax - xk)
 

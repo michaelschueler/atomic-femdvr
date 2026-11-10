@@ -1,5 +1,6 @@
 import numpy as np
-from scipy.special import factorial, genlaguerre
+from scipy.special import genlaguerre
+
 
 #==========================================================================
 def factorial_fraction(n: int, k: int) -> float:
@@ -56,7 +57,7 @@ def hydrogenic_orbital(r: np.ndarray, Z: float, n: int, l: int) -> np.ndarray:
     a0 = 1.0  # Bohr radius in atomic units
     rho = 2 * Z * r / (n * a0)
     # prefactor = np.sqrt((2 * Z / (n * a0))**3 * factorial(n - l - 1) / (2 * n * factorial(n + l)))
-    
+
     fac = factorial_fraction(n - l - 1, n + l)
     prefactor = np.sqrt((2 * Z / (n * a0))**3 * fac / (2 * n))
 
@@ -73,7 +74,7 @@ def slater_shielding(n_vals:np.ndarray, l_vals:np.ndarray, occ_vals:np.ndarray, 
     S = 0.0
 
 
-    for ni, li, count in zip(n_vals, l_vals, occ_vals):
+    for ni, li, count in zip(n_vals, l_vals, occ_vals, strict=True):
         if ni == n and li == l:
             # Same group
             if n == 1:
@@ -96,7 +97,7 @@ def get_slater_density(r: np.ndarray, Z: float, n_vals: np.ndarray, l_vals: np.n
 
     density = np.zeros_like(r)
 
-    for n, l, occ in zip(n_vals, l_vals, occ_vals):
+    for n, l, occ in zip(n_vals, l_vals, occ_vals, strict=True):
 
         S = slater_shielding(n_vals, l_vals, occ_vals, n, l)
         Z_eff = max(Z - S, 1.0)  # Slater shielding can over-screen for outer shells

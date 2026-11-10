@@ -1,5 +1,30 @@
-.venv
-.vscode
-__pycache__
+# Python / tooling
+__pycache__/
+*.py[cod]
+.venv/
+.tox/
+.mypy_cache/
+.pytest_cache/
+.ruff_cache/
 .coverage
+.coverage.*
 coverage.xml
+dist/
+build/
+*.egg-info/
+docs/build/
+
+# Editors / OS
+.vscode/
+.idea/
+.DS_Store
+
+# Calculation output (storage_dir / export_dir of local runs)
+/atomic_data/
+/results/
+/projectors/
+/*_full/
+/*_Pseudo/
+/*_pseudo/
+/src/*_full/
+/examples/*/
