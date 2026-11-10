@@ -23,7 +23,7 @@
         "driver": "pylibxc",
         "xc_functional": "",
         "x_functional": "lda_x",
-        "c_functional": "lda_c_pz",
+        "c_functional": "lda_c_vwn",
         "mixing_scheme": "anderson",
         "alpha_mix": 0.8,
         "alpha_x": 1.0,

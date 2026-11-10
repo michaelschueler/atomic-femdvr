@@ -9,11 +9,12 @@ from atomic_femdvr.full_atomic import FullAtomicInput, solve_atomic
 AE_SOLVER = {"h_min": 0.25, "h_max": 10.0, "Rmax": 60.0, "ng": 12, "eigensolver": "banded"}
 
 
-def _ae_input(tmp_path: Path, element: str, configuration: list[str], dft: dict) -> FullAtomicInput:
+def _ae_input(tmp_path: Path, element: str, configuration: list[str], dft: dict,
+              solver: dict = AE_SOLVER) -> FullAtomicInput:
     return FullAtomicInput(
         control={"storage_dir": tmp_path},
         sysparams={"element": element},
-        solver=AE_SOLVER,
+        solver=solver,
         dft={"max_iter": 200, "conv_tol": 1.0e-9, "mixing_scheme": "anderson", "alpha_mix": 0.5,
              **dft},
         electrons={"configuration": configuration},
@@ -25,7 +26,8 @@ def test_neon_lda_nist(tmp_path: Path) -> None:
     pytest.importorskip("pylibxc")
     inp = _ae_input(tmp_path, "Ne", ["1s2", "2s2", "2p6"],
                     {"driver": "pylibxc", "xc_functional": "",
-                     "x_functional": "lda_x", "c_functional": "lda_c_vwn"})
+                     "x_functional": "lda_x", "c_functional": "lda_c_vwn"},
+                    solver={**AE_SOLVER, "Rmax": 100.0, "elem_tol": 1.0e-2})
 
     eigenvalues = solve_atomic(inp, ("scf",))["scf"]
 

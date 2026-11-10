@@ -209,7 +209,11 @@ class PseudoAtomDFT(AtomDFT):
                 _, psi_softcoul = self.solve_schrodinger(Vsoftcoul, lmax, nmax,
                                                                  Vconf=Vconf, lmin=self.lmax_pseudo + 1)
 
-                # combine bound and unbound states
+                # Combine bound and unbound states. For the polarization channels, the
+                # orbitals come from the soft-Coulomb potential (localized shape), but the
+                # eigenvalues from the confined KS potential: they are the selection criterion
+                # for PAOs of a low-energy subspace in downstream applications (the
+                # soft-Coulomb eigenvalues would be artificially negative).
                 eps = np.zeros([lmax + 1, nmax + 1], dtype=np.float64)
                 psi = np.zeros([lmax + 1, nmax + 1, self.num_grid], dtype=np.float64)
                 eps[:self.lmax_pseudo+1, :] = eps_bound
