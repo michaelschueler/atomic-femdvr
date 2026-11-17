@@ -15,7 +15,7 @@ polarization orbitals) that can be exported for use as localized basis functions
 projectors, e.g. in Quantum ESPRESSO format or as spherical Bessel transforms.
 
 If you use the code, please cite the archived release,
-`doi:10.24435/materialscloud:xt-zm <https://doi.org/10.24435/materialscloud:xt-zm>`_.
+`doi:10.5281/zenodo.24314160 <https://doi.org/10.5281/zenodo.24314160>`_.
 
 .. toctree::
     :maxdepth: 2

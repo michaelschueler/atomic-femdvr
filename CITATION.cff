@@ -7,9 +7,9 @@ authors:
   - family-names: "Schüler"
     given-names: "Michael"
     affiliation: "Paul Scherrer Institute"
-version: 0.1.0
+version: 0.1.1-dev
 date-released: "2026-11-10"
-doi: 10.24435/materialscloud:xt-zm
+doi: 10.5281/zenodo.24314160
 license: MIT
 repository-code: "https://github.com/michaelschueler/atomic-femdvr"
 url: "https://github.com/michaelschueler/atomic-femdvr"
