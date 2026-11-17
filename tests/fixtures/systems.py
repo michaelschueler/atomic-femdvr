@@ -33,3 +33,19 @@ def silicon_input_dict(data_directory: Path, tmp_path: Path) -> dict[str, dict[s
         "solver": PSEUDO_SOLVER,
         "dft": PSEUDO_DFT,
     }
+
+
+@pytest.fixture
+def silicon_anc_input_dict(data_directory: Path, tmp_path: Path) -> dict[str, dict[str, Any]]:
+    """Fixture for silicon with Gygi's regularized all-electron (ANC, a=4) potential.
+
+    The UPF file has the full Z=14 and no nonlocal projectors. The regularization radius is
+    about 2/(a Z) = 0.04 bohr, so the grid needs a much smaller h_min than for ONCVPSP.
+    """
+    return {
+        "control": {"storage_dir": tmp_path},
+        "sysparams": {"file_upf": data_directory / "Si/Si_ANC_a4.upf", "element": "Si",
+                      "lmax": 1, "nmax": 3},
+        "solver": {**PSEUDO_SOLVER, "h_min": 0.05, "ng": 12},
+        "dft": {**PSEUDO_DFT, "conv_tol": 1.0e-9},
+    }

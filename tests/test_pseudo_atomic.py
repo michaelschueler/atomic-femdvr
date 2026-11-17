@@ -13,6 +13,7 @@ from pathlib import Path
 import pytest
 
 from atomic_femdvr.pseudo_atomic import PseudoAtomicInput, solve_pseudo_atomic
+from atomic_femdvr.upf import UPFInterface
 
 # ONCVPSP all-electron reference eigenvalues (Hartree) from the UPF headers, keyed by l.
 ONCVPSP_REFERENCE = {
@@ -62,6 +63,33 @@ def test_restart(silicon_input_dict: dict) -> None:
     nscf = solve_pseudo_atomic(PseudoAtomicInput(**silicon_input_dict), task_list=('nscf',))['nscf']
 
     assert nscf["0"][0] == pytest.approx(scf["0"][0], abs=1.0e-8)
+
+
+def test_read_local_only_upf(silicon_anc_input_dict: dict) -> None:
+    """A UPF file without projectors (number_of_proj=0, no PP_NONLOCAL) is read as local-only."""
+    upf = UPFInterface.from_upf(silicon_anc_input_dict["sysparams"]["file_upf"])
+
+    assert upf.nbeta == 0
+    assert upf.zp == pytest.approx(14.0)
+    assert upf.nwfc == 5
+
+
+def test_scf_regularized_all_electron(silicon_anc_input_dict: dict) -> None:
+    """Gygi's regularized nuclear potential reproduces the point-nucleus all-electron result.
+
+    Reference: Si PBE eigenvalues of the all-electron solver (tests/test_atomic.py). With
+    a=4 the regularization shifts the states by less than 1e-4 Ha (core) and 1e-5 Ha
+    (valence); see S. Lehtola, J. Chem. Theory Comput. 19, 4033 (2023).
+    """
+    inp = PseudoAtomicInput(**silicon_anc_input_dict)
+
+    eigenvalues = solve_pseudo_atomic(inp, task_list=('scf',))['scf']
+
+    all_electron = {"0": [-65.457499040, -5.102404871, -0.395730545],
+                    "1": [-3.512898918, -0.150316961]}
+    for l, reference in all_electron.items():
+        assert eigenvalues[l][:len(reference)] == pytest.approx(reference, abs=1.0e-4)
+        assert eigenvalues[l][len(reference) - 1] == pytest.approx(reference[-1], abs=1.0e-5)
 
 
 def test_unknown_task(silicon_input_dict: dict) -> None:
